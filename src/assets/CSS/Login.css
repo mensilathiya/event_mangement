@@ -1,0 +1,112 @@
+.emsLogin__page{
+    width:100%;
+    min-height:100vh;
+    background:#F4F7FC;
+}
+
+.emsLogin__container{
+    min-height:100vh;
+}
+
+.emsLogin__left{
+    background:linear-gradient(135deg,#2563EB,#1E40AF);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    color:#fff;
+}
+
+.emsLogin__illustration{
+    text-align:center;
+    padding:40px;
+}
+
+.emsLogin__right{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:40px;
+}
+
+.emsLogin__card{
+    width:100%;
+    max-width:460px;
+    padding:50px 40px !important;
+    border-radius:20px !important;
+    background:#fff;
+    box-shadow:0 10px 40px rgba(0,0,0,.08) !important;
+}
+
+.emsLogin__title{
+    font-weight:700 !important;
+    color:#1F2937;
+}
+
+.emsLogin__subtitle{
+    margin-top:10px !important;
+    color:#6B7280;
+    margin-bottom:35px !important;
+}
+
+.emsLogin__illustrationWrapper{
+    width:100%;
+    max-width:500px;
+    color:#fff;
+}
+
+.emsLogin__brandTitle{
+    font-weight:700 !important;
+    margin-bottom:10px !important;
+}
+
+.emsLogin__brandSubTitle{
+    opacity:.9;
+    margin-bottom:15px !important;
+}
+
+.emsLogin__brandDescription{
+    line-height:1.8;
+    opacity:.85;
+    margin-bottom:40px !important;
+}
+
+.emsLogin__featureGrid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:20px;
+}
+
+.emsLogin__featureCard{
+    padding:25px !important;
+    border-radius:18px !important;
+    text-align:center;
+    background:rgba(255,255,255,.12) !important;
+    backdrop-filter:blur(10px);
+    color:#fff !important;
+    transition:.3s;
+}
+
+.emsLogin__featureCard:hover{
+    transform:translateY(-5px);
+    background:rgba(255,255,255,.18) !important;
+}
+.emsLogin__form {
+    margin-top: 25px;
+}
+
+.emsLogin__optionRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 0;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.emsLogin__button {
+    height: 52px !important;
+    border-radius: 10px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    text-transform: none !important;
+}

@@ -1,0 +1,87 @@
+.card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  padding: 24px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.cardTitle {
+  color: #e0331e;
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.cardAmount {
+  text-align: right;
+}
+
+.cardAmountValue {
+  color: #1b2a4e;
+  font-size: 28px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.cardAmountLabel {
+  color: #e0331e;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 2px 0 0 0;
+}
+
+.rowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eef0f2;
+}
+
+.rowHeaderLabel {
+  color: #9a9ca8;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.rowList {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px dashed #eef0f2;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowLabel {
+  color: #1b2a4e;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.rowValue {
+  color: #1b2a4e;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.emptyState {
+  color: #9a9ca8;
+  font-size: 14px;
+  padding: 14px 0;
+}
