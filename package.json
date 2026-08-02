@@ -25,6 +25,7 @@
     "@tiptap/starter-kit": "^3.29.0",
     "axios": "^1.18.1",
     "date-fns": "^4.4.0",
+    "file-saver": "^2.0.5",
     "react": "^19.2.7",
     "react-date-range": "^2.0.1",
     "react-dom": "^19.2.7",
@@ -33,7 +34,9 @@
     "react-quill-new": "^3.8.3",
     "react-redux": "^9.3.0",
     "react-router-dom": "^7.18.1",
-    "react-toastify": "^11.1.0"
+    "react-toastify": "^11.1.0",
+    "sweetalert2": "^11.26.25",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

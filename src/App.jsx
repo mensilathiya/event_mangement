@@ -58,10 +58,10 @@ function App() {
             <Route path="/permission" element={<Permission />} />
             <Route path="/event" element={<Event />} />
             <Route path="/create-event" element={<CreateEvent />} />
-            <Route path="/view-event" element={<ViewEvent />} />
-            <Route path="/ticket-type" element={<TicketType />} />
+            <Route path="/view-event/:id" element={<ViewEvent />} />
+            <Route path="/ticket-type/:eventId" element={<TicketType />} />
             <Route path="/booking" element={<Booking />} />
-            <Route path="/view-booking" element={<ViewBooking />} />
+            <Route path="/view-booking/:id" element={<ViewBooking />} />
             <Route path="/register-users" element={<RegisterUsers />} />
             <Route path="/entry-report" element={<EntryReport />} />
           </Route>

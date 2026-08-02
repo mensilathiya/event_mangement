@@ -265,6 +265,7 @@
 .permissionPagePaginationInfo {
   color: #6b7085;
   font-size: 13.5px;
+  white-space: nowrap;
 }
 
 .permissionPagePaginationControls {

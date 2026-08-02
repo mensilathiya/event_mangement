@@ -1,7 +1,159 @@
 import { FaTimes, FaPencilAlt, FaUser } from "react-icons/fa";
 import "../assets/CSS/BookingUserModal.css";
+import { useDispatch, useSelector } from "react-redux";
+import { useEffect, useState } from "react";
+import {
+  getRegisterUser,
+  updateRegisterUser,
+} from "../redux/bookingTicket/bookingTicketThunk";
+import { showError, showSuccess } from "../utilits/toast";
+import { getBookingById } from "../redux/booking/bookingThunk";
 
-export default function BookingUserModal({ onClose }) {
+export default function BookingUserModal({ onClose, ticketId, onSuccess }) {
+  //Redux connect
+  const dispatch = useDispatch();
+  const { registerUser, loading } = useSelector(
+    (state) => state.bookingTicket
+  );
+  // Form State
+  const [formData, setFormData] = useState({
+    name: "",
+    mobileNumber: "",
+    email: "",
+    profileImage: null,
+  });
+  const [previewImage, setPreviewImage] = useState("");
+  // Modal open thay tyare API call
+  // useEffect(() => {
+  //   if (ticketId) {
+  //     dispatch(getRegisterUser(ticketId));
+  //   }
+  // }, [dispatch, ticketId]);
+  // API Response thi Form Fill
+  useEffect(() => {
+    if (!registerUser) return;
+
+    setFormData({
+      name: registerUser.name || "",
+      mobileNumber: registerUser.mobileNumber || "",
+      email: registerUser.email || "",
+      profileImage: null,
+    });
+    setPreviewImage(
+      registerUser.profileImage || ""
+    );
+  }, [registerUser]);
+  // image 
+  const handleImageChange = (e) => {
+
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      showError("Please select valid image.");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      showError("Image size should be less than 2MB.");
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      profileImage: file,
+    }));
+
+    setPreviewImage(URL.createObjectURL(file));
+
+  };
+  // remove image
+  const handleRemoveImage = () => {
+
+    setFormData((prev) => ({
+      ...prev,
+      profileImage: null,
+    }));
+
+    setPreviewImage("");
+
+  };
+  // validation
+  const validateForm = () => {
+    if (!formData.name.trim())
+      return "Please enter name.";
+
+    if (!/^[A-Za-z ]+$/.test(formData.name))
+      return "Name is invalid.";
+
+    if (!/^[6-9]\d{9}$/.test(formData.mobileNumber))
+      return "Please enter valid mobile number.";
+
+    if (
+      formData.email &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
+    )
+      return "Please enter valid email.";
+
+    return null;
+  };
+  // submit 
+  const handleSubmit = async () => {
+
+    const validationError = validateForm();
+
+    if (validationError) {
+      showError(validationError);
+      return;
+    }
+
+    const payload = new FormData();
+
+    payload.append("name", formData.name.trim());
+    payload.append(
+      "mobileNumber",
+      formData.mobileNumber.trim()
+    );
+    payload.append(
+      "email",
+      formData.email.trim()
+    );
+    if (formData.profileImage) {
+      payload.append(
+        "profileImage",
+        formData.profileImage
+      );
+    }
+    const response = await dispatch(
+      updateRegisterUser({
+        ticketId,
+        formData: payload,
+      })
+    );
+
+    if (updateRegisterUser.fulfilled.match(response)) {
+
+      showSuccess(
+        response.payload.message ||
+        "User details updated successfully."
+      );
+
+      if (onSuccess) {
+        await onSuccess();
+      }
+
+      onClose();
+
+    } else {
+
+      showError(
+        response.payload ||
+        "Failed to update user."
+      );
+
+    }
+  };
   return (
     <div className="bookingUserOverlay" onClick={onClose}>
       <div className="bookingUserContainer" onClick={(e) => e.stopPropagation()}>
@@ -23,19 +175,36 @@ export default function BookingUserModal({ onClose }) {
           <div className="bookingUserPhotoBlock">
             <div className="bookingUserPhotoCircleWrap">
               <div className="bookingUserPhotoCircle">
-                <FaUser className="bookingUserAvatarIcon" />
+
+                {previewImage ? (
+
+                  <img
+                    src={previewImage}
+                    alt="Profile"
+                    className="bookingUserProfileImage"
+                  />
+                ) : (
+                  <FaUser className="bookingUserAvatarIcon" />
+                )}
               </div>
-              <button
-                type="button"
+              <input
+                id="bookingUserImage"
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={handleImageChange}
+              />
+              <label
+                htmlFor="bookingUserImage"
                 className="bookingUserEditPhotoButton"
-                aria-label="Upload photo"
               >
                 <FaPencilAlt />
-              </button>
+              </label>
               <button
                 type="button"
                 className="bookingUserRemovePhotoButton"
                 aria-label="Remove photo"
+                onClick={handleRemoveImage}
               >
                 <FaTimes />
               </button>
@@ -49,19 +218,52 @@ export default function BookingUserModal({ onClose }) {
             <label className="bookingUserLabel">
               Name <span className="bookingUserRequired">*</span>
             </label>
-            <input type="text" className="bookingUserInput" placeholder="Name" />
+            <input
+              type="text"
+              className="bookingUserInput"
+              placeholder="Name"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  name: e.target.value,
+                }))
+              }
+            />
           </div>
 
           <div className="bookingUserFieldGroup">
             <label className="bookingUserLabel">
               Mobile Number <span className="bookingUserRequired">*</span>
             </label>
-            <input type="text" className="bookingUserInput" placeholder="Mobile Number" />
+            <input
+              type="text"
+              className="bookingUserInput"
+              placeholder="Mobile Number"
+              value={formData.mobileNumber}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  mobileNumber: e.target.value,
+                }))
+              }
+            />
           </div>
 
           <div className="bookingUserFieldGroup bookingUserFullRow">
             <label className="bookingUserLabel">Email Id</label>
-            <input type="email" className="bookingUserInput" placeholder="Email Id" />
+            <input
+              type="email"
+              className="bookingUserInput"
+              placeholder="Email Id"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  email: e.target.value,
+                }))
+              }
+            />
           </div>
         </div>
 
@@ -69,8 +271,13 @@ export default function BookingUserModal({ onClose }) {
           <button type="button" className="bookingUserCloseButton" onClick={onClose}>
             Close
           </button>
-          <button type="button" className="bookingUserCreateButton">
-            Create
+          <button
+            type="button"
+            className="bookingUserCreateButton"
+            onClick={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? "Saving..." : "Create"}
           </button>
         </div>
       </div>

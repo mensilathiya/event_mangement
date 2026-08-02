@@ -13,3 +13,17 @@ export const createEventApi = (data) => {
 export const getEventByIdApi = (id) => {
   return api.get(`/events/${id}`);
 };
+// get all event
+// Get All Events
+export const getAllEventsApi = async (params) => {
+  const response = await api.get("/events/get-all-events", {
+    params,
+  });
+
+  return response.data;
+};
+// Change Event Status
+export const changeEventStatusApi = async (id) => {
+  const response = await api.patch(`/events/${id}/status`);
+  return response.data;
+};  

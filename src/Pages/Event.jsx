@@ -1,13 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../assets/CSS/Event.css";
 import Sidebar from "../Components/Sidebar";
 import Header from "../Components/Header";
 import { Link, Links } from "react-router-dom";
 import { FaSearch, FaSort } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect } from "react";
-import { getEventById } from "../redux/event/eventThunk";
-
+import { getAllEvents, changeEventStatus } from "../redux/event/eventThunk";
+import Swal from "sweetalert2";
 
 const columns = [
   { key: "title", label: "Title" },
@@ -20,27 +19,97 @@ const columns = [
 
 const Event = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [rowsPerPage, setRowsPerPage] = useState("10");
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [openActionId, setOpenActionId] = useState(null);
- const dispatch = useDispatch();
+  const dispatch = useDispatch();
+  const [search, setSearch] = useState("");
+  const {
+    events,
+    loading,
+    total,
+    totalPages,
+  } = useSelector((state) => state.event);
+  // get all event
 
-const {
-  events,
-  total,
-  loading,
-} = useSelector((state) => state.event);
-// get event
-useEffect(() => {
-  dispatch(getEventById());
-}, [dispatch]);
-  const filteredEvents = (events || []).filter((event) =>
-  event.title?.toLowerCase().includes(searchTerm.toLowerCase())
-);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchTerm);
+      setCurrentPage(1);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    dispatch(
+      getAllEvents({
+        page: currentPage,
+        limit: rowsPerPage,
+        search,
+      })
+    );
+  }, [dispatch, currentPage, rowsPerPage, search]);
+  // pervious page
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
+  // pagination
+  const pageNumbers = [];
+
+  for (let i = 1; i <= totalPages; i++) {
+    pageNumbers.push(i);
+  }
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = Math.min(currentPage * rowsPerPage, total);
+  const handleRowsPerPageChange = (e) => {
+    setRowsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
+  // netx page
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
   const toggleActionMenu = (id) => {
     setOpenActionId((prev) => (prev === id ? null : id));
   };
+  if (loading) {
+    return <h3>Loading...</h3>;
+  }
+  // status changes
+  const handleStatusChange = async (id) => {
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "Are you sure?",
+      text: "Do you want to change the status?",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Change it!",
+      cancelButtonText: "Cancel",
+    });
 
+    if (result.isConfirmed) {
+      dispatch(changeEventStatus(id));
+
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Status updated successfully.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    }
+  };
   return (
+
     <div className="Event__page">
       <Sidebar />
       <div className="EventPage__mainArea">
@@ -58,8 +127,8 @@ useEffect(() => {
             </div>
             <Link to={'/create-event'}>
               <button type="button" className="eventList__createBtn">
-              <span className="eventList__createBtnIcon">+</span> Create Event
-            </button>
+                <span className="eventList__createBtnIcon">+</span> Create Event
+              </button>
             </Link>
           </div>
 
@@ -73,46 +142,45 @@ useEffect(() => {
 
             <div className="eventList__toolbar">
               <select
-                className="eventList__pageSizeSelect"
                 value={rowsPerPage}
-                onChange={(e) => setRowsPerPage(e.target.value)}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="eventList__pageSizeSelect"
               >
+                <option value="5">5</option>
                 <option value="10">10</option>
-                <option value="25">25</option>
+                <option value="20">20</option>
                 <option value="50">50</option>
+                <option value="100">100</option>
               </select>
 
               <div className="eventList__searchBox">
                 <span className="eventList__searchIcon"><FaSearch /></span>
                 <input
-                  type="text"
-                  className="eventList__searchInput"
-                  placeholder="Search..."
+                  type="search"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="eventList__searchInput"
+                  onChange={handleSearchChange}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
             </div>
 
             <div className="eventList__tableWrap">
               <table className="eventList__table">
-                {/* <colgroup>
-                  <col style={{ width: "4%" }} />
-                  <col style={{ width: "23%" }} />
-                  <col style={{ width: "13%" }} />
-                  <col style={{ width: "13%" }} />
-                  <col style={{ width: "13%" }} />
-                  <col style={{ width: "9%" }} />
-                  <col style={{ width: "13%" }} />
-                  <col style={{ width: "12%" }} />
-                </colgroup> */}
                 <thead>
                   <tr>
                     <th className="eventList__hashCol">#</th>
                     {columns.map((col) => (
                       <th key={col.key}>
                         <span className="eventList__thContent">
-                          <span className="eventList__sortIcon"><FaSort/></span>
+                          <span className="eventList__sortIcon"><FaSort /></span>
                           {col.label}
                         </span>
                       </th>
@@ -121,7 +189,13 @@ useEffect(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEvents.map((event, index) => (
+                  {events.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" style={{ textAlign: "center" }}>
+                        No Events Found
+                      </td>
+                    </tr>
+                  ) : events.map((event, index) => (
                     <tr key={event._id}>
                       <td>{index + 1}</td>
                       <td className="eventList__titleCell">{event.title}</td>
@@ -130,13 +204,20 @@ useEffect(() => {
                       <td>{event.venueName}</td>
                       <td>
                         <span
-                          className={`eventList__toggle ${event.isActive ? "Yes" : "No"
+                          className={`eventList__toggle ${event.isActive ? "eventList__toggleOn" : ""
                             }`}
+                          onClick={() => {
+                            console.log("Toggle Clicked");
+                            handleStatusChange(event._id);
+                          }}
+                          style={{ cursor: "pointer" }}
                         >
                           <span className="eventList__toggleKnob" />
                         </span>
                       </td>
-                        <td>{event.createdBy?.name || "-"}</td>
+                      <td>
+                        {new Date(event.createdAt).toLocaleDateString("en-GB")}
+                      </td>
                       <td className="eventList__actionCol">
                         <div className="eventList__actionWrapper">
                           <button
@@ -149,23 +230,79 @@ useEffect(() => {
 
                           {openActionId === event._id && (
                             <div className="eventList__actionMenu">
-                              <Link to={'/view-event'}>
-                              <button type="button" className="eventList__actionItem">
-                                View
-                              </button>
+                              <Link to={`/view-event/${event._id}`}>
+                                <button
+                                  type="button"
+                                  className="eventList__actionItem"
+                                >
+                                  View
+                                </button>
                               </Link>
-                              <Link to={'/ticket-type'}>
-                              <button type="button" className="eventList__actionItem">
-                                Ticket Type
-                              </button>
+                              <Link
+                                to={`/ticket-type/${event._id}`}
+                                state={{
+                                  eventName: event.title,
+                                  eventId: event._id,
+                                }}
+                              >
+                                <button type="button" className="eventList__actionItem">
+                                  Ticket Type
+                                </button>
                               </Link>
                             </div>
                           )}
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )
+                  )}
+
                 </tbody>
+
+                <div className="permissionPagePagination">
+
+                  <span className="permissionPagePaginationInfo">
+                    Show {total === 0 ? 0 : startIndex + 1} - {endIndex} of {total}
+                  </span>
+                  {totalPages > 1 && (
+                    <div className="permissionPagePaginationControls">
+
+                      <button
+                        type="button"
+                        className="permissionPagePaginationArrow"
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                      >
+                        <FaChevronLeft />
+                      </button>
+
+                      {pageNumbers.map((page) => (
+                        <button
+                          key={page}
+                          type="button"
+                          className={`permissionPagePaginationBtn ${currentPage === page
+                            ? "permissionPagePaginationActive"
+                            : ""
+                            }`}
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </button>
+                      ))}
+
+                      <button
+                        type="button"
+                        className="permissionPagePaginationArrow"
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                      >
+                        <FaChevronRight />
+                      </button>
+
+                    </div>
+                  )}
+                </div>
+
               </table>
             </div>
 

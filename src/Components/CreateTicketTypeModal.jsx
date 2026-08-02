@@ -1,13 +1,131 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import "../assets/CSS/CreateTicketTypeModal.css";
+import { useDispatch, useSelector } from "react-redux";
+import { createTicketType, updateTicketType, getAllTicketTypes } from "../redux/ticketType/ticketTypeThunk";
+import { clearTicketTypeState } from "../redux/ticketType/ticketTypeSlice";
 
 const CreateTicketTypeModal = ({
   isOpen = true,
-  onClose = () => {},
-  eventName = "RANGE SANGE SHUBH NAVRATRI - 2026",
+  onClose = () => { },
+  eventId = null,
+  eventName ,
   isEditMode = false,
   selectedTicketType = null,
 }) => {
+  const dispatch = useDispatch();
+
+  const { loading, success, error } = useSelector((state) => state.ticketType);
+
+  const [formData, setFormData] = useState({
+    ticketName: "",
+    allowDayCount: "",
+    amount: "",
+    allowDate: "",
+    availableCount: "",
+    description: "",
+  });
+
+  const [formErrors, setFormErrors] = useState({});
+
+  // ================= PREFILL ON EDIT =================
+  useEffect(() => {
+    if (isEditMode && selectedTicketType) {
+      setFormData({
+        ticketName: selectedTicketType.ticketName || "",
+        allowDayCount: selectedTicketType.allowDayCount || "",
+        amount: selectedTicketType.amount || "",
+        allowDate: selectedTicketType.allowDate || "",
+        availableCount: selectedTicketType.availableCount || "",
+        description: selectedTicketType.description || "",
+      });
+    } else {
+      setFormData({
+        ticketName: "",
+        allowDayCount: "",
+        amount: "",
+        allowDate: "",
+        availableCount: "",
+        description: "",
+      });
+    }
+  }, [isEditMode, selectedTicketType]);
+
+  // ================= HANDLE FIELD CHANGE =================
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    setFormErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
+  };
+
+  // ================= VALIDATION =================
+  const validate = () => {
+    const errors = {};
+
+    if (!formData.ticketName.trim()) errors.ticketName = "Ticket name is required";
+    if (!formData.allowDayCount) errors.allowDayCount = "Allow day count is required";
+    if (!formData.amount) errors.amount = "Amount is required";
+    if (!formData.availableCount) errors.availableCount = "Available count is required";
+    if (!formData.description.trim()) errors.description = "Description is required";
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // ================= HANDLE SUBMIT (CREATE / UPDATE) =================
+  const handleSubmit = () => {
+    console.log("Submit Clicked");
+    if (!validate()) return;
+
+    const payload = {
+      eventId: selectedTicketType?.eventId || eventId,
+      ticketName: formData.ticketName,
+      allowDayCount: Number(formData.allowDayCount),
+      amount: Number(formData.amount),
+      allowDate: formData.allowDate,
+      availableCount: Number(formData.availableCount),
+      description: formData.description,
+    };
+
+    if (isEditMode && selectedTicketType?._id) {
+      dispatch(updateTicketType({ id: selectedTicketType._id, data: payload }));
+    } else {
+      dispatch(createTicketType(payload));
+    }
+  };
+
+  // ================= SUCCESS HANDLING =================
+  useEffect(() => {
+    if (success) {
+      dispatch(
+        getAllTicketTypes({
+          eventId,
+          page: 1,
+          limit: 10,
+          search: "",
+        })
+      );
+
+      onClose();
+
+      dispatch(clearTicketTypeState());
+    }
+  }, [success, dispatch, eventId, onClose]);
+
+  // ================= RESET STATE ON CLOSE =================
+  const handleClose = () => {
+    dispatch(clearTicketTypeState());
+    setFormErrors({});
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   const modalTitle = isEditMode ? "Edit Ticket Type" : "Add Ticket Type";
@@ -17,7 +135,7 @@ const CreateTicketTypeModal = ({
     <div className="ticketTypeCreate-overlay">
       <div
         className="ticketTypeCreate-modal"
-        key={selectedTicketType ? selectedTicketType.id : "new"}
+        key={selectedTicketType ? selectedTicketType._id : "new"}
       >
         <div className="ticketTypeCreate-header">
           <h2 className="ticketTypeCreate-title">
@@ -26,7 +144,7 @@ const CreateTicketTypeModal = ({
           <button
             type="button"
             className="ticketTypeCreate-closeIcon"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close"
           >
             &#10005;
@@ -34,16 +152,23 @@ const CreateTicketTypeModal = ({
         </div>
 
         <div className="ticketTypeCreate-body">
+          {error && <p className="ticketTypeCreate-error">{error}</p>}
+
           <div className="ticketTypeCreate-field">
             <label className="ticketTypeCreate-label">
               Ticket Name <span className="ticketTypeCreate-required">*</span>
             </label>
             <input
               type="text"
+              name="ticketName"
+              value={formData.ticketName}
+              onChange={handleChange}
               className="ticketTypeCreate-input"
               placeholder="Ticket Name"
-              defaultValue={selectedTicketType?.ticketName || ""}
             />
+            {formErrors.ticketName && (
+              <span className="ticketTypeCreate-fieldError">{formErrors.ticketName}</span>
+            )}
           </div>
 
           <div className="ticketTypeCreate-row">
@@ -52,11 +177,16 @@ const CreateTicketTypeModal = ({
                 Allow Day count <span className="ticketTypeCreate-required">*</span>
               </label>
               <input
-                type="text"
+                type="number"
+                name="allowDayCount"
+                value={formData.allowDayCount}
+                onChange={handleChange}
                 className="ticketTypeCreate-input"
-                placeholder="Allow Day count"
-                defaultValue={selectedTicketType?.allowDayCount ?? ""}
+                placeholder="Allow Day Count"
               />
+              {formErrors.allowDayCount && (
+                <span className="ticketTypeCreate-fieldError">{formErrors.allowDayCount}</span>
+              )}
             </div>
 
             <div className="ticketTypeCreate-field ticketTypeCreate-fieldHalf">
@@ -64,11 +194,16 @@ const CreateTicketTypeModal = ({
                 Amount <span className="ticketTypeCreate-required">*</span>
               </label>
               <input
-                type="text"
+                type="number"
+                name="amount"
+                value={formData.amount}
+                onChange={handleChange}
                 className="ticketTypeCreate-input"
                 placeholder="Amount"
-                defaultValue={selectedTicketType?.amount ?? ""}
               />
+              {formErrors.amount && (
+                <span className="ticketTypeCreate-fieldError">{formErrors.amount}</span>
+              )}
             </div>
           </div>
 
@@ -76,10 +211,11 @@ const CreateTicketTypeModal = ({
             <label className="ticketTypeCreate-label">Allow Date</label>
             <div className="ticketTypeCreate-inputWithIcon">
               <input
-                type="text"
+                type="date"
+                name="allowDate"
+                value={formData.allowDate}
+                onChange={handleChange}
                 className="ticketTypeCreate-input"
-                placeholder="Pick date"
-                defaultValue={selectedTicketType?.allowDate || ""}
               />
               <span className="ticketTypeCreate-inputIcon">&#128197;</span>
             </div>
@@ -90,11 +226,16 @@ const CreateTicketTypeModal = ({
               Available Count <span className="ticketTypeCreate-required">*</span>
             </label>
             <input
-              type="text"
+              type="number"
+              name="availableCount"
+              value={formData.availableCount}
+              onChange={handleChange}
               className="ticketTypeCreate-input"
               placeholder="Available Count"
-              defaultValue={selectedTicketType?.availableCount ?? ""}
             />
+            {formErrors.availableCount && (
+              <span className="ticketTypeCreate-fieldError">{formErrors.availableCount}</span>
+            )}
           </div>
 
           <div className="ticketTypeCreate-field">
@@ -102,11 +243,16 @@ const CreateTicketTypeModal = ({
               Description <span className="ticketTypeCreate-required">*</span>
             </label>
             <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
               className="ticketTypeCreate-textarea"
+              rows={4}
               placeholder="Description"
-              rows="4"
-              defaultValue={selectedTicketType?.description || ""}
             />
+            {formErrors.description && (
+              <span className="ticketTypeCreate-fieldError">{formErrors.description}</span>
+            )}
           </div>
         </div>
 
@@ -114,12 +260,17 @@ const CreateTicketTypeModal = ({
           <button
             type="button"
             className="ticketTypeCreate-closeBtn"
-            onClick={onClose}
+            onClick={handleClose}
           >
             Close
           </button>
-          <button type="button" className="ticketTypeCreate-createBtn">
-            {submitLabel}
+          <button
+            type="button"
+            className="ticketTypeCreate-createBtn"
+            onClick={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (isEditMode ? "Saving..." : "Creating...") : submitLabel}
           </button>
         </div>
       </div>

@@ -1,58 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../assets/CSS/ViewBooking.css";
 import Sidebar from "../Components/Sidebar";
 import Header from "../Components/Header";
 import BookingUserModal from "../Components/BookingUserModal";
 import BookingResendModal from "../Components/BookingResendModal";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { getBookingById } from "../redux/booking/bookingThunk";
 
-const bookingDetails = {
-  name: "Mukesh bhai",
-  mobile: "9879035711",
-  email: "-",
-  eventName: "RANGE SANGE SHUBH NAVRATRI - 2026",
-  ticketType: "Advance Tier",
-  qty: 5,
-  discount: "-",
-  price: "Rs. 11500",
-  remark: "Payment baki",
-  totalPay: "Rs. 57500",
-  discountNote: "No Discount",
-};
-
-const members = [1, 2, 3, 4, 5].map((num) => ({
-  id: num,
-  name: "-",
-  mobile: "-",
-  email: "-",
-}));
-
-function QrPlaceholder() {
-  return (
-    <svg
-      className="bookingView-qrIcon"
-      viewBox="0 0 40 40"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <rect x="2" y="2" width="12" height="12" fill="none" stroke="#1b2a4e" strokeWidth="2" />
-      <rect x="6" y="6" width="4" height="4" fill="#1b2a4e" />
-      <rect x="26" y="2" width="12" height="12" fill="none" stroke="#1b2a4e" strokeWidth="2" />
-      <rect x="30" y="6" width="4" height="4" fill="#1b2a4e" />
-      <rect x="2" y="26" width="12" height="12" fill="none" stroke="#1b2a4e" strokeWidth="2" />
-      <rect x="6" y="30" width="4" height="4" fill="#1b2a4e" />
-      <rect x="18" y="2" width="4" height="4" fill="#1b2a4e" />
-      <rect x="18" y="10" width="4" height="4" fill="#1b2a4e" />
-      <rect x="18" y="18" width="4" height="4" fill="#1b2a4e" />
-      <rect x="26" y="18" width="4" height="4" fill="#1b2a4e" />
-      <rect x="34" y="18" width="4" height="4" fill="#1b2a4e" />
-      <rect x="18" y="26" width="4" height="4" fill="#1b2a4e" />
-      <rect x="18" y="34" width="4" height="4" fill="#1b2a4e" />
-      <rect x="26" y="34" width="4" height="4" fill="#1b2a4e" />
-      <rect x="34" y="26" width="4" height="4" fill="#1b2a4e" />
-      <rect x="34" y="34" width="4" height="4" fill="#1b2a4e" />
-    </svg>
-  );
-}
 
 function AvatarPlaceholder() {
   return (
@@ -68,13 +23,88 @@ function AvatarPlaceholder() {
 }
 
 const ViewBooking = () => {
+  const { id } = useParams();
+  const dispatch = useDispatch();
+
+  const { booking, loading, error } = useSelector((state) => state.booking);
+  const { registerUser } = useSelector((state)=>state.bookingTicket)
+ console.log(registerUser);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [isBookingUserModalOpen, setIsBookingUserModalOpen] = useState(false);
   const [resendMobile, setResendMobile] = useState(null);
-
-  const toggleMenu = (id) => {
-    setOpenMenuId((prev) => (prev === id ? null : id));
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
+  const toggleMenu = (rowId) => {
+    setOpenMenuId((prev) => (prev === rowId ? null : rowId));
   };
+
+  useEffect(() => {
+    if (id) {
+      dispatch(getBookingById(id));
+    }
+  }, [dispatch, id]);
+
+  if (loading) {
+    return (
+      <div className="bookingPage-wrapper">
+        <Sidebar />
+        <div className="bookingPageMainArea">
+          <Header title="View Booking" />
+          <div className="bookingView-wrapper">
+            <div className="bookingView-header">
+              <h1 className="bookingView-title">View Booking</h1>
+              <div className="bookingView-breadcrumb">
+                <span>Dashboard</span>
+                <span className="bookingView-breadcrumbSep">-</span>
+                <span className="bookingView-breadcrumbActive">View Booking</span>
+              </div>
+            </div>
+
+            <Link to={'/booking'} className="bookingView-backLink">
+              <span className="bookingView-backArrow">&#8592;</span> Back Page
+            </Link>
+
+            <p>Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!booking || error) {
+    return (
+      <div className="bookingPage-wrapper">
+        <Sidebar />
+        <div className="bookingPageMainArea">
+          <Header title="View Booking" />
+          <div className="bookingView-wrapper">
+            <div className="bookingView-header">
+              <h1 className="bookingView-title">View Booking</h1>
+              <div className="bookingView-breadcrumb">
+                <span>Dashboard</span>
+                <span className="bookingView-breadcrumbSep">-</span>
+                <span className="bookingView-breadcrumbActive">View Booking</span>
+              </div>
+            </div>
+
+            <Link to={'/booking'} className="bookingView-backLink">
+              <span className="bookingView-backArrow">&#8592;</span> Back Page
+            </Link>
+
+            <p>No Booking Found</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const unitPrice = booking.ticketTypeId?.amount ?? 0;
+  const totalPay = booking.amount ?? 0;
+  const discountNote =
+    booking.discount && booking.discount > 0
+      ? `Discount: Rs. ${booking.discount}`
+      : "No Discount";
+
+  const tickets = booking.tickets || [];
 
   return (
     <div className="bookingPage-wrapper">
@@ -103,47 +133,49 @@ const ViewBooking = () => {
                 <div className="bookingView-detailsRow">
                   <span className="bookingView-detailsLabel">Name</span>
                   <span className="bookingView-detailsColon">:</span>
-                  <span className="bookingView-detailsValue">{bookingDetails.name}</span>
+                  <span className="bookingView-detailsValue">{booking.name || "-"}</span>
                 </div>
                 <div className="bookingView-detailsRow">
                   <span className="bookingView-detailsLabel">Mobile No.</span>
                   <span className="bookingView-detailsColon">:</span>
-                  <span className="bookingView-detailsValue">{bookingDetails.mobile}</span>
+                  <span className="bookingView-detailsValue">{booking.mobileNumber || "-"}</span>
                 </div>
                 <div className="bookingView-detailsRow">
                   <span className="bookingView-detailsLabel">Email</span>
                   <span className="bookingView-detailsColon">:</span>
-                  <span className="bookingView-detailsValue">{bookingDetails.email}</span>
+                  <span className="bookingView-detailsValue">{booking.email || "-"}</span>
                 </div>
                 <div className="bookingView-detailsRow">
                   <span className="bookingView-detailsLabel">Event Name</span>
                   <span className="bookingView-detailsColon">:</span>
-                  <span className="bookingView-detailsValue">{bookingDetails.eventName}</span>
+                  <span className="bookingView-detailsValue">{booking.eventId?.title || "-"}</span>
                 </div>
                 <div className="bookingView-detailsRow">
                   <span className="bookingView-detailsLabel">Ticket Type</span>
                   <span className="bookingView-detailsColon">:</span>
-                  <span className="bookingView-detailsValue">{bookingDetails.ticketType}</span>
+                  <span className="bookingView-detailsValue">{booking.ticketTypeId?.ticketName || "-"}</span>
                 </div>
                 <div className="bookingView-detailsRow">
                   <span className="bookingView-detailsLabel">QTY</span>
                   <span className="bookingView-detailsColon">:</span>
-                  <span className="bookingView-detailsValue">{bookingDetails.qty}</span>
+                  <span className="bookingView-detailsValue">{booking.quantity ?? "-"}</span>
                 </div>
                 <div className="bookingView-detailsRow">
                   <span className="bookingView-detailsLabel">Discount</span>
                   <span className="bookingView-detailsColon">:</span>
-                  <span className="bookingView-detailsValue">{bookingDetails.discount}</span>
+                  <span className="bookingView-detailsValue">
+                    {booking.discount ? `Rs. ${booking.discount}` : "-"}
+                  </span>
                 </div>
                 <div className="bookingView-detailsRow">
                   <span className="bookingView-detailsLabel">Price</span>
                   <span className="bookingView-detailsColon">:</span>
-                  <span className="bookingView-detailsValue">{bookingDetails.price}</span>
+                  <span className="bookingView-detailsValue">{`Rs. ${unitPrice}`}</span>
                 </div>
                 <div className="bookingView-detailsRow">
                   <span className="bookingView-detailsLabel">Remark</span>
                   <span className="bookingView-detailsColon">:</span>
-                  <span className="bookingView-detailsValue">{bookingDetails.remark}</span>
+                  <span className="bookingView-detailsValue">{booking.remark || "-"}</span>
                 </div>
               </div>
 
@@ -151,13 +183,13 @@ const ViewBooking = () => {
                 <div className="bookingView-totalPayLeft">
                   <span className="bookingView-totalPayLabel">Total Pay</span>
                   <span className="bookingView-totalPaySub">
-                    ({bookingDetails.qty} x {bookingDetails.price.replace("Rs. ", "Rs.")})
+                    ({booking.quantity ?? 0} x Rs.{unitPrice})
                   </span>
                   <span className="bookingView-discountNote">
-                    Discount: {bookingDetails.discountNote}
+                    {discountNote}
                   </span>
                 </div>
-                <span className="bookingView-totalPayValue">{bookingDetails.totalPay}</span>
+                <span className="bookingView-totalPayValue">{`Rs. ${totalPay}`}</span>
               </div>
             </div>
 
@@ -183,19 +215,38 @@ const ViewBooking = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {members.map((member) => (
-                      <tr key={member.id}>
-                        <td>{member.id}</td>
+                    {tickets.map((ticket, index) => (
+                      <tr key={ticket._id}>
+                        <td>{index + 1}</td>
                         <td>
                           <span className="bookingView-avatar">
-                            <AvatarPlaceholder />
+                            {ticket.attendee?.profileImage ? (
+                              <img
+                                src={ticket.attendee.profileImage}
+                                alt={ticket.attendee.name}
+                                className="bookingView-avatarImage"
+                              />
+                            ) : (
+                              <AvatarPlaceholder />
+                            )}
                           </span>
                         </td>
-                        <td>{member.name}</td>
-                        <td>{member.mobile}</td>
-                        <td>{member.email}</td>
+
+                        <td>{ticket.attendee?.name || "-"}</td>
+
+                        <td>{ticket.attendee?.mobileNumber || "-"}</td>
+
+                        <td>{ticket.attendee?.email || "-"}</td>
                         <td>
-                          <QrPlaceholder />
+                          {ticket.qrImage ? (
+                            <img
+                              src={ticket.qrImage}
+                              alt={ticket.ticketNumber}
+                              className="bookingView-qrIcon"
+                            />
+                          ) : (
+                            <QrPlaceholder />
+                          )}
                         </td>
                         <td className="bookingView-actionCol">
                           <div style={{ position: "relative", display: "inline-block" }}>
@@ -203,12 +254,12 @@ const ViewBooking = () => {
                               type="button"
                               className="bookingView-actionMenuBtn"
                               aria-label="Row actions"
-                              onClick={() => toggleMenu(member.id)}
+                              onClick={() => toggleMenu(ticket._id)}
                             >
                               &#8226;&#8226;&#8226;
                             </button>
 
-                            {openMenuId === member.id && (
+                            {openMenuId === ticket._id && (
                               <div
                                 style={{
                                   position: "absolute",
@@ -238,6 +289,7 @@ const ViewBooking = () => {
                                     border: "none",
                                   }}
                                   onClick={() => {
+                                    setSelectedTicketId(ticket._id);
                                     setIsBookingUserModalOpen(true);
                                     setOpenMenuId(null);
                                   }}
@@ -257,7 +309,7 @@ const ViewBooking = () => {
                                     border: "none",
                                   }}
                                   onClick={() => {
-                                    setResendMobile(member.mobile);
+                                    setResendMobile(booking.mobileNumber);
                                     setOpenMenuId(null);
                                   }}
                                 >
@@ -287,7 +339,12 @@ const ViewBooking = () => {
             }
           }}
         >
-          <BookingUserModal onClose={() => setIsBookingUserModalOpen(false)} />
+          <BookingUserModal
+            onSuccess={() => {
+              dispatch(getBookingById(id));
+            }}
+            ticketId={selectedTicketId}
+            onClose={() => setIsBookingUserModalOpen(false)} />
         </div>
       )}
 

@@ -265,7 +265,7 @@ export default function CreateEvent() {
                   onChange={handleFieldChange("title")}
                 />
               </div>
-
+                     
               <div className="createEvent__fieldRow">
                 <div className="createEvent__fieldGroup">
                   <label className="createEvent__label" htmlFor="createEvent-startDateTime">

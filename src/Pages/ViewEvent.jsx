@@ -1,49 +1,64 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../assets/CSS/ViewEvent.css";
 import Sidebar from "../Components/Sidebar";
 import Header from "../Components/Header";
-
+import { useParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { getEventById } from "../redux/event/eventThunk";
 const ViewEvent = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("description");
-  const [images, setImages] = useState([]);
-  const [videos, setVideos] = useState([]);
+  // const [images, setImages] = useState([]);
+  // const [videos, setVideos] = useState([]);
+  const { id } = useParams();
+  const dispatch = useDispatch();
 
-  const handleImageSelect = (e) => {
-    const files = Array.from(e.target.files || []);
-    const newImages = files.map((file) => ({
-      id: `${file.name}-${file.lastModified}-${Math.random()
-        .toString(36)
-        .slice(2)}`,
-      url: URL.createObjectURL(file),
-      name: file.name,
-    }));
-    setImages((prev) => [...prev, ...newImages]);
-    e.target.value = "";
-  };
+  const { event, loading } = useSelector(
+    (state) => state.event
+  );
+  // const handleImageSelect = (e) => {
+  //   const files = Array.from(e.target.files || []);
+  //   const newImages = files.map((file) => ({
+  //     id: `${file.name}-${file.lastModified}-${Math.random()
+  //       .toString(36)
+  //       .slice(2)}`,
+  //     url: URL.createObjectURL(file),
+  //     name: file.name,
+  //   }));
+  //   setImages((prev) => [...prev, ...newImages]);
+  //   e.target.value = "";
+  // };
 
-  const handleVideoSelect = (e) => {
-    const files = Array.from(e.target.files || []);
-    const newVideos = files.map((file) => ({
-      id: `${file.name}-${file.lastModified}-${Math.random()
-        .toString(36)
-        .slice(2)}`,
-      url: URL.createObjectURL(file),
-      name: file.name,
-    }));
-    setVideos((prev) => [...prev, ...newVideos]);
-    e.target.value = "";
-  };
+  // const handleVideoSelect = (e) => {
+  //   const files = Array.from(e.target.files || []);
+  //   const newVideos = files.map((file) => ({
+  //     id: `${file.name}-${file.lastModified}-${Math.random()
+  //       .toString(36)
+  //       .slice(2)}`,
+  //     url: URL.createObjectURL(file),
+  //     name: file.name,
+  //   }));
+  //   setVideos((prev) => [...prev, ...newVideos]);
+  //   e.target.value = "";
+  // };
 
-  const removeImage = (id) => {
-    setImages((prev) => prev.filter((img) => img.id !== id));
-  };
+  // const removeImage = (id) => {
+  //   setImages((prev) => prev.filter((img) => img.id !== id));
+  // };
 
-  const removeVideo = (id) => {
-    setVideos((prev) => prev.filter((vid) => vid.id !== id));
-  };
-
+  // const removeVideo = (id) => {
+  //   setVideos((prev) => prev.filter((vid) => vid.id !== id));
+  // };
+  //view api call
+  useEffect(() => {
+    if (id) {
+      dispatch(getEventById(id));
+    }
+  }, [dispatch, id]);
+  if (loading) {
+    return <h3>Loading...</h3>;
+  }
   return (
     <div className="Event__page">
       <Sidebar />
@@ -72,48 +87,59 @@ const ViewEvent = () => {
             <div className="viewEvent-leftCol">
               <div className="viewEvent-card viewEvent-infoCard">
                 <h2 className="viewEvent-eventName">
-                  RANGE SANGE SHUBH NAVRATRI - 2026
+                  {event?.title}
                 </h2>
 
                 <div className="viewEvent-detailBlock">
                   <span className="viewEvent-detailLabel">Start Date &amp; Time</span>
-                  <span className="viewEvent-detailValue">15 Oct 2026, 8:00 AM</span>
+                  <span className="viewEvent-detailValue"> {event?.startDateTime
+                    ? new Date(event.startDateTime).toLocaleString()
+                    : "-"}</span>
                 </div>
 
                 <div className="viewEvent-detailBlock">
                   <span className="viewEvent-detailLabel">End Date &amp; Time</span>
-                  <span className="viewEvent-detailValue">18 Oct 2026, 11:00 PM</span>
+                  <span className="viewEvent-detailValue">  {event?.endDateTime
+                    ? new Date(event.endDateTime).toLocaleString()
+                    : "-"}</span>
                 </div>
 
                 <div className="viewEvent-detailBlock">
                   <span className="viewEvent-detailLabel">Venue Name</span>
-                  <span className="viewEvent-detailValue">AVADH UTOPIA</span>
+                  <span className="viewEvent-detailValue">  {event?.venueName}</span>
                 </div>
 
                 <div className="viewEvent-detailBlock">
                   <span className="viewEvent-detailLabel">Latitude</span>
-                  <span className="viewEvent-detailValue">21.2271104</span>
+                  <span className="viewEvent-detailValue">  {event?.latitude}</span>
                 </div>
 
                 <div className="viewEvent-detailBlock">
                   <span className="viewEvent-detailLabel">Longitute</span>
-                  <span className="viewEvent-detailValue">72.8629248</span>
+                  <span className="viewEvent-detailValue">  {event?.longitude}</span>
                 </div>
 
                 <div className="viewEvent-detailBlock">
                   <span className="viewEvent-detailLabel">Address</span>
                   <span className="viewEvent-detailValue">
-                    Avadh Utopia, Dumas Rd, Opp Airport, Surat, Dumas, Gujarat
-                    394550
+                    {event?.address}
                   </span>
                 </div>
 
                 <div className="viewEvent-detailBlock viewEvent-detailBlockLast">
                   <span className="viewEvent-detailLabel">Ticket Type</span>
                   <ul className="viewEvent-ticketList">
-                    <li>Fast 100 SESSON PASS 4 DAYS</li>
-                    <li>First SP 4 DAY</li>
-                    <li>Advance Tier</li>
+                    {
+                      event?.ticketTypes && event.ticketTypes.length > 0 ? (
+                        event.ticketTypes.map((ticketType, index) => (
+                          <li key={index}>
+                            {ticketType}
+                          </li>
+                        ))
+                      ) : (
+                        <li>No ticket types available</li>
+                      )
+                    }
                   </ul>
                 </div>
               </div>
@@ -148,18 +174,24 @@ const ViewEvent = () => {
                 <div className="viewEvent-card viewEvent-contentCard">
                   <div className="viewEvent-detailBlock">
                     <span className="viewEvent-sectionLabel">Description</span>
-                    <span className="viewEvent-detailValue">
-                      RANGE SANGE NAVRATRI
-                    </span>
+                    <span
+                      className="viewEvent-detailValue"
+                      dangerouslySetInnerHTML={{
+                        __html: event?.description || "-",
+                      }}
+                    />
                   </div>
 
                   <div className="viewEvent-detailBlock">
                     <span className="viewEvent-sectionLabel">
                       Terms &amp; Conditions
                     </span>
-                    <span className="viewEvent-detailValue">
-                      RANGE SANGE NAVRATRI
-                    </span>
+                    <span
+                      className="viewEvent-detailValue"
+                      dangerouslySetInnerHTML={{
+                        __html: event?.termsConditions || "-",
+                      }}
+                    />
                   </div>
                 </div>
               )}
