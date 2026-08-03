@@ -4,7 +4,10 @@ import userReducer from './user/userSlice';
 import eventReducer from './event/eventSlice';
 import ticketTypeReducer from "./ticketType/ticketTypeSlice";
 import bookingReducer from '../redux/booking/bookingSlice';
-import bookingTicketReducer from "./bookingTicket/bookingTicketSlice";
+import bookingTicketReducer from "../redux/bookingTicket/bookingTicketSlice";
+import qrReducer from "../redux/qr/qrSlice";
+import entryReportReducer from "../redux/entryReport/entryReportSlice";
+
 export const store = configureStore({
     reducer: {
         auth: authReducer,
@@ -13,6 +16,8 @@ export const store = configureStore({
         ticketType: ticketTypeReducer,
         booking: bookingReducer,
         bookingTicket: bookingTicketReducer,
+        qr: qrReducer,  
+        entryReport: entryReportReducer,
     }
 
 })
