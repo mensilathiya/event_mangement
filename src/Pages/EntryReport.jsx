@@ -4,7 +4,7 @@ import { DateRangePicker } from "react-date-range";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import "../assets/CSS/EntryReport.css";
-import Sidebar from "./../Components/Sidebar";
+import Sidebar from "../Components/Sidebar";
 import Header from "../Components/Header";
 // Existing entryReport redux architecture — adjust path if your thunk file
 // lives elsewhere; it must resolve to the existing entryReportThunk.js.

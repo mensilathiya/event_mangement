@@ -2,10 +2,10 @@ import {
   useState, useRef, useEffect
 } from "react";
 import { FaSort, FaSearch, FaChevronDown, FaPlus, FaPencilAlt, FaTrashAlt, FaChevronRight, FaChevronLeft } from "react-icons/fa";
-import Sidebar from "../components/Sidebar";
+import Sidebar from "../Components/Sidebar";
 import Header from "../Components/Header";
-import CreateUserModal from "../components/CreateUserModal";
-import DeleteUserModal from "../components/DeleteUserModal";
+import CreateUserModal from "../Components/CreateUserModal";
+import DeleteUserModal from "../Components/DeleteUserModal";
 import "../assets/CSS/User.css";
 import { useDispatch, useSelector } from "react-redux";
 import { deleteUser, getUsers } from '../redux/user/userThunk';

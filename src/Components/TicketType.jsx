@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, Link, useLocation } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
-import Header from "../components/Header";
+import Sidebar from "./Sidebar";
+import Header from "./Header";
 import "../assets/CSS/TicketType.css";
 import { deleteTicketType, getAllTicketTypes } from "../redux/ticketType/ticketTypeThunk";
 import CreateTicketTypeModal from "./CreateTicketTypeModal";

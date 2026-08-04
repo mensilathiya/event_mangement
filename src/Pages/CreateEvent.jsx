@@ -14,7 +14,7 @@ import { showSuccess, showError } from "../utilits/toast";
 import RichTextEditor from "../Components/RichTextEditor";
 import "../assets/CSS/RichTextEditor.css";
 import "../assets/CSS/CreateEvent.css";
-import Sidebar from './../Components/Sidebar';
+import Sidebar from '../Components/Sidebar';
 import Header from "../Components/Header";
 
 // Module-level constants — created once, not on every render.
