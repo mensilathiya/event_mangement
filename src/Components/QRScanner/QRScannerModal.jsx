@@ -305,12 +305,22 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
         const instance = new Html5Qrcode(SCANNER_ELEMENT_ID);
         scannerRef.current = instance;
         hasScannedRef.current = false;
-
         await instance.start(
-          cameraId,
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+          {
+            deviceId: {
+              exact: cameraId
+            }
+          },
+          {
+            fps: 10,
+            qrbox: {
+              width: 250,
+              height: 250
+            },
+            aspectRatio: 1.777778
+          },
           handleDecodedText,
-          undefined // ignore per-frame decode failures (no QR in view yet)
+          undefined
         );
 
         if (isMountedRef.current) {
@@ -387,21 +397,60 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
 
     const init = async () => {
       try {
+
+        // Check browser support
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setCameraError("Camera is not supported on this browser.");
+          return;
+        }
+
+        // Request permission first
+        await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+
+
         const deviceList = await Html5Qrcode.getCameras();
+
         if (cancelled || !isMountedRef.current) return;
+
 
         if (!deviceList || deviceList.length === 0) {
           setCameraError("No camera found on this device.");
           return;
         }
 
+
         setCameras(deviceList);
+
         const preferredCameraId = pickBackCamera(deviceList);
+
         setActiveCameraId(preferredCameraId);
+
         await startScanner(preferredCameraId);
+
+
       } catch (err) {
-        if (isMountedRef.current) {
-          setCameraError("Camera permission denied or unavailable.");
+
+        console.log("Camera error:", err);
+
+        if (err.name === "NotAllowedError") {
+          setCameraError(
+            "Camera permission denied. Please allow camera permission from browser settings."
+          );
+        }
+        else if (err.name === "NotFoundError") {
+          setCameraError("No camera available.");
+        }
+        else if (err.name === "NotReadableError") {
+          setCameraError(
+            "Camera is already in use by another application."
+          );
+        }
+        else {
+          setCameraError(
+            "Camera permission denied or unavailable."
+          );
         }
       }
     };
@@ -468,15 +517,15 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
               {isValidTicket
                 ? "Ticket Details"
                 : resultState
-                ? "Scan Result"
-                : "Scan Ticket QR"}
+                  ? "Scan Result"
+                  : "Scan Ticket QR"}
             </p>
             <p className="crmQrHeaderSubtitle">
               {isValidTicket
                 ? "Review details before allowing entry"
                 : resultState
-                ? "Here's what we found"
-                : "Align the QR code within the frame"}
+                  ? "Here's what we found"
+                  : "Align the QR code within the frame"}
             </p>
           </div>
           <button

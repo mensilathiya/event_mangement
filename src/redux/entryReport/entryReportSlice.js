@@ -5,6 +5,7 @@ import { getAllEntryReport, exportEntryReport } from "./entryReportThunk";
 const initialState = {
   entryReports: [],
   pagination: null,
+  event: null,
 
   loading: false,
   exportLoading: false,
@@ -39,10 +40,12 @@ const entryReportSlice = createSlice({
       })
       .addCase(getAllEntryReport.fulfilled, (state, action) => {
         state.loading = false;
-        // Optional chaining — API response is always { data: { rows, pagination } }
-        // but we guard defensively in case of an unexpected/empty payload.
+
         state.entryReports = action.payload?.data?.rows ?? [];
         state.pagination = action.payload?.data?.pagination ?? null;
+        state.event = action.payload?.data?.event ?? null;
+
+        state.success = action.payload?.success ?? false;
         state.message = action.payload?.message ?? "";
       })
       .addCase(getAllEntryReport.rejected, (state, action) => {

@@ -24,6 +24,26 @@ const formatDate = (date) => {
   return `${yyyy}/${mm}/${dd}`;
 };
 
+// Formats a Date object as "YYYY-MM-DD" — used for the startDate/endDate
+// query params sent to the entry-report API.
+const formatDateForApi = (date) => {
+  if (!date) return "";
+  const d = new Date(date);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+// Formats a date-only API value (e.g. passDate) as a readable date, with no
+// time component. Returns "-" for missing or invalid values.
+const formatDateOnly = (value) => {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString();
+};
+
 // Formats any API date/time value using toLocaleString(). Returns "-" for
 // missing or invalid values so nothing renders as "Invalid Date".
 const formatDateTime = (value) => {
@@ -31,15 +51,6 @@ const formatDateTime = (value) => {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "-";
   return d.toLocaleString();
-};
-
-// Formats a numeric amount using toLocaleString(). Returns "-" for
-// missing/invalid values.
-const formatMoney = (value) => {
-  if (value === null || value === undefined || value === "") return "-";
-  const num = Number(value);
-  if (Number.isNaN(num)) return "-";
-  return num.toLocaleString();
 };
 
 // Shows the attendee's profile image returned by the API; falls back to a
@@ -75,36 +86,27 @@ function ProfileAvatar({ src, name }) {
   );
 }
 
-// Table columns mapped to the real Entry Report API response.
+// Table columns mapped 1:1 to the real Entry Report API response fields.
 const COLUMNS = [
   "#",
-  "PROFILE",
-  "BOOKING NUMBER",
-  "TICKET NUMBER",
-  "ATTENDEE NAME",
-  "MOBILE NUMBER",
-  "EMAIL",
-  "EVENT NAME",
-  "VENUE",
-  "EVENT DATE",
-  "TICKET TYPE",
-  "TICKET PRICE",
-  "BOOKING QTY",
-  "BOOKING AMOUNT",
-  "BOOKING STATUS",
-  "ENTRY STATUS",
-  "REGISTERED",
-  "REGISTERED DATE",
-  "SCANNED AT",
-  "BOOKING CREATED",
+  "Profile",
+  "Booking Id",
+  "Ticket Id",
+  "QR Code",
+  "Name",
+  "Mobile Number",
+  "Pass Date",
+  "Scanned At"
 ];
 
 export default function EntryReport() {
   const [bookingId, setBookingId] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
-  const [qrCode, setQrCode] = useState("");
+  const [ticketId, setTicketId] = useState("");
   const [name, setName] = useState("");
   const [dateRange, setDateRange] = useState("");
+  const [apiStartDate, setApiStartDate] = useState("");
+  const [apiEndDate, setApiEndDate] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
@@ -112,25 +114,51 @@ export default function EntryReport() {
   const dispatch = useDispatch();
 
   // Existing entryReport slice state — no new/duplicate state is created here.
-  const { entryReports, pagination, loading, exportLoading, error } =
+  const { entryReports, pagination, event: entryReportEvent, loading, exportLoading, error } =
     useSelector((state) => state.entryReport);
 
   const rows = entryReports ?? [];
+  // console.log(rows);
 
-  // Builds the API params from the current filter values.
-  const buildEntryReportParams = (
-    targetPage,
-    filters = {},
-    perPageOverride
-  ) => ({
-    page: targetPage,
-    perPage: perPageOverride ?? pageSize,
-    "form[id]": filters.bookingId ?? bookingId,
-    "form[mobile_number]": filters.mobileNumber ?? mobileNumber,
-    "form[qr_code]": filters.qrCode ?? qrCode,
-    "form[name]": filters.name ?? name,
-    "form[date]": filters.dateRange ?? dateRange,
-  });
+  // The currently selected event — used to source eventId before the first
+  // API response arrives (eventId is a required query param).
+  const selectedEvent = useSelector(
+    (state) => state?.event?.selectedEvent ?? state?.event?.currentEvent ?? null
+  );
+
+
+  // Event date bounds for the date-range picker. The backend's own
+  // entry-report response (event.startDateTime / event.endDateTime) is the
+  // source of truth once available; fall back to the selected-event context
+  // only until that first response arrives, so the picker isn't unbounded.
+  const eventStartDate = entryReportEvent?.startDateTime
+    ? new Date(entryReportEvent.startDateTime)
+    : selectedEvent?.startDate
+      ? new Date(selectedEvent.startDate)
+      : null;
+  const eventEndDate = entryReportEvent?.endDateTime
+    ? new Date(entryReportEvent.endDateTime)
+    : selectedEvent?.endDate
+      ? new Date(selectedEvent.endDate)
+      : null;
+
+  // Builds the API params from the current filter values, matching the
+  // entry-report backend's query contract exactly.
+  const buildEntryReportParams = (targetPage) => {
+    const params = {
+      page: targetPage,
+      limit: pageSize,
+    };
+
+    if (bookingId) params.bookingId = bookingId;
+    if (ticketId) params.ticketId = ticketId;
+    if (name) params.name = name;
+    if (mobileNumber) params.mobileNumber = mobileNumber;
+    if (apiStartDate) params.startDate = apiStartDate;
+    if (apiEndDate) params.endDate = apiEndDate;
+
+    return params;
+  };
 
   // Pagination values as returned by the API: { page, limit, total, totalPages }
   const currentPage = pagination?.page ?? page;
@@ -139,9 +167,9 @@ export default function EntryReport() {
   const totalRecords = pagination?.total ?? rows.length;
 
   // Fetch entry report data on first page load using the existing thunk/slice.
+  // eventId is a required query param, so wait until it's available.
   useEffect(() => {
-    dispatch(getAllEntryReport({ page: 1, perPage: pageSize }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    dispatch(getAllEntryReport(buildEntryReportParams(1)));
   }, [dispatch]);
 
   // Change page while keeping the currently applied filters intact.
@@ -160,18 +188,6 @@ export default function EntryReport() {
     dispatch(getAllEntryReport(buildEntryReportParams(1, {}, newSize)));
   };
 
-  // The currently selected event — adjust this selector path to match your
-  // store's actual slice name if different (expects event.startDate / event.endDate).
-  const selectedEvent = useSelector(
-    (state) => state?.event?.selectedEvent ?? state?.event?.currentEvent ?? null
-  );
-  const eventStartDate = selectedEvent?.startDate
-    ? new Date(selectedEvent.startDate)
-    : null;
-  const eventEndDate = selectedEvent?.endDate
-    ? new Date(selectedEvent.endDate)
-    : null;
-
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [committedRange, setCommittedRange] = useState(null);
   const [tempRange, setTempRange] = useState([
@@ -184,6 +200,22 @@ export default function EntryReport() {
 
   const dateInputRef = useRef(null);
   const datePickerRef = useRef(null);
+
+  // Once the entry-report API returns event.startDateTime/endDateTime,
+  // re-center the calendar on the event's own date range (unless the user
+  // has already committed a custom selection).
+  useEffect(() => {
+    if (committedRange) return;
+    if (!eventStartDate || !eventEndDate) return;
+    setTempRange([
+      {
+        startDate: eventStartDate,
+        endDate: eventEndDate,
+        key: "selection",
+      },
+    ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventStartDate?.getTime(), eventEndDate?.getTime()]);
 
   // Close the date range popup when clicking outside of it
   useEffect(() => {
@@ -231,6 +263,8 @@ export default function EntryReport() {
         tempRange[0].endDate
       )}`
     );
+    setApiStartDate(formatDateForApi(tempRange[0].startDate));
+    setApiEndDate(formatDateForApi(tempRange[0].endDate));
     setShowDatePicker(false);
   };
 
@@ -249,9 +283,11 @@ export default function EntryReport() {
   const handleReset = () => {
     setBookingId("");
     setMobileNumber("");
-    setQrCode("");
+    setTicketId("");
     setName("");
     setDateRange("");
+    setApiStartDate("");
+    setApiEndDate("");
     setCommittedRange(null);
     setTempRange([
       {
@@ -263,25 +299,59 @@ export default function EntryReport() {
     setShowDatePicker(false);
     setPage(1);
     // Reload default (unfiltered) data
-    dispatch(getAllEntryReport({ page: 1, perPage: pageSize }));
+    dispatch(
+      getAllEntryReport(
+        buildEntryReportParams(1, {
+          bookingId: "",
+          mobileNumber: "",
+          ticketId: "",
+          name: "",
+          startDate: "",
+          endDate: "",
+        })
+      )
+    );
   };
-
+  // export
   const handleExport = async () => {
     if (exportLoading) return;
 
     const resultAction = await dispatch(
-      exportEntryReport(buildEntryReportParams(currentPage))
+      exportEntryReport({
+        bookingId,
+        ticketId,
+        name,
+        mobileNumber,
+        startDate: apiStartDate,
+        endDate: apiEndDate,
+      })
     );
 
     if (exportEntryReport.fulfilled.match(resultAction)) {
-      const blob = new Blob([resultAction.payload], { type: "text/csv" });
+      const blob = new Blob(
+        [resultAction.payload],
+        {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }
+      );
+
       const downloadUrl = window.URL.createObjectURL(blob);
+
       const link = document.createElement("a");
+
       link.href = downloadUrl;
-      link.setAttribute("download", `entry-report-${formatDate(new Date())}.csv`);
+
+      link.setAttribute(
+        "download",
+        `entry-report-${formatDate(new Date())}.xlsx`
+      );
+
       document.body.appendChild(link);
+
       link.click();
+
       link.remove();
+
       window.URL.revokeObjectURL(downloadUrl);
     }
   };
@@ -292,8 +362,8 @@ export default function EntryReport() {
     typeof error === "string"
       ? error
       : error
-      ? "Failed to load entry reports. Please try again."
-      : "";
+        ? "Failed to load entry reports. Please try again."
+        : "";
 
   return (
     <div className="erPage_wrapper">
@@ -333,9 +403,9 @@ export default function EntryReport() {
               <input
                 type="text"
                 className="erPage__input"
-                placeholder="Qr Code"
-                value={qrCode}
-                onChange={(e) => setQrCode(e.target.value)}
+                placeholder="Ticket Id"
+                value={ticketId}
+                onChange={(e) => setTicketId(e.target.value)}
               />
             </div>
 
@@ -545,41 +615,16 @@ export default function EntryReport() {
                       const rowKey = row?._id ?? idx;
                       const serial = (currentPage - 1) * limit + idx + 1;
 
-                      // Nested populated objects — every one may be null.
-                      const attendee = row?.attendee ?? null;
-                      const eventInfo = row?.eventId ?? null;
-                      const ticketType = row?.ticketTypeId ?? null;
-                      const booking = row?.bookingId ?? null;
-
-                      const profileImage = attendee?.profileImage ?? null;
-                      const attendeeName = attendee?.name ?? "-";
-                      const mobileNumberVal = attendee?.mobileNumber ?? "-";
-                      const email = attendee?.email ?? "-";
-                      const registeredDate = attendee?.registeredAt
-                        ? formatDateTime(attendee.registeredAt)
+                      // Flat entry-report API row shape.
+                      const profileImage = row?.profileImage ?? null;
+                      const bookingIdVal = row?.bookingId ?? "-";
+                      const ticketIdVal = row?.ticketId ?? "-";
+                      const qrImage = row?.qrImage ?? null;
+                      const nameVal = row?.name ?? "-";
+                      const mobileNumberVal = row?.mobileNumber ?? "-";
+                      const passDate = row?.passDate
+                        ? formatDateOnly(row.passDate)
                         : "-";
-
-                      const bookingNumber = row?.bookingNumber ?? "-";
-                      const ticketNumber = row?.ticketNumber ?? "-";
-
-                      const eventName = eventInfo?.title ?? "-";
-                      const venue = eventInfo?.venueName ?? "-";
-                      const eventDate = eventInfo?.startDateTime
-                        ? formatDateTime(eventInfo.startDateTime)
-                        : "-";
-
-                      const ticketTypeName = ticketType?.ticketName ?? "-";
-                      const ticketPrice = formatMoney(ticketType?.amount);
-
-                      const bookingQty = booking?.quantity ?? "-";
-                      const bookingAmount = formatMoney(booking?.amount);
-                      const bookingStatus = booking?.bookingStatus ?? "-";
-                      const bookingCreatedDate = booking?.createdAt
-                        ? formatDateTime(booking.createdAt)
-                        : "-";
-
-                      const entryStatus = row?.status ?? "-";
-                      const registered = row?.isRegistered ? "Yes" : "No";
                       const scannedAt = row?.scannedAt
                         ? formatDateTime(row.scannedAt)
                         : "-";
@@ -588,29 +633,45 @@ export default function EntryReport() {
                         <tr key={rowKey} className="erPage__tr">
                           <td className="erPage__td">{serial}</td>
                           <td className="erPage__td">
-                            <ProfileAvatar
-                              src={profileImage}
-                              name={attendeeName}
-                            />
+                            <ProfileAvatar src={profileImage} name={nameVal} />
                           </td>
-                          <td className="erPage__td">{bookingNumber}</td>
-                          <td className="erPage__td">{ticketNumber}</td>
-                          <td className="erPage__td">{attendeeName}</td>
+                          <td className="erPage__td">{bookingIdVal}</td>
+                          <td className="erPage__td">{ticketIdVal}</td>
+                          <td className="erPage__td">
+                            {qrImage ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  window.open(qrImage, "_blank", "noopener,noreferrer")
+                                }
+                                title="Click to preview QR code"
+                                style={{
+                                  padding: 0,
+                                  border: "none",
+                                  background: "transparent",
+                                  cursor: "pointer",
+                                  lineHeight: 0,
+                                }}
+                              >
+                                <img
+                                  src={qrImage}
+                                  alt="QR Code"
+                                  style={{
+                                    width: 32,
+                                    height: 32,
+                                    objectFit: "cover",
+                                    borderRadius: 4,
+                                  }}
+                                />
+                              </button>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="erPage__td">{nameVal}</td>
                           <td className="erPage__td">{mobileNumberVal}</td>
-                          <td className="erPage__td">{email}</td>
-                          <td className="erPage__td">{eventName}</td>
-                          <td className="erPage__td">{venue}</td>
-                          <td className="erPage__td">{eventDate}</td>
-                          <td className="erPage__td">{ticketTypeName}</td>
-                          <td className="erPage__td">{ticketPrice}</td>
-                          <td className="erPage__td">{bookingQty}</td>
-                          <td className="erPage__td">{bookingAmount}</td>
-                          <td className="erPage__td">{bookingStatus}</td>
-                          <td className="erPage__td">{entryStatus}</td>
-                          <td className="erPage__td">{registered}</td>
-                          <td className="erPage__td">{registeredDate}</td>
+                          <td className="erPage__td">{passDate}</td>
                           <td className="erPage__td">{scannedAt}</td>
-                          <td className="erPage__td">{bookingCreatedDate}</td>
                         </tr>
                       );
                     })}
