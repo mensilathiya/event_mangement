@@ -272,10 +272,10 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
       }
     }
   }, []);
-
+  // decode text
   const handleDecodedText = useCallback(
     async (decodedText) => {
-alert(JSON.stringify(decodedText));
+      alert(JSON.stringify(decodedText));
       // Prevent multiple fires from rapid consecutive frame decodes
       if (hasScannedRef.current) return;
       hasScannedRef.current = true;
@@ -283,7 +283,7 @@ alert(JSON.stringify(decodedText));
       await stopScanner();
       if (!isMountedRef.current) return;
 
-      dispatch(verifyQr({ qrData: decodedText }))
+      dispatch(verifyQr({ qrData: decodedText.trim() }))
         .unwrap()
         .then((result) => {
           if (onVerified) onVerified(result);
@@ -370,14 +370,16 @@ alert(JSON.stringify(decodedText));
   const handleAllowEntry = useCallback(() => {
     if (!ticket) return;
 
-    dispatch(checkInQr({ ticketId: ticket.id, qrData: ticket.qrData }))
+    dispatch(
+      checkInQr({
+        qrToken: ticket.qrToken,
+      })
+    )
       .unwrap()
       .then((result) => {
         if (onCheckedIn) onCheckedIn(result);
       })
-      .catch(() => {
-        // checkIn.error is already captured in redux state for display
-      });
+      .catch(() => { });
   }, [dispatch, ticket, onCheckedIn]);
 
   // ---------- lifecycle: mount tracking ----------
