@@ -15,7 +15,10 @@ const initialState = {
   limit: 10,
   totalPages: 1,
 
-  loading: false,
+  createLoading: false,
+  listLoading: false,
+  deleteLoading: false,
+  detailsLoading: false,
   error: null,
   success: false,
   message: "",
@@ -43,27 +46,28 @@ const bookingSlice = createSlice({
     // ================= CREATE =================
     builder
       .addCase(createBooking.pending, (state) => {
-        state.loading = true;
+        state.createLoading = true;
         state.error = null;
       })
       .addCase(createBooking.fulfilled, (state, action) => {
-        state.loading = false;
+        state.createLoading = false;
         state.success = true;
         state.message = action.payload.message;
         state.booking = action.payload.data;
       })
       .addCase(createBooking.rejected, (state, action) => {
-        state.loading = false;
+        state.createLoading = false;
         state.error = action.payload;
       });
 
     // ================= GET ALL =================
     builder
       .addCase(getAllBookings.pending, (state) => {
-        state.loading = true;
+        state.listLoading = true;
         state.error = null;
       })
       .addCase(getAllBookings.fulfilled, (state, action) => {
+          state.listLoading = false;
         state.bookings = action.payload.data;
 
         state.total = action.payload.pagination.total;
@@ -74,32 +78,32 @@ const bookingSlice = createSlice({
         state.error = null;
       })
       .addCase(getAllBookings.rejected, (state, action) => {
-        state.loading = false;
+        state.listLoading = false;
         state.error = action.payload;
       });
 
     // ================= GET BY ID =================
     builder
       .addCase(getBookingById.pending, (state) => {
-        state.loading = true;
+        state.detailsLoading = true;
         state.error = null;
       })
       .addCase(getBookingById.fulfilled, (state, action) => {
-        state.loading = false;
+        state.detailsLoading = false;
         state.booking = action.payload.data;
       })
       .addCase(getBookingById.rejected, (state, action) => {
-        state.loading = false;
+        state.detailsLoading = false;
         state.error = action.payload;
       });
 
     // ================= DELETE =================
     builder
       .addCase(deleteBooking.pending, (state) => {
-        state.loading = true;
+        state.deleteLoading = true;
       })
       .addCase(deleteBooking.fulfilled, (state, action) => {
-        state.loading = false;
+        state.deleteLoading = false;
         state.success = true;
         state.message = action.payload.message;
 
@@ -108,7 +112,7 @@ const bookingSlice = createSlice({
         );
       })
       .addCase(deleteBooking.rejected, (state, action) => {
-        state.loading = false;
+        state.deleteLoading = false;
         state.error = action.payload;
       });
   },

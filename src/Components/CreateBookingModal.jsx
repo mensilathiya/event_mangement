@@ -59,10 +59,10 @@ export default function CreateBookingModal({ onClose ,onSuccess }) {
       setEvents(events.data);
     }
   }, [events]);
-  const { loading, error, success, message } = useSelector(
+  const { createLoading, error, success, message } = useSelector(
     (state) => state.booking
   );
-
+ console.log(createLoading);
   const [formData, setFormData] = useState(initialFormData);
   // handele event changes
   const handleEventChange = async (e) => {
@@ -353,7 +353,7 @@ export default function CreateBookingModal({ onClose ,onSuccess }) {
               type="button"
               className="bookingCreateCloseButton"
               onClick={onClose}
-              disabled={loading}
+              disabled={createLoading}
             >
               Close
             </button>
@@ -361,9 +361,9 @@ export default function CreateBookingModal({ onClose ,onSuccess }) {
               type="button"
               className="bookingCreateCreateButton"
               onClick={handleCreate}
-              disabled={loading}
+              disabled={createLoading}
             >
-              {loading ? "Creating..." : "Create"}
+              {createLoading ? "Creating..." : "Create"}
             </button>
           </div>
         </div>

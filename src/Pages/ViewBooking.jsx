@@ -26,7 +26,7 @@ const ViewBooking = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
 
-  const { booking, loading, error } = useSelector((state) => state.booking);
+  const { booking, detailsLoading, error } = useSelector((state) => state.booking);
   const { registerUser } = useSelector((state)=>state.bookingTicket)
  console.log(registerUser);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -43,7 +43,7 @@ const ViewBooking = () => {
     }
   }, [dispatch, id]);
 
-  if (loading) {
+  if (detailsLoading) {
     return (
       <div className="bookingPage-wrapper">
         <Sidebar />

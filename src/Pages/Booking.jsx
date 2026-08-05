@@ -24,7 +24,7 @@ const Booking = () => {
   const dispatch = useDispatch();
   const {
     bookings,
-    loading,
+    listLoading,
     total,
     page,
     limit,
@@ -579,7 +579,7 @@ const Booking = () => {
                       </tr>
                     ))}
                     {
-                      bookingRows.length === 0 && !loading && (
+                      bookingRows.length === 0 && !listLoading && (
                         <tr>
 
                           <td colSpan={10}>
