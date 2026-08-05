@@ -7,8 +7,6 @@ import BookingResendModal from "../Components/BookingResendModal";
 import { Link, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getBookingById } from "../redux/booking/bookingThunk";
-
-
 function AvatarPlaceholder() {
   return (
     <svg
@@ -21,7 +19,6 @@ function AvatarPlaceholder() {
     </svg>
   );
 }
-
 const ViewBooking = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
