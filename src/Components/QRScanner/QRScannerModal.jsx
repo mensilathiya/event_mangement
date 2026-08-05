@@ -275,6 +275,7 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
 
   const handleDecodedText = useCallback(
     async (decodedText) => {
+alert(JSON.stringify(decodedText));
       // Prevent multiple fires from rapid consecutive frame decodes
       if (hasScannedRef.current) return;
       hasScannedRef.current = true;
