@@ -86,7 +86,10 @@ const qrSlice = createSlice({
 
         state.verify.loading = false;
         state.verify.success = false;
-        state.verify.error = action.payload || "Failed to verify QR";
+        state.verify.error = action.payload || {
+          type: "SERVER",
+          message: "Failed to verify QR",
+        };
       });
 
     // ================= CHECK-IN =================
@@ -118,7 +121,10 @@ const qrSlice = createSlice({
 
         state.checkIn.loading = false;
         state.checkIn.success = false;
-        state.checkIn.error = action.payload || "Failed to check-in QR";
+        state.checkIn.error = action.payload || {
+          type: "SERVER",
+          message: "Failed to check-in QR",
+        };
       });
   },
 });

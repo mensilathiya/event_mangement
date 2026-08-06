@@ -6,16 +6,31 @@ import {
 } from "../../services/qrService";
 
 /**
- * Extracts a clean, user-facing error message regardless of
- * whether the failure came from the server, a network drop,
- * or a timeout.
+ * Builds a structured error object instead of a bare string, so the UI
+ * can tell apart two fundamentally different failure modes:
+ *
+ *  - SERVER:  the request reached the backend and it responded (even
+ *             with an error status) — e.g. "Invalid QR", "Ticket already
+ *             used". `error.response` is present.
+ *  - NETWORK: the request never completed a round trip at all — CORS
+ *             rejection, mixed-content block, DNS failure, dropped
+ *             connection, or timeout. `error.response` is absent.
+ *
+ * Collapsing both into one string previously made a pure connectivity
+ * failure indistinguishable from a real "this ticket is invalid" result.
  */
-const extractErrorMessage = (error, fallback) => {
-  return (
-    error.response?.data?.message ||
-    error.message ||
-    fallback
-  );
+const buildQrError = (error, fallback) => {
+  if (error.response) {
+    return {
+      type: "SERVER",
+      message: error.response.data?.message || fallback,
+    };
+  }
+
+  return {
+    type: "NETWORK",
+    message: error.message || fallback,
+  };
 };
 
 // ================= VERIFY QR =================
@@ -29,7 +44,7 @@ export const verifyQr = createAsyncThunk(
         return thunkAPI.rejectWithValue(null);
       }
       return thunkAPI.rejectWithValue(
-        extractErrorMessage(error, "Failed to verify QR")
+        buildQrError(error, "Failed to verify QR")
       );
     }
   },
@@ -54,7 +69,7 @@ export const checkInQr = createAsyncThunk(
         return thunkAPI.rejectWithValue(null);
       }
       return thunkAPI.rejectWithValue(
-        extractErrorMessage(error, "Failed to check-in QR")
+        buildQrError(error, "Failed to check-in QR")
       );
     }
   },

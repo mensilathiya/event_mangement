@@ -155,12 +155,25 @@ const RESULT_CONFIG = {
     colorClass: "crmQrResultIconExpired",
     Icon: IconCalendarOff,
   },
+  network: {
+    title: "Connection Error",
+    message: "Unable to connect to server. Check internet or API.",
+    colorClass: "crmQrResultIconExpired",
+    Icon: IconIndicator,
+  },
 };
 
-/* Best-effort classification from the verify error message, since
-   redux only exposes a plain string via rejectWithValue. */
-const classifyErrorMessage = (message) => {
-  const msg = (message || "").toLowerCase();
+/* Classifies the structured { type, message } error from qrThunk.js into
+   a result-state key. A NETWORK-type error (no response ever received —
+   CORS block, mixed content, timeout, dropped connection) is NOT the
+   same thing as the server saying the ticket is invalid, so it gets its
+   own state instead of falling into "invalid". SERVER-type errors are
+   classified by keyword exactly as before. */
+const classifyErrorMessage = (error) => {
+  if (!error) return "invalid";
+  if (error.type === "NETWORK") return "network";
+
+  const msg = (error.message || "").toLowerCase();
   if (msg.includes("expire")) return "expired";
   if (msg.includes("cancel")) return "cancelled";
   if (msg.includes("used") || msg.includes("already")) return "used";
@@ -192,6 +205,18 @@ const pickBackCamera = (deviceList) => {
   return backCamera ? backCamera.id : deviceList[0].id;
 };
 
+/* Turns a structured { type, message } error into the exact text to
+   display. NETWORK errors always show the fixed connectivity message;
+   SERVER errors show whatever the backend returned. Used for inline
+   error boxes (e.g. the check-in error) that render outside the
+   RESULT_CONFIG-driven result states above. */
+const getErrorDisplayMessage = (error) => {
+  if (!error) return "";
+  if (error.type === "NETWORK") {
+    return "Unable to connect to server. Check internet or API.";
+  }
+  return error.message;
+};
 /**
  * QRScannerModal
  *
@@ -233,6 +258,10 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
   const hasScannedRef = useRef(false);
   const modalRef = useRef(null);
   const previouslyFocusedElementRef = useRef(null);
+  // Serializes every camera start/stop/switch so that a fast reopen, a
+  // rapid camera switch, or an overlapping effect re-fire can never run
+  // concurrently and fight over the same physical camera device.
+  const cameraOperationQueueRef = useRef(Promise.resolve());
 
   // ---------- derived result state ----------
 
@@ -248,7 +277,8 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
     resultState === "invalid" ||
     resultState === "used" ||
     resultState === "cancelled" ||
-    resultState === "expired";
+    resultState === "expired" ||
+    resultState === "network";
 
   const resultConfig = resultState ? RESULT_CONFIG[resultState] : null;
 
@@ -272,15 +302,27 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
       }
     }
   }, []);
+
+  // Runs `operation` only after every previously queued camera operation
+  // has finished (success or failure). This is what actually prevents the
+  // race: no matter how quickly the user toggles cameras or reopens the
+  // modal, each start/stop/switch waits its turn instead of overlapping
+  // with the one before it.
+  const enqueueCameraOperation = useCallback((operation) => {
+    const run = cameraOperationQueueRef.current
+      .catch(() => {})
+      .then(() => operation());
+    cameraOperationQueueRef.current = run.catch(() => {});
+    return run;
+  }, []);
   // decode text
   const handleDecodedText = useCallback(
     async (decodedText) => {
-      alert(JSON.stringify(decodedText));
       // Prevent multiple fires from rapid consecutive frame decodes
       if (hasScannedRef.current) return;
       hasScannedRef.current = true;
 
-      await stopScanner();
+      await enqueueCameraOperation(() => stopScanner());
       if (!isMountedRef.current) return;
 
       dispatch(verifyQr({ qrToken: decodedText.trim() }))
@@ -292,14 +334,20 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
           // Error is already captured in redux state (verify.error)
         });
     },
-    [dispatch, onVerified, stopScanner]
+    [dispatch, onVerified, enqueueCameraOperation, stopScanner]
   );
 
   const startScanner = useCallback(
     async (cameraId) => {
       if (!cameraId) return;
+      if (!isMountedRef.current) return;
 
-      
+      // Fully destroy any existing scanner instance first. Previously a
+      // new Html5Qrcode instance was created unconditionally, silently
+      // overwriting scannerRef even if a prior instance was still holding
+      // the camera — that orphaned instance kept the hardware locked and
+      // caused the intermittent "Unable to start camera" failures.
+      await stopScanner();
       if (!isMountedRef.current) return;
 
       try {
@@ -329,6 +377,13 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
           setCameraError(null);
         }
       } catch (err) {
+        try {
+          await scannerRef.current?.clear();
+        } catch (clearErr) {
+          // Best effort — nothing to clean up or element already gone.
+        }
+        scannerRef.current = null;
+
         if (isMountedRef.current) {
           setCameraError("Unable to start camera. Please check permissions.");
           setIsScanning(false);
@@ -339,19 +394,14 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
   );
 
   const handleCameraChange = useCallback(
-  async (event) => {
-    const newCameraId = event.target.value;
+    (event) => {
+      const newCameraId = event.target.value;
+      setActiveCameraId(newCameraId);
 
-    setActiveCameraId(newCameraId);
-
-    await stopScanner();
-
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    await startScanner(newCameraId);
-  },
-  [startScanner, stopScanner]
-);
+      return enqueueCameraOperation(() => startScanner(newCameraId));
+    },
+    [enqueueCameraOperation, startScanner]
+  );
 
   const resetVerificationState = useCallback(() => {
     dispatch(clearQrTicket());
@@ -360,17 +410,17 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
   }, [dispatch]);
 
   const handleClose = useCallback(async () => {
-    await stopScanner();
+    await enqueueCameraOperation(() => stopScanner());
     resetVerificationState();
     if (onClose) onClose();
-  }, [stopScanner, resetVerificationState, onClose]);
+  }, [enqueueCameraOperation, stopScanner, resetVerificationState, onClose]);
 
   // "Scan Next": clear current result and restart the camera.
   // Used to recover from every non-valid result state as well.
   const handleScanNext = useCallback(async () => {
     resetVerificationState();
-    await startScanner(activeCameraId);
-  }, [resetVerificationState, startScanner, activeCameraId]);
+    await enqueueCameraOperation(() => startScanner(activeCameraId));
+  }, [resetVerificationState, enqueueCameraOperation, startScanner, activeCameraId]);
 
   // "Allow Entry": check the ticket in using the existing checkInQr thunk
   const handleAllowEntry = useCallback(() => {
@@ -414,9 +464,10 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
         }
 
         // Request permission first
-        await navigator.mediaDevices.getUserMedia({
+        const permissionStream = await navigator.mediaDevices.getUserMedia({
           video: true,
         });
+        permissionStream.getTracks().forEach((track) => track.stop());
 
 
         const deviceList = await Html5Qrcode.getCameras();
@@ -436,7 +487,11 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
 
         setActiveCameraId(preferredCameraId);
 
-        await startScanner(preferredCameraId);
+        // Re-check right before starting: the modal could have been
+        // closed during the getCameras() await above.
+        if (cancelled || !isMountedRef.current) return;
+
+        await enqueueCameraOperation(() => startScanner(preferredCameraId));
 
 
       } catch (err) {
@@ -471,14 +526,14 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
     // the modal never shows stale devices or a stuck spinner.
     return () => {
       cancelled = true;
-      stopScanner();
+      enqueueCameraOperation(() => stopScanner());
       if (isMountedRef.current) {
         setCameras([]);
         setActiveCameraId(null);
         setCameraError(null);
       }
     };
-  }, [isOpen, startScanner, stopScanner]);
+  }, [isOpen, enqueueCameraOperation, startScanner, stopScanner]);
 
   // ---------- lifecycle: focus trap + restore, Escape to close ----------
 
@@ -645,12 +700,12 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
             <div className="crmQrCard">
               <div className="crmQrCardRow">
                 <span className="crmQrCardLabel">Name</span>
-                <span className="crmQrCardValue">{ticket?.name || "N/A"}</span>
+                <span className="crmQrCardValue">{ticket?.attendee?.name || "N/A"}</span>
               </div>
 
               <div className="crmQrCardRow">
                 <span className="crmQrCardLabel">Mobile</span>
-                <span className="crmQrCardValue">{ticket?.mobile || "N/A"}</span>
+                <span className="crmQrCardValue">{ticket?.attendee?.mobileNumber || "N/A"}</span>
               </div>
 
               <div className="crmQrCardRow">
@@ -663,21 +718,21 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
               <div className="crmQrCardRow">
                 <span className="crmQrCardLabel">Ticket</span>
                 <span className="crmQrCardValue">
-                  {ticket?.ticketType || ticket?.ticket || "N/A"}
+                  {ticket?.ticketType?.ticketName || "N/A"}
                 </span>
               </div>
 
               <div className="crmQrCardRow">
                 <span className="crmQrCardLabel">Event</span>
                 <span className="crmQrCardValue">
-                  {ticket?.eventName || ticket?.event || "N/A"}
+                  {ticket?.event?.title || "N/A"}
                 </span>
               </div>
 
               <div className="crmQrCardRow">
                 <span className="crmQrCardLabel">Date</span>
                 <span className="crmQrCardValue">
-                  {ticket?.eventDate || ticket?.date || "N/A"}
+                  {ticket?.event?.startDateTime || "N/A"}
                 </span>
               </div>
 
@@ -689,7 +744,7 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
 
             {checkInError && (
               <div className="crmQrErrorBox">
-                <p className="crmQrErrorText">{checkInError}</p>
+                <p className="crmQrErrorText">{getErrorDisplayMessage(checkInError)}</p>
               </div>
             )}
 
