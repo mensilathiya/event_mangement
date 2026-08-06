@@ -8,71 +8,87 @@ import { showError, showSuccess } from "../utilits/toast";
 
 export default function CreateUserModal({ onClose, isEditMode = false, editUserData = null }) {
   const dispatch = useDispatch();
+
   const [formData, setFormData] = useState({
     name: "",
     mobile: "",
     email: "",
-    role: "",
+    role: "checker",
     password: "",
     confirmPassword: "",
   });
-  const { loading, error, success, message } = useSelector((state) => state.user);
+
+  const { loading, error } = useSelector((state) => state.user);
+
   const fileInputRef = useRef(null);
+
   const [profileImage, setProfileImage] = useState(
-    isEditMode && editUserData ? editUserData.image || null : null
+    isEditMode && editUserData
+      ? editUserData.profileImage || null
+      : null
   );
+
   const [imageFile, setImageFile] = useState(null);
-  // Field-level validation errors
+
   const [formErrors, setFormErrors] = useState({});
+
   useEffect(() => {
     document.body.style.overflow = "hidden";
+
     return () => {
       document.body.style.overflow = "";
     };
   }, []);
 
-  // Reset any stale success/error/message from a previous modal session on mount
   useEffect(() => {
     dispatch(clearUserState());
   }, [dispatch]);
 
-  // edit 
- useEffect(() => {
-  if (isEditMode && editUserData) {
-    setFormData({
-      name: editUserData.name || "",
-      mobile: editUserData.mobile || "",
-      email: editUserData.email === "-" ? "" : editUserData.email || "",
-      role: editUserData.role || "",
-      password: "",
-      confirmPassword: "",
-    });
+  useEffect(() => {
+    if (isEditMode && editUserData) {
+      setFormData({
+        name: editUserData.name || "",
+        mobile: editUserData.mobile || "",
+        email:
+          editUserData.email === "-"
+            ? ""
+            : editUserData.email || "",
+        role: "checker",
+        password: "",
+        confirmPassword: "",
+      });
 
-    setProfileImage(editUserData.image || null);
-  } else {
-    setFormData({
-      name: "",
-      mobile: "",
-      email: "",
-      role: "",
-      password: "",
-      confirmPassword: "",
-    });
+      setProfileImage(editUserData.profileImage || null);
+      setImageFile(null);
+    } else {
+      setFormData({
+        name: "",
+        mobile: "",
+        email: "",
+        role: "checker",
+        password: "",
+        confirmPassword: "",
+      });
 
-    setProfileImage(null);
-    setImageFile(null);
-  }
-}, [isEditMode, editUserData]);
-  // image upload file
+      setProfileImage(null);
+      setImageFile(null);
+    }
+  }, [isEditMode, editUserData]);
+
+  // Upload Image
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
 
     if (!file) return;
 
-    const allowedTypes = ["image/png", "image/jpeg", "image/jpg"];
+    const allowedTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+    ];
 
     if (!allowedTypes.includes(file.type)) {
-      alert("Only PNG, JPG and JPEG files are allowed.");
+      showError("Only PNG, JPG and JPEG files are allowed.");
       return;
     }
 
@@ -80,7 +96,7 @@ export default function CreateUserModal({ onClose, isEditMode = false, editUserD
     setProfileImage(URL.createObjectURL(file));
   };
 
-  //remove image function
+  // Remove Image
   const handleRemoveImage = () => {
     setProfileImage(null);
     setImageFile(null);
@@ -89,12 +105,14 @@ export default function CreateUserModal({ onClose, isEditMode = false, editUserD
       fileInputRef.current.value = "";
     }
   };
-  // validation
+
+  // Validation
   const validate = () => {
     const errors = {};
 
-    if (!formData.name.trim()) errors.name = "Name is required.";
-    if (!formData.role) errors.role = "Role is required.";
+    if (!formData.name.trim()) {
+      errors.name = "Name is required.";
+    }
 
     if (!formData.mobile.trim()) {
       errors.mobile = "Mobile number is required.";
@@ -102,26 +120,40 @@ export default function CreateUserModal({ onClose, isEditMode = false, editUserD
       errors.mobile = "Enter a valid 10-digit mobile number.";
     }
 
-    if (formData.email && !/^\S+@\S+\.\S+$/.test(formData.email)) {
+    if (
+      formData.email &&
+      !/^\S+@\S+\.\S+$/.test(formData.email)
+    ) {
       errors.email = "Enter a valid email address.";
     }
 
-    // Password is required on create, optional on edit (only validate if user typed something)
     if (!isEditMode) {
-      if (!formData.password) errors.password = "Password is required.";
-      else if (formData.password.length < 6) errors.password = "Password must be at least 6 characters.";
+      if (!formData.password) {
+        errors.password = "Password is required.";
+      } else if (formData.password.length < 8) {
+        errors.password =
+          "Password must be at least 8 characters.";
+      }
 
-      if (!formData.confirmPassword) errors.confirmPassword = "Please confirm your password.";
+      if (!formData.confirmPassword) {
+        errors.confirmPassword =
+          "Please confirm your password.";
+      }
     }
 
-    if ((formData.password || formData.confirmPassword) && formData.password !== formData.confirmPassword) {
+    if (
+      (formData.password || formData.confirmPassword) &&
+      formData.password !== formData.confirmPassword
+    ) {
       errors.confirmPassword = "Passwords do not match.";
     }
 
     setFormErrors(errors);
+
     return Object.keys(errors).length === 0;
   };
-  // handel change
+
+  // Handle Change
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -130,41 +162,62 @@ export default function CreateUserModal({ onClose, isEditMode = false, editUserD
       [name]: value,
     }));
   };
-  // submit
+
+  // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!validate()) return;
 
+    const payload = new FormData();
+
+    payload.append("name", formData.name);
+    payload.append("mobile", formData.mobile);
+    if (formData.email.trim()) {
+      payload.append("email", formData.email.trim());
+    }
+    payload.append("role", "checker");
+
+    if (formData.password) {
+      payload.append("password", formData.password);
+    }
+
+    if (formData.confirmPassword) {
+      payload.append(
+        "confirmPassword",
+        formData.confirmPassword
+      );
+    }
+
+    if (imageFile) {
+      payload.append("profileImage", imageFile);
+    }
+
     try {
-
       if (isEditMode) {
-
         await dispatch(
           updateUser({
             id: editUserData._id,
-            data: formData,
+            data: payload,
           })
         ).unwrap();
 
         showSuccess("User updated successfully");
-
       } else {
-
-        await dispatch(createUser(formData)).unwrap();
+        await dispatch(createUser(payload)).unwrap();
 
         showSuccess("User created successfully");
-
       }
 
       dispatch(clearUserState());
 
       onClose();
-
     } catch (err) {
-
-      showError(err.message || "Something went wrong");
-
+      showError(
+        err?.message ||
+        err?.response?.data?.message ||
+        "Something went wrong"
+      );
     }
   };
   return (
@@ -264,8 +317,6 @@ export default function CreateUserModal({ onClose, isEditMode = false, editUserD
               <option value="" disabled>
                 select an option
               </option>
-              <option value="admin">Admin</option>
-              <option value="manager">Manager</option>
               <option value="checker">Checker</option>
             </select>
             {formErrors.role && <p className="fieldError">{formErrors.role}</p>}

@@ -161,6 +161,12 @@ const RESULT_CONFIG = {
     colorClass: "crmQrResultIconExpired",
     Icon: IconIndicator,
   },
+  checkedIn: {
+    title: "Entry Allowed Successfully",
+    message: "This attendee has been checked in. Entry is confirmed.",
+    colorClass: "crmQrResultIconSuccess",
+    Icon: IconCheck,
+  },
 };
 
 /* Classifies the structured { type, message } error from qrThunk.js into
@@ -268,17 +274,27 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
   const resultState = useMemo(() => {
     if (verifyLoading) return "loading";
     if (verifyError) return classifyErrorMessage(verifyError);
+    // A just-completed check-in must not be reclassified by the ticket's
+    // now-mutated status ("Used") — that would incorrectly show the
+    // "Already Used" screen right after a successful Allow Entry action.
+    // "Already Used" is reserved for a NEW verify response that reports
+    // the ticket as already used, not for this session's own check-in.
+    if (checkInSuccess && ticket) return "checkedIn";
     if (verifySuccess && ticket) return classifyTicketStatus(ticket);
     return null; // still scanning, no verify attempt resolved yet
-  }, [verifyLoading, verifyError, verifySuccess, ticket]);
+  }, [verifyLoading, verifyError, checkInSuccess, verifySuccess, ticket]);
 
   const isValidTicket = resultState === "valid";
+  // Terminal result states that show Close/Scan Next actions instead of
+  // the Allow Entry ticket card. "checkedIn" is included here too — a
+  // completed check-in is a terminal outcome just like the blocked states.
   const isBlockedResult =
     resultState === "invalid" ||
     resultState === "used" ||
     resultState === "cancelled" ||
     resultState === "expired" ||
-    resultState === "network";
+    resultState === "network" ||
+    resultState === "checkedIn";
 
   const resultConfig = resultState ? RESULT_CONFIG[resultState] : null;
 
@@ -424,7 +440,6 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
 
   // "Allow Entry": check the ticket in using the existing checkInQr thunk
   const handleAllowEntry = useCallback(() => {
-    console.log("CHECK-IN REQUEST", ticket);
     if (!ticket) return;
 
     dispatch(
@@ -749,13 +764,6 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
               </div>
             )}
 
-            {checkInSuccess && (
-              <div className="crmQrSuccessBox">
-                <IconCheck className="crmQrSuccessIcon" />
-                <p className="crmQrSuccessText">Entry allowed successfully.</p>
-              </div>
-            )}
-
             <div className="crmQrActions">
               <button
                 type="button"
@@ -778,7 +786,7 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
                 type="button"
                 className="crmQrBtn crmQrBtnPrimary"
                 onClick={handleAllowEntry}
-                disabled={checkInLoading || checkInSuccess}
+                disabled={checkInLoading}
               >
                 {checkInLoading ? "Allowing..." : "Allow Entry"}
               </button>

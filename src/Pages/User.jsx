@@ -39,7 +39,7 @@ export default function User() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteUserName, setDeleteUserName] = useState("");
   const [deleteUserId, setDeleteUserId] = useState(null);
-  const currentPage = pagination?.page || 1;
+  const currentPage = activePage;
   const totalPages = pagination?.totalPages || 1;
   const totalEntries = pagination?.total || 0;
   const limit = pagination?.limit || rowsPerPage;
@@ -53,17 +53,13 @@ export default function User() {
   );
   // fetch user
   useEffect(() => {
-  const timer = setTimeout(() => {
-    dispatch(
-      getUsers({
-        page: activePage,
-        limit: rowsPerPage,
-        search: searchTerm,
-      })
-    );
-  }, 500);
-
-  return () => clearTimeout(timer);
+  dispatch(
+    getUsers({
+      page: activePage,
+      limit: rowsPerPage,
+      search: searchTerm,
+    })
+  );
 }, [dispatch, activePage, rowsPerPage, searchTerm]);
   // Ref for detecting outside clicks to close the action dropdown
   const actionMenuRef = useRef(null);
@@ -192,8 +188,10 @@ export default function User() {
                   className="userPage__searchInput"
                   placeholder="Search..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setActivePage(1);
+                  }} />
               </div>
             </div>
 
@@ -228,12 +226,23 @@ export default function User() {
                         />
                       </td>
                       <td className="userPage__userName">{user.name}</td>
-                      <td>{user.email}</td>
+                      <td>{user.email || "-"}</td>
                       <td>{user.mobile}</td>
                       <td>{user.role}</td>
                       <td>
-                        {new Date(user.createdAt).toLocaleString()}
-                      </td>                    <td style={{ position: "relative" }}>
+                        {new Date(user.createdAt)
+                          .toLocaleString("en-GB", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          })
+                          .replace(",", "")
+                          .replace(/\//g, "-")}
+                      </td>
+                      <td style={{ position: "relative" }}>
                         <div
                           className="userAction__wrapper"
                           ref={openActionMenuId === user._id ? actionMenuRef : null}
@@ -280,43 +289,44 @@ export default function User() {
               <span className="permissionPagePaginationInfo">
                 Show {totalEntries === 0 ? 0 : startIndex + 1} - {endIndex} of {totalEntries}
               </span>
+              {totalEntries > rowsPerPage && (
 
-              <div className="permissionPagePaginationControls">
+                <div className="permissionPagePaginationControls">
 
-                <button
-                  type="button"
-                  className="permissionPagePaginationArrow"
-                  onClick={goToPreviousPage}
-                  disabled={currentPage === 1}
-                >
-                  <FaChevronLeft />
-                </button>
-
-                {pageNumbers.map((page) => (
                   <button
-                    key={page}
                     type="button"
-                    className={`permissionPagePaginationBtn ${currentPage === page
+                    className="permissionPagePaginationArrow"
+                    onClick={goToPreviousPage}
+                    disabled={currentPage === 1}
+                  >
+                    <FaChevronLeft />
+                  </button>
+
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      className={`permissionPagePaginationBtn ${currentPage === page
                         ? "permissionPagePaginationActive"
                         : ""
-                      }`}
-                    onClick={() => setActivePage(page)}
+                        }`}
+                      onClick={() => setActivePage(page)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    className="permissionPagePaginationArrow"
+                    onClick={goToNextPage}
+                    disabled={currentPage === totalPages}
                   >
-                    {page}
+                    <FaChevronRight />
                   </button>
-                ))}
 
-                <button
-                  type="button"
-                  className="permissionPagePaginationArrow"
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  <FaChevronRight />
-                </button>
-
-              </div>
-
+                </div>
+              )}
             </div>
           </div>
 
