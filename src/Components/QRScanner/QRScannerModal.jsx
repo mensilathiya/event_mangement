@@ -283,7 +283,7 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
       await stopScanner();
       if (!isMountedRef.current) return;
 
-      dispatch(verifyQr({ qrData: decodedText.trim() }))
+      dispatch(verifyQr({ qrToken: decodedText.trim() }))
         .unwrap()
         .then((result) => {
           if (onVerified) onVerified(result);
@@ -299,7 +299,7 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
     async (cameraId) => {
       if (!cameraId) return;
 
-      await stopScanner();
+      
       if (!isMountedRef.current) return;
 
       try {
@@ -339,13 +339,19 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
   );
 
   const handleCameraChange = useCallback(
-    (event) => {
-      const newCameraId = event.target.value;
-      setActiveCameraId(newCameraId);
-      startScanner(newCameraId);
-    },
-    [startScanner]
-  );
+  async (event) => {
+    const newCameraId = event.target.value;
+
+    setActiveCameraId(newCameraId);
+
+    await stopScanner();
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    await startScanner(newCameraId);
+  },
+  [startScanner, stopScanner]
+);
 
   const resetVerificationState = useCallback(() => {
     dispatch(clearQrTicket());
