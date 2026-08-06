@@ -424,6 +424,7 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
 
   // "Allow Entry": check the ticket in using the existing checkInQr thunk
   const handleAllowEntry = useCallback(() => {
+    console.log("CHECK-IN REQUEST", ticket);
     if (!ticket) return;
 
     dispatch(
