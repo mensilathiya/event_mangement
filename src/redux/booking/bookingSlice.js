@@ -9,6 +9,7 @@ import {
 const initialState = {
   booking: null,
   bookings: [],
+  event: null,
 
   total: 0,
   page: 1,
@@ -67,16 +68,18 @@ const bookingSlice = createSlice({
         state.error = null;
       })
       .addCase(getAllBookings.fulfilled, (state, action) => {
-          state.listLoading = false;
-        state.bookings = action.payload.data;
+  state.listLoading = false;
 
-        state.total = action.payload.pagination.total;
-        state.page = action.payload.pagination.page;
-        state.limit = action.payload.pagination.limit;
-        state.totalPages = action.payload.pagination.totalPages;
+  state.event = action.payload.event;
+  state.bookings = action.payload.bookings;
 
-        state.error = null;
-      })
+  state.total = action.payload.pagination.total;
+  state.page = action.payload.pagination.page;
+  state.limit = action.payload.pagination.limit;
+  state.totalPages = action.payload.pagination.totalPages;
+
+  state.error = null;
+})
       .addCase(getAllBookings.rejected, (state, action) => {
         state.listLoading = false;
         state.error = action.payload;

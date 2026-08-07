@@ -30,6 +30,9 @@ const Event = () => {
     total,
     totalPages,
   } = useSelector((state) => state.event);
+  const hasActiveEvent = useSelector(
+  (state) => state.event.events?.some((e) => e.status === "Active")
+);
   // get all event
 
 
@@ -43,6 +46,7 @@ const Event = () => {
   }, [searchTerm]);
 
   useEffect(() => {
+     if (!hasActiveEvent) return;
     dispatch(
       getAllEvents({
         page: currentPage,
@@ -50,7 +54,7 @@ const Event = () => {
         search,
       })
     );
-  }, [dispatch, currentPage, rowsPerPage, search]);
+  }, [dispatch,hasActiveEvent, currentPage, rowsPerPage, search]);
   // pervious page
   const goToPreviousPage = () => {
     if (currentPage > 1) {
@@ -70,6 +74,8 @@ const Event = () => {
     setCurrentPage(1);
   };
   const handleSearchChange = (e) => {
+      if (!hasActiveEvent) return;
+
     setSearchTerm(e.target.value);
     setCurrentPage(1);
   };
@@ -85,6 +91,7 @@ const Event = () => {
   if (loading) {
     return <h3>Loading...</h3>;
   }
+  
   // status changes
   const handleStatusChange = async (id) => {
     const result = await Swal.fire({

@@ -149,22 +149,24 @@ export default function EntryReport() {
 
   // Builds the API params from the current filter values, matching the
   // entry-report backend's query contract exactly.
-  const buildEntryReportParams = (targetPage) => {
-    const params = {
-      page: targetPage,
-      limit: pageSize,
-      eventId,
-    };
-
-    if (bookingId) params.bookingId = bookingId;
-    if (ticketId) params.ticketId = ticketId;
-    if (name) params.name = name;
-    if (mobileNumber) params.mobileNumber = mobileNumber;
-    if (apiStartDate) params.startDate = apiStartDate;
-    if (apiEndDate) params.endDate = apiEndDate;
-
-    return params;
+ const buildEntryReportParams = (
+  targetPage = 1,
+  customLimit = pageSize
+) => {
+  const params = {
+    page: targetPage,
+    limit: customLimit,
   };
+
+  if (bookingId) params.bookingId = bookingId;
+  if (ticketId) params.ticketId = ticketId;
+  if (name) params.name = name;
+  if (mobileNumber) params.mobileNumber = mobileNumber;
+  if (apiStartDate) params.startDate = apiStartDate;
+  if (apiEndDate) params.endDate = apiEndDate;
+
+  return params;
+};
 
   // Pagination values as returned by the API: { page, limit, total, totalPages }
   const currentPage = pagination?.page ?? page;
@@ -182,20 +184,20 @@ export default function EntryReport() {
   }, [eventId, dispatch]);
 
   // Change page while keeping the currently applied filters intact.
-  const handlePageChange = (newPage) => {
-    if (loading) return;
-    if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
-    setPage(newPage);
-    dispatch(getAllEntryReport(buildEntryReportParams(newPage)));
-  };
-
-  // Changing rows-per-page resets to page 1, keeps filters intact.
   const handlePageSizeChange = (e) => {
-    const newSize = Number(e.target.value);
-    setPageSize(newSize);
-    setPage(1);
-    dispatch(getAllEntryReport(buildEntryReportParams(1, {}, newSize)));
-  };
+  const newSize = Number(e.target.value);
+
+  setPageSize(newSize);
+  setPage(1);
+
+  dispatch(
+    getAllEntryReport(
+      buildEntryReportParams(1, newSize)
+    )
+  );
+};
+
+  
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [committedRange, setCommittedRange] = useState(null);
@@ -284,10 +286,15 @@ export default function EntryReport() {
     setShowDatePicker(false);
   };
   // search
-  const handleSearch = () => {
-    setPage(1);
-    dispatch(getAllEntryReport(buildEntryReportParams(1)));
-  };
+ const handleSearch = () => {
+  setPage(1);
+
+  dispatch(
+    getAllEntryReport(
+      buildEntryReportParams(1)
+    )
+  );
+};
   // reset
   const handleReset = () => {
     setBookingId("");
@@ -309,17 +316,11 @@ export default function EntryReport() {
     setPage(1);
     // Reload default (unfiltered) data
     dispatch(
-      getAllEntryReport(
-        buildEntryReportParams(1, {
-          bookingId: "",
-          mobileNumber: "",
-          ticketId: "",
-          name: "",
-          startDate: "",
-          endDate: "",
-        })
-      )
-    );
+  getAllEntryReport({
+    page: 1,
+    limit: pageSize,
+  })
+);
   };
   // export
   const handleExport = async () => {

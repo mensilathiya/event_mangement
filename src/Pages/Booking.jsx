@@ -27,6 +27,7 @@ const Booking = () => {
     listLoading,
     total,
     page,
+    event,
     limit,
     totalPages,
   } = useSelector((state) => state.booking);
@@ -502,95 +503,78 @@ const Booking = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {bookingRows.map((row, index) => (
-                      <tr key={row.id}>
-                        <td>{index + 1}</td>
-                        <td>{row.bookingNumber}</td>
-                        <td className="bookingPage-nameCell">{row.name}</td>
-                        <td>{row.mobileNumber}</td>
-                        <td className="bookingPage-eventCell">{row.eventId?.title}</td>
-                        <td>{row.ticketTypeId?.ticketName}</td>
-                        <td>{row.quantity}</td>
-                        <td>{Number(row.amount)}</td>
-                        <td className="bookingPage-createdCell">
-                          {row.createdBy?.name ?? '-'}
-                          <br />
-                          {
-                            row.createdAt
-                              ? format(new Date(row.createdAt), "dd-MM-yyyy hh:mm a")
-                              : "-"
-                          }
-                        </td>
-                        <td className="bookingPage-actionCol">
-                          <div className="bookingPage-actionDropdownWrap">
-                            <button
-                              type="button"
-                              className="bookingPage-actionBtn"
-                              onClick={() => toggleActionMenu(row._id)}
-                            >
-                              Action <span className="bookingPage-actionCaret">&#9662;</span>
-                            </button>
-
-                            {openActionId === row._id && (
-                              <div className="bookingPage-actionMenu">
-                                <button
-                                  type="button"
-                                  className="bookingPage-actionMenuItem"
-                                  onClick={() => navigate(`/view-booking/${row._id}`)}
-                                >
-                                  View Booking
-                                </button>
-                                <button
-                                  type="button"
-                                  className="bookingPage-actionMenuItem"
-                                  onClick={() => navigate("/register-users")}
-                                >
-                                  Register Users
-                                </button>
-                                <button
-                                  type="button"
-                                  className="bookingPage-actionMenuItem"
-                                  onClick={() => {
-                                    setResendTarget(row.mobile);
-                                    setOpenActionId(null);
-                                  }}
-                                >
-                                  Resend Ticket
-                                </button>
-                                <button
-                                  type="button"
-                                  className="bookingPage-actionMenuItem"
-                                  onClick={() => {
-                                    setDeleteTarget({
-                                      id: row._id,
-                                      name: row.name,
-                                      mobile: row.mobileNumber,
-                                      bookingNumber:row.bookingNumber
-                                    });
-                                    setOpenActionId(null);
-                                  }}
-                                >
-                                  Delete Booking
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                    {!event ? (
+                      <tr>
+                        <td colSpan={10} className="bookingPageNoData">
+                          No Active Event Found
                         </td>
                       </tr>
-                    ))}
-                    {
-                      bookingRows.length === 0 && !listLoading && (
-                        <tr>
+                    ) : bookingRows.length > 0 ? (
+                      bookingRows.map((row) => (
+                        <tr key={row._id}>
+                          {/* Existing row code */}
 
-                          <td colSpan={10}>
+                          <td>
+                            <div className="bookingPage-actionWrapper">
+                              {/* Existing Action Button */}
 
-                            No Bookings Found
+                              {openActionId === row._id && (
+                                <div className="bookingPage-actionMenu">
+                                  <button
+                                    type="button"
+                                    className="bookingPage-actionMenuItem"
+                                    onClick={() => navigate(`/view-booking/${row._id}`)}
+                                  >
+                                    View Booking
+                                  </button>
 
+                                  <button
+                                    type="button"
+                                    className="bookingPage-actionMenuItem"
+                                    onClick={() => navigate("/register-users")}
+                                  >
+                                    Register Users
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="bookingPage-actionMenuItem"
+                                    onClick={() => {
+                                      setResendTarget(row.mobile);
+                                      setOpenActionId(null);
+                                    }}
+                                  >
+                                    Resend Ticket
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="bookingPage-actionMenuItem"
+                                    onClick={() => {
+                                      setDeleteTarget({
+                                        id: row._id,
+                                        name: row.name,
+                                        mobile: row.mobileNumber,
+                                        bookingNumber: row.bookingNumber,
+                                      });
+                                      setOpenActionId(null);
+                                    }}
+                                  >
+                                    Delete Booking
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </td>
-
                         </tr>
-                      )
-                    }
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={10} className="bookingPageNoData">
+                          No Bookings Found
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                   <tfoot>
                     <tr>
