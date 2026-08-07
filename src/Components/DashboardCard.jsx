@@ -1,7 +1,7 @@
 import React from "react";
 import '../assets/CSS/DashboardCard.css';
 
-export default function DashboardCard({
+function DashboardCard({
   title = "Card Title",
   amountValue,
   amountLabel,
@@ -15,12 +15,13 @@ export default function DashboardCard({
   return (
     <div className="card">
       <div className="cardHeader">
-        <p className="cardTitle">{title}</p>
-        {amountValue && (
+        {amountValue ? (
           <div className="cardAmount">
             <p className="cardAmountValue">{amountValue}</p>
-            <p className="cardAmountLabel">{amountLabel}</p>
+            <p className="cardAmountLabel">{amountLabel || title}</p>
           </div>
+        ) : (
+          <p className="cardTitle">{title}</p>
         )}
       </div>
 
@@ -44,3 +45,5 @@ export default function DashboardCard({
     </div>
   );
 }
+
+export default React.memo(DashboardCard);

@@ -40,10 +40,41 @@
   margin-bottom: 24px;
 }
 
+.dashboardErrorBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px 0;
+}
+
+.dashboardError {
+  color: #e0331e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dashboardRetryBtn {
+  background: none;
+  border: 1px solid #e0331e;
+  color: #e0331e;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.dashboardRetryBtn:hover {
+  background-color: #e0331e;
+  color: #ffffff;
+}
+
 .cardGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 24px;
+  align-items: stretch;
 }
 
 .fullWidth {
@@ -69,15 +100,15 @@
   cursor: pointer;
 }
 
-@media (max-width: 1024px) {
-  .cardGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 1023px) {
   .mainArea {
     margin-left: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .content {
+    padding: 26px 24px 40px 24px;
   }
 }
 

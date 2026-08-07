@@ -1,10 +1,122 @@
-import React from "react";
+import React, { useEffect, useMemo, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import Sidebar from "../Components/Sidebar";
 import Header from "../Components/Header";
 import DashboardCard from "../Components/DashboardCard";
+import { getDashboardSummary } from "../redux/dashboard/dashboardThunk";
+import { clearDashboardState } from "../redux/dashboard/dashboardSlice";
 import '../assets/CSS/DashboardPage.css';
 
 export default function DashboardPage() {
+  const dispatch = useDispatch();
+  const { dashboardData, loading, error } = useSelector((state) => state.dashboard);
+
+  useEffect(() => {
+    if (!dashboardData && !loading) {
+      dispatch(getDashboardSummary());
+    }
+    return () => {
+      dispatch(clearDashboardState());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch]);
+
+  const handleRetry = useCallback(() => {
+    dispatch(clearDashboardState());
+    dispatch(getDashboardSummary());
+  }, [dispatch]);
+
+  const activeEvent = dashboardData?.activeEvent;
+
+  const eventDateRange = useMemo(() => {
+    if (!activeEvent?.startDateTime || !activeEvent?.endDateTime) return "";
+    const fmt = (d) =>
+      new Date(d).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    return `${fmt(activeEvent.startDateTime)} - ${fmt(activeEvent.endDateTime)}`;
+  }, [activeEvent?.startDateTime, activeEvent?.endDateTime]);
+
+  const activeEventRows = useMemo(() => {
+    if (!activeEvent) return [];
+    return [
+      { label: activeEvent.title, value: activeEvent.venueName || "-" },
+      { label: "Duration", value: eventDateRange },
+      { label: "Address", value: activeEvent.address || "-" },
+    ];
+  }, [activeEvent, eventDateRange]);
+
+  const bookingCountRows = useMemo(
+    () =>
+      dashboardData?.bookingCounts?.map((item) => ({
+        label: item.date,
+        value: String(item.count),
+      })),
+    [dashboardData?.bookingCounts]
+  );
+
+  const totalBookingRows = useMemo(
+    () =>
+      dashboardData?.totalBookingDetails?.map((item) => ({
+        label: item.date,
+        value: String(item.count),
+      })),
+    [dashboardData?.totalBookingDetails]
+  );
+
+  const statCards = useMemo(
+    () => [
+      {
+        key: "todayBooking",
+        title: "Today Booking",
+        amountValue: String(dashboardData?.todayBooking ?? 0),
+        amountLabel: "Today Booking",
+        columns: ["Date", "QTY"],
+        rows: bookingCountRows,
+        emptyText: !bookingCountRows?.length ? "No Bookings Available" : undefined,
+      },
+      {
+        key: "todayPassBooking",
+        title: "Today Pass Entry",
+        amountValue: String(dashboardData?.todayPassBooking ?? 0),
+        amountLabel: "Today Pass Entry",
+        columns: ["Date", "QTY"],
+        rows: undefined,
+        emptyText: "No Bookings Available",
+      },
+      {
+        key: "totalBooking",
+        title: "Total Booking",
+        amountValue: String(dashboardData?.totalBooking ?? 0),
+        amountLabel: "Total Booking",
+        columns: ["Date", "QTY"],
+        rows: totalBookingRows,
+        emptyText: !totalBookingRows?.length ? "No Bookings Available" : undefined,
+      },
+      {
+        key: "totalPassBooking",
+        title: "Total Pass Entry",
+        amountValue: String(dashboardData?.totalPassBooking ?? 0),
+        amountLabel: "Total Pass Entry",
+        columns: ["Date", "QTY"],
+        rows: undefined,
+        emptyText: "No Bookings Available",
+      },
+      {
+        key: "bookingCounts",
+        title: "Booking Counts",
+        amountValue: undefined,
+        amountLabel: undefined,
+        columns: ["Date", "Counts"],
+        rows: bookingCountRows,
+        emptyText: !bookingCountRows?.length ? "No Data Available" : undefined,
+      },
+    ],
+    [dashboardData, bookingCountRows, totalBookingRows]
+  );
+
   return (
     <div className="dashboardPage">
       <Sidebar />
@@ -18,72 +130,51 @@ export default function DashboardPage() {
 
           <div className="banner">RANGE SANGE SHUBH NAVRATRI - 2026</div>
 
-          <div className="cardGrid">
-            <DashboardCard
-              title="Today Booking"
-              columns={["Date", "QTY"]}
-              emptyText="No Bookings Available"
-            />
-
-            <DashboardCard
-              title="Today Pass Booking"
-              amountValue="Rs. 0"
-              amountLabel="Total Amount"
-              columns={["Date", "Amount"]}
-              emptyText="No Bookings Available"
-            />
-
-            <DashboardCard
-              title="Total Booking"
-              amountValue="970"
-              amountLabel=""
-              columns={["Date", "QTY"]}
-              rows={[
-                { label: "No Date Selected", value: "90" },
-                { label: "15 Oct 2026", value: "220" },
-                { label: "16 Oct 2026", value: "220" },
-                { label: "17 Oct 2026", value: "220" },
-                { label: "18 Oct 2026", value: "220" },
-              ]}
-            />
-
-            <DashboardCard
-              title="Total Pass Booking"
-              amountValue="Rs. 32,08,500"
-              amountLabel="Total Amount"
-              columns={["Date", "Amount"]}
-              rows={[
-                { label: "Fast 100 SESSON PASS 4 DAYS", value: "Rs. 11,70,000" },
-                { label: "First SP 4 DAY", value: "Rs. 18,79,500" },
-                { label: "Advance Tier", value: "Rs. 1,38,000" },
-              ]}
-            />
-
-            <DashboardCard
-              title="Crew Counts"
-              columns={["Date", "Counts"]}
-              emptyText="No Data Available"
-            />
-
-            <DashboardCard
-              title="Booking Counts"
-              columns={["Date", "Counts"]}
-              emptyText="No Data Available"
-            />
-
-            <div className="fullWidth">
-              <DashboardCard
-                title="Balance"
-                amountValue="Rs. 32,08,500"
-                amountLabel="Balance"
-                columns={["Description", "Amount"]}
-                rows={[
-                  { label: "Income", value: "Rs." },
-                  { label: "Booking Income", value: "Rs. 32,08,500" },
-                  { label: "Expense", value: "Rs." },
-                ]}
-              />
+          {error && (
+            <div className="dashboardErrorBar">
+              <span className="dashboardError">{error}</span>
+              <button type="button" className="dashboardRetryBtn" onClick={handleRetry}>
+                Retry
+              </button>
             </div>
+          )}
+
+          <div className="cardGrid">
+            {loading && !dashboardData ? (
+              <>
+                <div className="fullWidth">
+                  <DashboardCardSkeleton />
+                </div>
+                <DashboardCardSkeleton />
+                <DashboardCardSkeleton />
+                <DashboardCardSkeleton />
+                <DashboardCardSkeleton />
+                <DashboardCardSkeleton />
+              </>
+            ) : (
+              <>
+                <div className="fullWidth">
+                  <DashboardCard
+                    title="Active Event"
+                    columns={["Venue", "Dates"]}
+                    emptyText={!activeEvent ? "No Active Event" : undefined}
+                    rows={activeEventRows}
+                  />
+                </div>
+
+                {statCards.map((card) => (
+                  <DashboardCard
+                    key={card.key}
+                    title={card.title}
+                    amountValue={card.amountValue}
+                    amountLabel={card.amountLabel}
+                    columns={card.columns}
+                    rows={card.rows}
+                    emptyText={card.emptyText}
+                  />
+                ))}
+              </>
+            )}
           </div>
         </div>
 
@@ -96,6 +187,20 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DashboardCardSkeleton() {
+  return (
+    <div className="card cardSkeleton">
+      <div className="cardHeader">
+        <div className="skeletonBlock skeletonAmount" />
+      </div>
+      <div className="skeletonBlock skeletonRowHeader" />
+      <div className="skeletonBlock skeletonRow" />
+      <div className="skeletonBlock skeletonRow" />
+      <div className="skeletonBlock skeletonRow" />
     </div>
   );
 }

@@ -149,7 +149,7 @@ const CreateTicketTypeModal = ({
       allowDayCount: Number(formData.allowDayCount),
       amount: Number(formData.amount),
       allowDates: formData.allowDates.map((date) =>
-        format(date, "yyyy-MM-dd")
+        new Date(date).toISOString().split("T")[0]
       ),
       availableCount: Number(formData.availableCount),
       description: formData.description,
