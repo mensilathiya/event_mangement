@@ -3,12 +3,23 @@ import "../assets/CSS/CreateTicketTypeModal.css";
 import { useDispatch, useSelector } from "react-redux";
 import { createTicketType, updateTicketType, getAllTicketTypes } from "../redux/ticketType/ticketTypeThunk";
 import { clearTicketTypeState } from "../redux/ticketType/ticketTypeSlice";
+import dayjs from "dayjs";
+import MultipleDatePicker from "../Components/MultipleDatePicker";
+import {
+  TextField,
+  Popover,
+  Chip,
+  Stack,
+} from "@mui/material";
 
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { StaticDatePicker } from "@mui/x-date-pickers/StaticDatePicker";
 const CreateTicketTypeModal = ({
   isOpen = true,
   onClose = () => { },
   eventId = null,
-  eventName ,
+  eventName,
   isEditMode = false,
   selectedTicketType = null,
 }) => {
@@ -20,13 +31,15 @@ const CreateTicketTypeModal = ({
     ticketName: "",
     allowDayCount: "",
     amount: "",
-    allowDate: "",
+    allowDates: [],
     availableCount: "",
     description: "",
   });
 
   const [formErrors, setFormErrors] = useState({});
+  const [anchorEl, setAnchorEl] = useState(null);
 
+  const calendarOpen = Boolean(anchorEl);
   // ================= PREFILL ON EDIT =================
   useEffect(() => {
     if (isEditMode && selectedTicketType) {
@@ -34,7 +47,7 @@ const CreateTicketTypeModal = ({
         ticketName: selectedTicketType.ticketName || "",
         allowDayCount: selectedTicketType.allowDayCount || "",
         amount: selectedTicketType.amount || "",
-        allowDate: selectedTicketType.allowDate || "",
+        allowDates: selectedTicketType.allowDates || [],
         availableCount: selectedTicketType.availableCount || "",
         description: selectedTicketType.description || "",
       });
@@ -43,7 +56,7 @@ const CreateTicketTypeModal = ({
         ticketName: "",
         allowDayCount: "",
         amount: "",
-        allowDate: "",
+        allowDates: [],
         availableCount: "",
         description: "",
       });
@@ -64,21 +77,67 @@ const CreateTicketTypeModal = ({
       [name]: "",
     }));
   };
+  // calender
+  const handleCalendarOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
 
+  const handleCalendarClose = () => {
+    setAnchorEl(null);
+  };
   // ================= VALIDATION =================
   const validate = () => {
     const errors = {};
 
-    if (!formData.ticketName.trim()) errors.ticketName = "Ticket name is required";
-    if (!formData.allowDayCount) errors.allowDayCount = "Allow day count is required";
-    if (!formData.amount) errors.amount = "Amount is required";
-    if (!formData.availableCount) errors.availableCount = "Available count is required";
-    if (!formData.description.trim()) errors.description = "Description is required";
+    if (!formData.ticketName.trim())
+      errors.ticketName = "Ticket name is required";
+
+    if (!formData.allowDayCount)
+      errors.allowDayCount = "Allow day count is required";
+
+    if (formData.allowDates.length === 0)
+      errors.allowDates = "Please select at least one date";
+
+    if (
+      Number(formData.allowDayCount) !== formData.allowDates.length
+    ) {
+      errors.allowDates =
+        "Allow Day Count must match selected dates";
+    }
+
+    if (!formData.amount)
+      errors.amount = "Amount is required";
+
+    if (!formData.availableCount)
+      errors.availableCount = "Available count is required";
+
+    if (!formData.description.trim())
+      errors.description = "Description is required";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
+  const handleSelectDate = (value) => {
+    if (!value) return;
 
+    const date = dayjs(value).format("YYYY-MM-DD");
+
+    const exists = formData.allowDates.includes(date);
+
+    setFormData((prev) => ({
+      ...prev,
+      allowDates: exists
+        ? prev.allowDates.filter((d) => d !== date)
+        : [...prev.allowDates, date],
+    }));
+  };
+
+  const removeDate = (date) => {
+    setFormData((prev) => ({
+      ...prev,
+      allowDates: prev.allowDates.filter((d) => d !== date),
+    }));
+  };
   // ================= HANDLE SUBMIT (CREATE / UPDATE) =================
   const handleSubmit = () => {
     console.log("Submit Clicked");
@@ -89,7 +148,9 @@ const CreateTicketTypeModal = ({
       ticketName: formData.ticketName,
       allowDayCount: Number(formData.allowDayCount),
       amount: Number(formData.amount),
-      allowDate: formData.allowDate,
+      allowDates: formData.allowDates.map((date) =>
+        format(date, "yyyy-MM-dd")
+      ),
       availableCount: Number(formData.availableCount),
       description: formData.description,
     };
@@ -206,19 +267,27 @@ const CreateTicketTypeModal = ({
               )}
             </div>
           </div>
-
+          {/* date */}
           <div className="ticketTypeCreate-field">
-            <label className="ticketTypeCreate-label">Allow Date</label>
-            <div className="ticketTypeCreate-inputWithIcon">
-              <input
-                type="date"
-                name="allowDate"
-                value={formData.allowDate}
-                onChange={handleChange}
-                className="ticketTypeCreate-input"
-              />
-              <span className="ticketTypeCreate-inputIcon">&#128197;</span>
-            </div>
+            <label className="ticketTypeCreate-label">
+              Allow Dates <span className="ticketTypeCreate-required">*</span>
+            </label>
+
+            <MultipleDatePicker
+              value={formData.allowDates}
+              onChange={(dates) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  allowDates: dates,
+                }))
+              }
+            />
+
+            {formErrors.allowDates && (
+              <span className="ticketTypeCreate-fieldError">
+                {formErrors.allowDates}
+              </span>
+            )}
           </div>
 
           <div className="ticketTypeCreate-field">
@@ -274,7 +343,7 @@ const CreateTicketTypeModal = ({
           </button>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

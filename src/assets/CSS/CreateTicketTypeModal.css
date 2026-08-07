@@ -180,7 +180,20 @@
 .ticketTypeCreate-createBtn:hover {
   background: linear-gradient(180deg, #ff4d5c, #ff2646);
 }
+.selectedDates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
 
+.dateChip {
+  padding: 6px 12px;
+  background: #eef4ff;
+  color: #0d6efd;
+  border-radius: 20px;
+  font-size: 13px;
+}
 @media (max-width: 600px) {
   .ticketTypeCreate-row {
     grid-template-columns: 1fr;
