@@ -12,6 +12,7 @@ import {
   getAllEntryReport,
   exportEntryReport,
 } from "../redux/entryReport/entryReportThunk";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
 // Formats a Date object as "YYYY/MM/DD" — used only for the date-range
 // filter input display, matching the original design.
@@ -240,7 +241,7 @@ export default function EntryReport() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
+  // date picker
   const toggleDatePicker = () => {
     setShowDatePicker((prev) => {
       const next = !prev;
@@ -259,11 +260,11 @@ export default function EntryReport() {
       return next;
     });
   };
-
+  // date range
   const handleDateRangeChange = (item) => {
     setTempRange([item.selection]);
   };
-
+  // apply date changes
   const handleApplyDateRange = () => {
     setCommittedRange(tempRange);
     setDateRange(
@@ -275,19 +276,19 @@ export default function EntryReport() {
     setApiEndDate(formatDateForApi(tempRange[0].endDate));
     setShowDatePicker(false);
   };
-
+  // cancel date changes
   const handleCancelDateRange = () => {
     if (committedRange) {
       setTempRange(committedRange);
     }
     setShowDatePicker(false);
   };
-
+  // search
   const handleSearch = () => {
     setPage(1);
     dispatch(getAllEntryReport(buildEntryReportParams(1)));
   };
-
+  // reset
   const handleReset = () => {
     setBookingId("");
     setMobileNumber("");
@@ -329,7 +330,7 @@ export default function EntryReport() {
         eventId,
         bookingId,
         ticketId,
-        name, 
+        name,
         mobileNumber,
         startDate: apiStartDate,
         endDate: apiEndDate,
@@ -373,7 +374,32 @@ export default function EntryReport() {
       : error
         ? "Failed to load entry reports. Please try again."
         : "";
+  // Pagination
+  const startIndex =
+    totalRecords === 0 ? 0 : (currentPage - 1) * limit;
 
+  const endIndex = Math.min(
+    currentPage * limit,
+    totalRecords
+  );
+
+  const pageNumbers = [];
+
+  for (let i = 1; i <= totalPages; i++) {
+    pageNumbers.push(i);
+  }
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1 && !loading) {
+      handlePageChange(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages && !loading) {
+      handlePageChange(currentPage + 1);
+    }
+  };
   return (
     <div className="erPage_wrapper">
       <Sidebar />
@@ -501,8 +527,9 @@ export default function EntryReport() {
                   onChange={handlePageSizeChange}
                   disabled={loading}
                 >
+                  <option value={5}>5</option>
                   <option value={10}>10</option>
-                  <option value={25}>25</option>
+                  <option value={20}>20</option>
                   <option value={50}>50</option>
                   <option value={100}>100</option>
                 </select>
@@ -687,30 +714,51 @@ export default function EntryReport() {
                 </tbody>
               </table>
             </div>
+            {/* paginations */}
+            <div className="permissionPagePagination">
+              <span className="permissionPagePaginationInfo">
+                Show {totalRecords === 0 ? 0 : startIndex + 1} - {endIndex} of {totalRecords}
+              </span>
 
-            <div className="erPage__paginationBar">
-              <div className="erPage__paginationInfo">
-                Page {currentPage} of {totalPages}
-                {totalRecords ? ` • ${totalRecords} records` : ""}
-              </div>
-              <div className="erPage__paginationControls">
-                <button
-                  type="button"
-                  className="erPage__btn erPage__btn--reset"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={loading || currentPage <= 1}
-                >
-                  Prev
-                </button>
-                <button
-                  type="button"
-                  className="erPage__btn erPage__btn--search"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={loading || currentPage >= totalPages}
-                >
-                  Next
-                </button>
-              </div>
+              {totalPages > 1 && (
+                <div className="permissionPagePaginationControls">
+
+                  <button
+                    type="button"
+                    className="permissionPagePaginationArrow"
+                    onClick={goToPreviousPage}
+                    disabled={loading || currentPage === 1}
+                  >
+                    <FaChevronLeft />
+                  </button>
+
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      className={`permissionPagePaginationBtn ${currentPage === page
+                          ? "permissionPagePaginationActive"
+                          : ""
+                        }`}
+                      onClick={() => handlePageChange(page)}
+                      disabled={loading}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    className="permissionPagePaginationArrow"
+                    onClick={goToNextPage}
+                    disabled={loading || currentPage === totalPages}
+                  >
+                    <FaChevronRight />
+                  </button>
+
+                </div>
+              )}
+
             </div>
           </div>
         </div>
