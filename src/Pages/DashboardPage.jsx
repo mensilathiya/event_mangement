@@ -128,7 +128,7 @@ export default function DashboardPage() {
           <h1 className="pageDashboardTitle">Dashboard</h1>
           <p className="pageSubtitle">Dashboard</p>
 
-          <div className="banner">RANGE SANGE SHUBH NAVRATRI - 2026</div>
+          <div className="banner">{activeEvent?.title}</div>
 
           {error && (
             <div className="dashboardErrorBar">

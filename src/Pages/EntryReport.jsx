@@ -112,7 +112,11 @@ export default function EntryReport() {
   const [page, setPage] = useState(1);
 
   const dispatch = useDispatch();
+  const { dashboardData } = useSelector(
+    (state) => state.dashboard
+  );
 
+  const eventId = dashboardData?.activeEvent?._id;
   // Existing entryReport slice state — no new/duplicate state is created here.
   const { entryReports, pagination, event: entryReportEvent, loading, exportLoading, error } =
     useSelector((state) => state.entryReport);
@@ -148,6 +152,7 @@ export default function EntryReport() {
     const params = {
       page: targetPage,
       limit: pageSize,
+      eventId,
     };
 
     if (bookingId) params.bookingId = bookingId;
@@ -169,8 +174,11 @@ export default function EntryReport() {
   // Fetch entry report data on first page load using the existing thunk/slice.
   // eventId is a required query param, so wait until it's available.
   useEffect(() => {
+    if (!eventId) return;
+
     dispatch(getAllEntryReport(buildEntryReportParams(1)));
-  }, [dispatch]);
+
+  }, [eventId, dispatch]);
 
   // Change page while keeping the currently applied filters intact.
   const handlePageChange = (newPage) => {
@@ -318,9 +326,10 @@ export default function EntryReport() {
 
     const resultAction = await dispatch(
       exportEntryReport({
+        eventId,
         bookingId,
         ticketId,
-        name,
+        name, 
         mobileNumber,
         startDate: apiStartDate,
         endDate: apiEndDate,
