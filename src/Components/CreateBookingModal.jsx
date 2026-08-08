@@ -18,10 +18,11 @@ const initialFormData = {
   discount: "0",
   remark: "",
 };
-export default function CreateBookingModal({ onClose ,onSuccess }) {
+export default function CreateBookingModal({ onClose, onSuccess }) {
   const dispatch = useDispatch();
   const [ticketTypes, setTicketTypes] = useState([]);
   const { events } = useSelector((state) => state.event);
+  const activeEvent = events?.find((event) => event.isActive === true);
   const validateForm = () => {
 
     if (!formData.eventId)
@@ -55,45 +56,75 @@ export default function CreateBookingModal({ onClose ,onSuccess }) {
   };
   // event redux
   useEffect(() => {
-    if (events?.data) {
-      setEvents(events.data);
+    if (!events?.length) return;
+
+    const activeEvent = events.find(
+      (event) => event.isActive === true
+    );
+
+    if (!activeEvent) {
+      setFormData(initialFormData);
+      setTicketTypes([]);
+      return;
     }
-  }, [events]);
+
+    setFormData((prev) => ({
+      ...prev,
+      eventId: activeEvent._id,
+      ticketType: "",
+      qty: "",
+      amount: "",
+    }));
+
+    dispatch(
+      getAllTicketTypes({
+        eventId: activeEvent._id,
+        page: 1,
+        limit: 100,
+      })
+    ).then((response) => {
+      if (getAllTicketTypes.fulfilled.match(response)) {
+        setTicketTypes(response.payload.ticketTypes || []);
+      } else {
+        showError("Unable to load ticket types.");
+      }
+    });
+  }, [events, dispatch]);
   const { createLoading, error, success, message } = useSelector(
     (state) => state.booking
   );
- console.log(createLoading);
+  console.log(createLoading);
   const [formData, setFormData] = useState(initialFormData);
   // handele event changes
   const handleEventChange = async (e) => {
-  const eventId = e.target.value;
+    const eventId = e.target.value;
 
-  setFormData((prev) => ({
-    ...prev,
-    eventId,
-    ticketType: "",
-    qty: "",
-    amount: "",
-  }));
-
-  setTicketTypes([]);
-
-  if (!eventId) return;
-
-  const response = await dispatch(
-    getAllTicketTypes({
+    setFormData((prev) => ({
+      ...prev,
       eventId,
-      page: 1,
-      limit: 100,
-    })
-  );
+      ticketType: "",
+      qty: "",
+      amount: "",
+    }));
 
-  if (getAllTicketTypes.fulfilled.match(response)) {
-    setTicketTypes(response.payload.ticketTypes || []);
-  } else {
-    showError("Unable to load ticket types.");
-  }
-};
+    setTicketTypes([]);
+
+    if (!eventId) return;
+
+    const response = await dispatch(
+      getAllTicketTypes({
+        eventId,
+        page: 1,
+        limit: 100,
+      })
+    );
+
+    if (getAllTicketTypes.fulfilled.match(response)) {
+      setTicketTypes(response.payload.ticketTypes || []);
+    } else {
+      showError("Unable to load ticket types.");
+    }
+  };
   // handel qty changes
   const handleQtyChange = (e) => {
     const qty = Number(e.target.value) || 0;
@@ -131,53 +162,53 @@ export default function CreateBookingModal({ onClose ,onSuccess }) {
     setFormData((prev) => ({ ...prev, [field]: e.target.value }));
   };
   // handel create 
- const handleCreate = async () => {
-  const validationError = validateForm();
+  const handleCreate = async () => {
+    const validationError = validateForm();
 
-  if (validationError) {
-    showError(validationError);
-    return;
-  }
+    if (validationError) {
+      showError(validationError);
+      return;
+    }
 
-  const payload = {
-    eventId: formData.eventId,
-    ticketTypeId: formData.ticketType,
-    quantity: Number(formData.qty),
-    amount: Number(totalPay),
-    name: formData.name.trim(),
-    mobileNumber: formData.mobile.trim(),
-    email: formData.email.trim(),
-    discount: Number(formData.discount),
-    remark: formData.remark.trim(),
+    const payload = {
+      eventId: formData.eventId,
+      ticketTypeId: formData.ticketType,
+      quantity: Number(formData.qty),
+      amount: Number(totalPay),
+      name: formData.name.trim(),
+      mobileNumber: formData.mobile.trim(),
+      email: formData.email.trim(),
+      discount: Number(formData.discount),
+      remark: formData.remark.trim(),
+    };
+
+    console.log("Booking Payload:", payload);
+
+    try {
+      const response = await dispatch(createBooking(payload)).unwrap();
+
+      showSuccess(response.message || "Booking created successfully.");
+
+      setFormData(initialFormData);
+      setTicketTypes([]);
+      dispatch(clearBookingState());
+      onSuccess();
+      onClose();
+
+    } catch (error) {
+      console.log("Booking Error:", error);
+      showError(error?.message || error || "Failed to create booking.");
+    }
   };
-
-  console.log("Booking Payload:", payload);
-
-  try {
-    const response = await dispatch(createBooking(payload)).unwrap();
-
-    showSuccess(response.message || "Booking created successfully.");
-
-    setFormData(initialFormData);
-    setTicketTypes([]);
-    dispatch(clearBookingState());
-    onSuccess();
-    onClose();
-    
-  } catch (error) {
-    console.log("Booking Error:", error);
-    showError(error?.message || error || "Failed to create booking.");
-  }
- };
   // error
   useEffect(() => {
 
-  if (error) {
-    showError(error);
-    dispatch(clearBookingState());
-  }
+    if (error) {
+      showError(error);
+      dispatch(clearBookingState());
+    }
 
-}, [error, dispatch]);
+  }, [error, dispatch]);
   useEffect(() => {
     dispatch(
       getAllEvents({
@@ -216,36 +247,38 @@ export default function CreateBookingModal({ onClose ,onSuccess }) {
               onChange={handleEventChange}
             >
               <option value="">Select Event</option>
-              {events.map((event) => (
-                <option key={event._id} value={event._id}>
-                  {event.title}
-                </option>
-              ))}
+              {events
+                ?.filter((event) => event.isActive === true)
+                .map((event) => (
+                  <option key={event._id} value={event._id}>
+                    {event.title}
+                  </option>
+                ))}
             </select>
           </div>
-           <div className="bookingCreateFieldGroup">
-          <label className="bookingCreateLabel">
+          <div className="bookingCreateFieldGroup">
+            <label className="bookingCreateLabel">
               Ticket <span className="bookingCreateRequired">*</span>
             </label>
-          <select
-            className="bookingCreateSelect"
-            value={formData.ticketType}
-            onChange={handleTicketChange}
-          >
-            <option value="">
-              Select Ticket
-            </option>
-            {
-              ticketTypes.map((ticket) => (
-                <option
-                  key={ticket._id}
-                  value={ticket._id}
-                >
-                  {ticket.ticketName}
-                </option>
-              ))
-            }
-          </select>
+            <select
+              className="bookingCreateSelect"
+              value={formData.ticketType}
+              onChange={handleTicketChange}
+            >
+              <option value="">
+                Select Ticket
+              </option>
+              {
+                ticketTypes.map((ticket) => (
+                  <option
+                    key={ticket._id}
+                    value={ticket._id}
+                  >
+                    {ticket.ticketName}
+                  </option>
+                ))
+              }
+            </select>
           </div>
           <div className="bookingCreateFieldGroup">
             <label className="bookingCreateLabel">
@@ -257,7 +290,7 @@ export default function CreateBookingModal({ onClose ,onSuccess }) {
               className="bookingCreateInput"
               placeholder="Qty"
               value={formData.qty}
-              onChange={handleQtyChange}  
+              onChange={handleQtyChange}
             />
           </div>
 
