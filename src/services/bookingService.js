@@ -21,6 +21,15 @@ export const getBookingByIdApi = async (id) => {
   return response.data;
 };
 
+// ================= EXPORT BOOKINGS =================
+export const exportBookings = async (params = {}) => {
+  const response = await api.get("/bookings/export", {
+    params,
+    responseType: "blob",
+  });
+
+  return response;
+};
 // ================= DELETE BOOKING =================
 export const deleteBookingApi = async (id, data) => {
   const response = await api.delete(`/bookings/delete/${id}`, {

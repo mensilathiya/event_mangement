@@ -1,53 +1,10 @@
 import { FaTimes } from "react-icons/fa";
 import "../assets/CSS/PermissionModal.css";
 
-const allPermissions = [
-  "read entryReport",
-  "delete expense",
-  "update expense",
-  "read expense",
-  "create expense",
-  "delete income",
-  "update income",
-  "read income",
-  "create income",
-  "read dashboard",
-  "read crew",
-  "delete crew",
-  "update crew",
-  "create crew",
-  "read event",
-  "create event",
-  "delete booking",
-  "create booking",
-  "update booking",
-  "read booking",
-  "delete user",
-  "update user",
-  "read user",
-  "create user",
-  "delete role",
-  "update role",
-  "read role",
-  "create role",
-  "delete permission",
-  "update permission",
-  "read permission",
-  "create permission",
-];
-
-function getPermissionList(permissionLabel) {
-  if (permissionLabel === "All Permission") {
-    return allPermissions;
-  }
-  const count = parseInt(permissionLabel, 10) || 0;
-  return allPermissions.slice(0, count);
-}
-
 export default function PermissionModal({ role, onClose }) {
   if (!role) return null;
 
-  const permissionList = getPermissionList(role.permission);
+  const permissionList = role.permissions || [];
 
   return (
     <div className="permissionModalOverlay" onClick={onClose}>
@@ -65,7 +22,8 @@ export default function PermissionModal({ role, onClose }) {
         </div>
 
         <p className="permissionModalSubtitle">
-          {role.permission} Role <span className="permissionModalRole">{role.name}</span>
+          {permissionList.length} Permission{permissionList.length !== 1 ? "s" : ""} ·{" "}
+          <span className="permissionModalRole">{role.role}</span>
         </p>
 
         <div className="permissionModalGrid">

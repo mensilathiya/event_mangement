@@ -13,7 +13,7 @@ import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { getAllBookings } from "../redux/booking/bookingThunk";
+import { exportBookingReport, getAllBookings } from "../redux/booking/bookingThunk";
 import { getAllEvents } from "../redux/event/eventThunk";
 import { FaChevronLeft, FaChevronRight, FaSearch } from "react-icons/fa";
 
@@ -148,52 +148,6 @@ const Booking = () => {
       window.removeEventListener("resize", closeMenu);
     };
   }, [openActionId]);
-  // export booking
-  const exportBookingToExcel = () => {
-    const excelData = bookingRows.map((row, index) => ({
-      "Sr No": index + 1,
-      "Booking ID": row.id,
-      "Customer Name": row.name,
-      "Mobile Number": row.mobile,
-      "Event": row.event,
-      "Ticket Type": row.ticket,
-      "Quantity": row.qty,
-      "Amount": row.amount,
-      "Created By": row.createdBy,
-      "Created At": row.createdAt,
-    }));
-
-    // Total Row
-    excelData.push({
-      "Sr No": "",
-      "Booking ID": "",
-      "Customer Name": "",
-      "Mobile Number": "",
-      "Event": "",
-      "Ticket Type": "Total",
-      "Quantity": totalQty,
-      "Amount": totalAmount,
-      "Created By": "",
-      "Created At": "",
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Bookings");
-
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    });
-
-    const file = new Blob([excelBuffer], {
-      type:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
-    });
-
-    saveAs(file, `Bookings_${new Date().toISOString().split("T")[0]}.xlsx`);
-  };
   // handel search
   const handleSearch = () => {
     if (activePage !== 1) {
@@ -297,6 +251,23 @@ const Booking = () => {
       setActivePage((prev) => prev + 1);
     }
   };
+  // export booking
+  const exportLoading = useSelector(
+    (state) => state.booking.exportLoading
+  );
+  const handleExport = () => {
+  const params = {
+    bookingId: filters.bookingId || "",
+    mobileNumber: filters.mobileNumber || "",
+    name: filters.name || "",
+    eventId: filters.eventId || "",
+    status: filters.status || "",
+    fromDate: filters.fromDate || "",
+    toDate: filters.toDate || "",
+  };
+
+  dispatch(exportBookingReport(params));
+};
   return (
     <>
 
@@ -482,7 +453,8 @@ const Booking = () => {
             </div>
 
             <div className="bookingPage-card">
-              <div className="eventList__toolbar">
+              <div className="erPage__tableToolbar">
+                <div className="erPage__toolbarLeft">
                 <select
                   value={rowsPerPage}
                   onChange={(e) => {
@@ -498,11 +470,20 @@ const Booking = () => {
                   <option value={100}>100</option>
                 </select>
 
-                <div className="eventList__searchBox">
-                  <span className="eventList__searchIcon">
-                    <FaSearch />
-                  </span>
-
+                  <div className="erPage__toolbarCenter">
+                <div className="erPage__searchBox">
+                  <svg
+                    className="erPage__searchIcon"
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
                   <input
                     type="search"
                     className="eventList__searchInput"
@@ -515,6 +496,35 @@ const Booking = () => {
                       }
                     }}
                   />
+                  </div>
+                  
+                </div>
+                </div>
+                <div className="erPage__toolbarRight">
+                  <button
+                    className="erPage__btn erPage__btn--export"
+                    onClick={handleExport}
+                    disabled={exportLoading}
+                    aria-busy={exportLoading}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className={
+                        exportLoading
+                          ? "erPage__exportIcon erPage__exportIcon--spinning"
+                          : "erPage__exportIcon"
+                      }
+                    >
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                    {exportLoading ? "Exporting..." : "Export Booking"}
+                  </button>
                 </div>
               </div>
               {/* // tabal */}

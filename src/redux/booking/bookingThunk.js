@@ -5,6 +5,7 @@ import {
   getAllBookingsApi,
   getBookingByIdApi,
   deleteBookingApi,
+  exportBookings,
 } from "../../services/bookingService";
 
 // ================= CREATE BOOKING =================
@@ -75,7 +76,38 @@ export const getBookingById = createAsyncThunk(
     }
   }
 );
+// ================= EXPORT BOOKINGS =================
+export const exportBookingReport = createAsyncThunk(
+  "booking/exportBookingReport",
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await exportBookings(params);
 
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `BookingReport_${Date.now()}.xlsx`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+
+      return true;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Failed to export bookings"
+      );
+    }
+  }
+);
 // ================= DELETE BOOKING =================
 export const deleteBooking = createAsyncThunk(
   "booking/deleteBooking",

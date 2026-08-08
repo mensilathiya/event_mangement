@@ -1,92 +1,55 @@
-import { useState } from "react";
-import { FaSort, FaSearch, FaChevronDown, FaPlus } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import { FaSort, FaSearch } from "react-icons/fa";
 import Sidebar from "../Components/Sidebar";
 import Header from "../Components/Header";
-import CreateRoleModal from "../Components/CreateRoleModal";
-import DeleteRoleModal from "../Components/DeleteRoleModal";
 import "../assets/CSS/Role.css";
 import PermissionModal from "../Components/PermissionModal";
+import { getRoleApi } from "../services/roleService";
 
-const roles = [
-  {
-    id: 1,
-    name: "admin",
-    guard: "web",
-    permission: "All Permission",
-    created: "26-06-2024 07:20 am",
-    updated: "26-06-2024 07:20 am",
-  },
-  {
-    id: 2,
-    name: "checker",
-    guard: "web",
-    permission: "3 Permission",
-    created: "26-06-2024 07:20 am",
-    updated: "26-06-2024 07:20 am",
-  },
-  {
-    id: 3,
-    name: "partner",
-    guard: "web",
-    permission: "8 Permission",
-    created: "29-07-2024 02:19 pm",
-    updated: "29-07-2024 02:19 pm",
-  },
-  {
-    id: 4,
-    name: "booking",
-    guard: "web",
-    permission: "8 Permission",
-    created: "29-07-2024 03:28 pm",
-    updated: "30-07-2024 11:35 am",
-  },
-  {
-    id: 5,
-    name: "sub admin",
-    guard: "web",
-    permission: "16 Permission",
-    created: "02-07-2025 05:14 pm",
-    updated: "02-07-2025 05:14 pm",
-  },
-];
-
-const columns = ["Name", "Guard", "Permission", "Created", "Updated"];
+const columns = ["Name", "Permissions"];
 
 export default function Role() {
   const [searchTerm, setSearchTerm] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState("10");
-  const [openActionId, setOpenActionId] = useState(null);
-  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [selectedRole, setSelectedRole] = useState(null);
   const [permissionModalRole, setPermissionModalRole] = useState(null);
 
-  const filteredRoles = roles
-    .filter((role) => role.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    .slice(0, Number(rowsPerPage));
+  const [role, setRole] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const toggleActionMenu = (id) => {
-    setOpenActionId((prev) => (prev === id ? null : id));
-  };
+  useEffect(() => {
+    let isMounted = true;
 
-  const toggleRowSelection = (id) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((selectedId) => selectedId !== id) : [...prev, id]
-    );
-  };
+    const fetchRole = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await getRoleApi();
+        if (isMounted) {
+          setRole(response.data);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err.response?.data?.message || "Failed to fetch role");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
 
-  const toggleSelectAll = () => {
-    const allIds = filteredRoles.map((role) => role.id);
-    const allSelected = allIds.every((id) => selectedIds.includes(id)) && allIds.length > 0;
-    setSelectedIds(allSelected ? [] : allIds);
-  };
+    fetchRole();
 
-  const openBulkDeleteModal = () => {
-    const count = selectedIds.length;
-    setDeleteTarget(`${count} Role${count > 1 ? "s" : ""}`);
-  };
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const roleMatchesSearch =
+    !!role && role.role.toLowerCase().includes(searchTerm.toLowerCase());
+
+  const visibleRoles = roleMatchesSearch ? [role] : [];
 
   return (
     <div className="rolePage">
@@ -105,36 +68,10 @@ export default function Role() {
                 <span className="active">Role</span>
               </div>
             </div>
-
-            {selectedIds.length === 0 ? (
-              <button
-                type="button"
-                className="createButton"
-                onClick={() => {
-                  setSelectedRole(null);
-                  setIsEditMode(false);
-                  setIsRoleModalOpen(true);
-                }}
-              >
-                <FaPlus />
-                Create Role
-              </button>
-            ) : (
-              <button type="button" className="createButton" onClick={openBulkDeleteModal}>
-                Delete Selected
-              </button>
-            )}
           </div>
 
           <div className="tableCard">
-            {openActionId !== null && (
-              <div
-                onClick={() => setOpenActionId(null)}
-                style={{ position: "fixed", inset: 0, zIndex: 15 }}
-              />
-            )}
-
-            <div className="tableControls">
+            {/* <div className="tableControls">
               <select
                 className="rowsSelect"
                 value={rowsPerPage}
@@ -156,138 +93,62 @@ export default function Role() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-            </div>
+            </div> */}
 
             <div className="tableWrapper">
               <table className="roleTable">
                 <thead>
                   <tr>
-                    <th className="checkboxCell">
-                      <input
-                        type="checkbox"
-                        className="rowCheckbox"
-                        checked={
-                          filteredRoles.length > 0 &&
-                          filteredRoles.every((role) => selectedIds.includes(role.id))
-                        }
-                        onChange={toggleSelectAll}
-                      />
-                    </th>
                     {columns.map((col) => (
                       <th key={col}>
                         <span className="thContent">
                           {col}
-                          {col !== "Permission" && <FaSort className="sortIcon" />}
+                          {col !== "Permissions" && <FaSort className="sortIcon" />}
                         </span>
                       </th>
                     ))}
-                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRoles.map((role) => (
-                    <tr key={role.id}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          className="rowCheckbox"
-                          checked={selectedIds.includes(role.id)}
-                          onChange={() => toggleRowSelection(role.id)}
-                        />
-                      </td>
-                      <td className="roleName">{role.name}</td>
-                      <td>{role.guard}</td>
-                      <td>
-                        <span
-                          className="permissionLink"
-                          onClick={() => setPermissionModalRole(role)}
-                        >
-                          {role.permission}
-                        </span>
-                      </td>
-                      <td>{role.created}</td>
-                      <td>{role.updated}</td>
-                      <td className="actionCell">
-                        <button
-                          type="button"
-                          className={`actionButton ${openActionId === role.id ? "open" : ""}`}
-                          onClick={() => toggleActionMenu(role.id)}
-                        >
-                          Action
-                          <FaChevronDown />
-                        </button>
-
-                        {openActionId === role.id && (
-                          <div className="actionMenu">
-                            <button
-                              type="button"
-                              className="actionMenuItem"
-                              onClick={() => {
-                                setSelectedRole(role);
-                                setIsEditMode(true);
-                                setIsRoleModalOpen(true);
-                                setOpenActionId(null);
-                              }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="actionMenuItem"
-                              onClick={() => {
-                                setDeleteTarget(role.name);
-                                setOpenActionId(null);
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </td>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={columns.length}>Loading...</td>
                     </tr>
-                  ))}
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={columns.length}>{error}</td>
+                    </tr>
+                  ) : visibleRoles.length === 0 ? (
+                    <tr>
+                      <td colSpan={columns.length}>No Role Found</td>
+                    </tr>
+                  ) : (
+                    visibleRoles.map((r) => (
+                      <tr key={r.role}>
+                        <td className="roleName">{r.role}</td>
+                        <td>
+                          <span
+                            className="permissionLink"
+                            onClick={() => setPermissionModalRole(r)}
+                          >
+                            {r.permissions.length} Permission
+                            {r.permissions.length !== 1 ? "s" : ""}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
 
             <div className="tableFooter">
-              Show 1 - {filteredRoles.length} of {roles.length}
+              Show {visibleRoles.length > 0 ? "1 - 1" : "0"} of {role ? 1 : 0}
             </div>
           </div>
         </div>
       </div>
 
-      {isRoleModalOpen && (
-        <div
-          tabIndex={-1}
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setIsRoleModalOpen(false);
-            }
-          }}
-        >
-          <CreateRoleModal
-            isEditMode={isEditMode}
-            selectedRole={selectedRole}
-            onClose={() => setIsRoleModalOpen(false)}
-          />
-        </div>
-      )}
-
-      {deleteTarget && (
-        <div
-          tabIndex={-1}
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setDeleteTarget(null);
-            }
-          }}
-        >
-          <DeleteRoleModal roleName={deleteTarget} onClose={() => setDeleteTarget(null)} />
-        </div>
-      )}
       {permissionModalRole && (
         <div
           tabIndex={-1}

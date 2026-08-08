@@ -16,7 +16,7 @@ const TicketType = () => {
   const { eventId } = useParams();
   const location = useLocation();
 
-const eventName = location.state?.eventName || "";
+  const eventName = location.state?.eventName || "";
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState("");
@@ -39,7 +39,6 @@ const eventName = location.state?.eventName || "";
     loading,
     error,
   } = useSelector((state) => state.ticketType);
-
   const [openActionId, setOpenActionId] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -117,41 +116,41 @@ const eventName = location.state?.eventName || "";
     setDeleteTarget(null);
   };
   // delete modal
- const handleDelete = async (ticket) => {
-  const result = await Swal.fire({
-    title: "Are you sure?",
-    text: `You want to delete "${ticket.ticketName}"?`,
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Yes, Delete",
-    cancelButtonText: "Cancel",
-    confirmButtonColor: "#d33",
-    cancelButtonColor: "#6c757d",
-  });
-
-  if (!result.isConfirmed) return;
-
-  try {
-    await dispatch(deleteTicketType(ticket._id)).unwrap();
-
-    dispatch(
-      getAllTicketTypes({
-        eventId,
-        page: currentPage,
-        limit: rowsPerPage,
-        search,
-      })
-    );
-
-    dispatch(clearTicketTypeState());
-  } catch (error) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: error || "Failed to delete ticket type.",
+  const handleDelete = async (ticket) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: `You want to delete "${ticket.ticketName}"?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Delete",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
     });
-  }
-};
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await dispatch(deleteTicketType(ticket._id)).unwrap();
+
+      dispatch(
+        getAllTicketTypes({
+          eventId,
+          page: currentPage,
+          limit: rowsPerPage,
+          search,
+        })
+      );
+
+      dispatch(clearTicketTypeState());
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error || "Failed to delete ticket type.",
+      });
+    }
+  };
   return (
     <div className="ticketType__layout">
       <Sidebar />
@@ -162,7 +161,7 @@ const eventName = location.state?.eventName || "";
           <div className="ticketType__topRow">
             <div className="ticketType__titleBlock">
               <h1 className="ticketType__title">
-               {eventName}
+                {eventName}
               </h1>
               <div className="ticketType__breadcrumb">
                 <span>Dashboard</span>
@@ -270,8 +269,10 @@ const eventName = location.state?.eventName || "";
                       </td>
                       <td className="ticketType__td">{ticket.amount}</td>
                       <td className="ticketType__td ticketType__tdDate">
-                        {ticket.allowDate
-                          ? new Date(ticket.allowDate).toLocaleDateString("en-GB")
+                        {Array.isArray(ticket.allowDates) && ticket.allowDates.length > 0
+                          ? ticket.allowDates
+                            .map((date) => new Date(date).toLocaleDateString("en-GB").replace(/\//g, " - "))
+                            .join(", ")
                           : "-"}
                       </td>
                       <td className="ticketType__td">
@@ -350,8 +351,8 @@ const eventName = location.state?.eventName || "";
                       key={page}
                       type="button"
                       className={`permissionPagePaginationBtn ${currentPage === page
-                          ? "permissionPagePaginationActive"
-                          : ""
+                        ? "permissionPagePaginationActive"
+                        : ""
                         }`}
                       onClick={() => setCurrentPage(page)}
                     >

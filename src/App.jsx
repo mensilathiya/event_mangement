@@ -22,6 +22,7 @@ import ViewEvent from "./Pages/ViewEvent";
 import TicketType from "./Components/TicketType";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Profile from "./Pages/Profile";
 function App() {
   const dispatch = useDispatch();
 
@@ -64,6 +65,7 @@ function App() {
             <Route path="/view-booking/:id" element={<ViewBooking />} />
             <Route path="/register-users" element={<RegisterUsers />} />
             <Route path="/entry-report" element={<EntryReport />} />
+            <Route path="/profile" element={<Profile />} />
           </Route>
 
         </Routes>

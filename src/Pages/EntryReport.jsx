@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { DateRangePicker } from "react-date-range";
 import "react-date-range/dist/styles.css";
@@ -12,17 +13,23 @@ import {
   getAllEntryReport,
   exportEntryReport,
 } from "../redux/entryReport/entryReportThunk";
+// Reusing the existing dashboard thunk so this page can obtain the active
+// event on its own, instead of depending on <DashboardPage /> having
+// already dispatched it. Same thunk DashboardPage already uses.
+import { getDashboardSummary } from "../redux/dashboard/dashboardThunk";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
-// Formats a Date object as "YYYY/MM/DD" — used only for the date-range
-// filter input display, matching the original design.
+// Formats a Date object as "DD-MM-YYYY" — used for all frontend date
+// display (date-range filter input, popup footer, export filename). Does
+// NOT touch the API date format (see formatDateForApi below).
 const formatDate = (date) => {
   if (!date) return "";
   const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}/${mm}/${dd}`;
+  return `${dd}-${mm}-${yyyy}`;
 };
 
 // Formats a Date object as "YYYY-MM-DD" — used for the startDate/endDate
@@ -36,22 +43,24 @@ const formatDateForApi = (date) => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-// Formats a date-only API value (e.g. passDate) as a readable date, with no
-// time component. Returns "-" for missing or invalid values.
+// Formats a date-only API value (e.g. passDate) as "DD-MM-YYYY", with no
+// time component. Returns "-" for missing or invalid values. Reuses
+// formatDate so there's a single date-display helper in the file.
 const formatDateOnly = (value) => {
   if (!value) return "-";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString();
+  const formatted = formatDate(value);
+  return formatted || "-";
 };
 
-// Formats any API date/time value using toLocaleString(). Returns "-" for
-// missing or invalid values so nothing renders as "Invalid Date".
+// Formats any API date/time value as "DD-MM-YYYY, <local time>". Returns
+// "-" for missing or invalid values so nothing renders as "Invalid Date".
 const formatDateTime = (value) => {
   if (!value) return "-";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleString();
+  const datePart = formatDate(d);
+  const timePart = d.toLocaleTimeString();
+  return `${datePart}, ${timePart}`;
 };
 
 // Shows the attendee's profile image returned by the API; falls back to a
@@ -113,7 +122,7 @@ export default function EntryReport() {
   const [page, setPage] = useState(1);
 
   const dispatch = useDispatch();
-  const { dashboardData } = useSelector(
+  const { dashboardData, loading: dashboardLoading } = useSelector(
     (state) => state.dashboard
   );
 
@@ -125,26 +134,24 @@ export default function EntryReport() {
   const rows = entryReports ?? [];
   // console.log(rows);
 
-  // The currently selected event — used to source eventId before the first
-  // API response arrives (eventId is a required query param).
-  const selectedEvent = useSelector(
-    (state) => state?.event?.selectedEvent ?? state?.event?.currentEvent ?? null
-  );
-
-
   // Event date bounds for the date-range picker. The backend's own
   // entry-report response (event.startDateTime / event.endDateTime) is the
-  // source of truth once available; fall back to the selected-event context
-  // only until that first response arrives, so the picker isn't unbounded.
+  // source of truth once available; before that first response arrives,
+  // fall back to dashboardData.activeEvent — the same source eventId itself
+  // is derived from above, so the picker is always scoped to the one active
+  // event this page actually queries for. No other event-selection state is
+  // consulted, so inactive/unrelated events can never supply these dates.
+  const activeEvent = dashboardData?.activeEvent ?? null;
+
   const eventStartDate = entryReportEvent?.startDateTime
     ? new Date(entryReportEvent.startDateTime)
-    : selectedEvent?.startDate
-      ? new Date(selectedEvent.startDate)
+    : activeEvent?.startDate
+      ? new Date(activeEvent.startDate)
       : null;
   const eventEndDate = entryReportEvent?.endDateTime
     ? new Date(entryReportEvent.endDateTime)
-    : selectedEvent?.endDate
-      ? new Date(selectedEvent.endDate)
+    : activeEvent?.endDate
+      ? new Date(activeEvent.endDate)
       : null;
 
   // Builds the API params from the current filter values, matching the
@@ -174,8 +181,22 @@ export default function EntryReport() {
   const totalPages = pagination?.totalPages ?? 1;
   const totalRecords = pagination?.total ?? rows.length;
 
+  // Ensure the active event is available regardless of navigation path.
+  // Previously this page only ever *read* dashboardData — it never fetched
+  // it — so eventId stayed undefined forever on direct navigation/refresh
+  // (dashboardData is only populated by DashboardPage's own dispatch).
+  // Mirrors the exact same guard DashboardPage uses, so if the user arrived
+  // via Dashboard this is a no-op (no duplicate call).
+  useEffect(() => {
+    if (!dashboardData && !dashboardLoading) {
+      dispatch(getDashboardSummary());
+    }
+  }, [dashboardData, dashboardLoading, dispatch]);
+
   // Fetch entry report data on first page load using the existing thunk/slice.
-  // eventId is a required query param, so wait until it's available.
+  // eventId is a required query param, so wait until it's available. Once
+  // the effect above resolves getDashboardSummary(), eventId changes and
+  // this effect fires on its own.
   useEffect(() => {
     if (!eventId) return;
 
@@ -211,6 +232,59 @@ export default function EntryReport() {
 
   const dateInputRef = useRef(null);
   const datePickerRef = useRef(null);
+  // Popup position, computed only for desktop widths (matches the existing
+  // 992px breakpoint already used for tablet/mobile overrides in
+  // EntryReport.css). Null means "let the CSS media rules handle it".
+  const [popupPos, setPopupPos] = useState(null);
+  const DESKTOP_BREAKPOINT = 992;
+
+  const updatePopupPosition = () => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth <= DESKTOP_BREAKPOINT) {
+      setPopupPos(null);
+      return;
+    }
+    const inputEl = dateInputRef.current;
+    const popupEl = datePickerRef.current;
+    if (!inputEl) return;
+
+    const rect = inputEl.getBoundingClientRect();
+    const margin = 12;
+    const popupWidth = popupEl?.offsetWidth || 700;
+    const popupHeight = popupEl?.offsetHeight || 420;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Keep the popup's right edge from running past the viewport.
+    let left = rect.left;
+    if (left + popupWidth + margin > viewportWidth) {
+      left = Math.max(margin, viewportWidth - popupWidth - margin);
+    }
+
+    // Prefer opening below the input; flip above it if there isn't enough
+    // room below, so the calendar is never clipped by the viewport edge.
+    let top = rect.bottom + 8;
+    if (top + popupHeight + margin > viewportHeight) {
+      const spaceAbove = rect.top - 8 - popupHeight;
+      top = spaceAbove >= margin ? spaceAbove : margin;
+    }
+
+    setPopupPos({ top, left });
+  };
+
+  // Recompute whenever the popup opens, and keep it correctly placed on
+  // resize/scroll while it stays open.
+  useLayoutEffect(() => {
+    if (!showDatePicker) return;
+    updatePopupPosition();
+    window.addEventListener("resize", updatePopupPosition);
+    window.addEventListener("scroll", updatePopupPosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePopupPosition);
+      window.removeEventListener("scroll", updatePopupPosition, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDatePicker]);
 
   // Once the entry-report API returns event.startDateTime/endDateTime,
   // re-center the calendar on the event's own date range (unless the user
@@ -245,6 +319,11 @@ export default function EntryReport() {
   }, []);
   // date picker
   const toggleDatePicker = () => {
+    // Never open an unrestricted calendar: only allow opening once the
+    // active event's own start/end dates are known, since minDate/maxDate
+    // (and therefore which dates are selectable) depend on them.
+    if (!eventStartDate || !eventEndDate) return;
+
     setShowDatePicker((prev) => {
       const next = !prev;
       if (next) {
@@ -252,8 +331,8 @@ export default function EntryReport() {
         setTempRange(
           committedRange || [
             {
-              startDate: eventStartDate || new Date(),
-              endDate: eventEndDate || new Date(),
+              startDate: eventStartDate,
+              endDate: eventEndDate,
               key: "selection",
             },
           ]
@@ -390,6 +469,17 @@ export default function EntryReport() {
     pageNumbers.push(i);
   }
 
+  // Single source of truth for page navigation: updates local page state
+  // (used as the fallback for currentPage before the API responds) and
+  // requests that page with the currently applied filters intact.
+  const handlePageChange = (targetPage) => {
+    if (loading || targetPage === currentPage) return;
+    if (targetPage < 1 || (totalPages && targetPage > totalPages)) return;
+
+    setPage(targetPage);
+    dispatch(getAllEntryReport(buildEntryReportParams(targetPage)));
+  };
+
   const goToPreviousPage = () => {
     if (currentPage > 1 && !loading) {
       handlePageChange(currentPage - 1);
@@ -401,6 +491,19 @@ export default function EntryReport() {
       handlePageChange(currentPage + 1);
     }
   };
+
+  // If filtering/search shrinks the result set so the current page no
+  // longer exists, automatically fall back to the last valid page.
+  useEffect(() => {
+    if (!eventId || loading) return;
+    if (totalRecords === 0) return;
+    if (currentPage > totalPages) {
+      const validPage = Math.max(1, totalPages);
+      setPage(validPage);
+      dispatch(getAllEntryReport(buildEntryReportParams(validPage)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalPages, totalRecords]);
   return (
     <div className="erPage_wrapper">
       <Sidebar />
@@ -460,10 +563,15 @@ export default function EntryReport() {
                   placeholder="Pick date rage"
                   value={dateRange}
                   readOnly
+                  disabled={!eventStartDate || !eventEndDate}
                   onClick={toggleDatePicker}
                 />
-                {showDatePicker && (
-                  <div className="erPage__dateRangePopup" ref={datePickerRef}>
+                {showDatePicker && createPortal(
+                  <div
+                    className="erPage__dateRangePopup"
+                    ref={datePickerRef}
+                    style={popupPos ? { top: popupPos.top, left: popupPos.left } : undefined}
+                  >
                     <DateRangePicker
                       ranges={tempRange}
                       onChange={handleDateRangeChange}
@@ -475,6 +583,8 @@ export default function EntryReport() {
                       minDate={eventStartDate || undefined}
                       maxDate={eventEndDate || undefined}
                       rangeColors={["#4f7bff"]}
+                      staticRanges={[]}
+                      inputRanges={[]}
                     />
                     <div className="erPage__dateRangeFooter">
                       <div className="erPage__dateRangeDisplay">
@@ -498,7 +608,8 @@ export default function EntryReport() {
                         </button>
                       </div>
                     </div>
-                  </div>
+                  </div>,
+                  document.body
                 )}
               </div>
               <button
@@ -716,41 +827,41 @@ export default function EntryReport() {
               </table>
             </div>
             {/* paginations */}
-            <div className="permissionPagePagination">
-              <span className="permissionPagePaginationInfo">
+            <div className="erPage__paginationBar">
+              <span className="erPage__paginationInfo">
                 Show {totalRecords === 0 ? 0 : startIndex + 1} - {endIndex} of {totalRecords}
               </span>
 
               {totalPages > 1 && (
-                <div className="permissionPagePaginationControls">
+                <div className="erPage__paginationControls">
 
                   <button
                     type="button"
-                    className="permissionPagePaginationArrow"
+                    className="erPage__btn erPage__btn--reset"
                     onClick={goToPreviousPage}
                     disabled={loading || currentPage === 1}
                   >
                     <FaChevronLeft />
                   </button>
 
-                  {pageNumbers.map((page) => (
+                  {pageNumbers.map((pageNum) => (
                     <button
-                      key={page}
+                      key={pageNum}
                       type="button"
-                      className={`permissionPagePaginationBtn ${currentPage === page
-                          ? "permissionPagePaginationActive"
-                          : ""
+                      className={`erPage__btn ${currentPage === pageNum
+                          ? "erPage__btn--active"
+                          : "erPage__btn--reset"
                         }`}
-                      onClick={() => handlePageChange(page)}
+                      onClick={() => handlePageChange(pageNum)}
                       disabled={loading}
                     >
-                      {page}
+                      {pageNum}
                     </button>
                   ))}
 
                   <button
                     type="button"
-                    className="permissionPagePaginationArrow"
+                    className="erPage__btn erPage__btn--reset"
                     onClick={goToNextPage}
                     disabled={loading || currentPage === totalPages}
                   >

@@ -178,6 +178,7 @@
   gap: 10px;
   background: #f4f5f9;
   border-radius: 8px;
+   margin-left: 20px;
   padding: 10px 16px;
 }
 
@@ -258,6 +259,12 @@
 .erPage__paginationControls .erPage__btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.erPage__btn--active {
+  background: #4f7bff;
+  color: #ffffff;
+  border-color: #4f7bff;
 }
 
 /* Table */
@@ -368,16 +375,27 @@
 }
 
 .erPage__dateRangePopup {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: 1000;
+  /* Positioned via inline top/left set in JS (viewport-clamped) on desktop.
+     Rendered through a portal into document.body so it's never clipped by
+     the filters card, table, or any other ancestor's overflow. */
+  position: fixed;
+  z-index: 10000;
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(20, 24, 40, 0.18);
   padding: 16px;
+  max-width: calc(100vw - 50px);
+  max-height: 85vh;
+  overflow-x: auto;
+  overflow-y: auto;
+  /* top: calc(100% + 8px); */
+  left: 50%;
+  top:50%;
+  /* transform: translateX(-50%); */
 }
-
+.rdrDefinedRangesWrapper{
+  display: none;
+}
 .erPage__dateRangeFooter {
   display: flex;
   align-items: center;
@@ -479,10 +497,14 @@
   }
 
   .erPage__dateRangePopup {
+    position: fixed;
+    top: 90px;
     left: 50%;
     transform: translateX(-50%);
     max-width: 95vw;
+    max-height: 80vh;
     overflow-x: auto;
+    overflow-y: auto;
   }
 }
 

@@ -4,6 +4,7 @@ import {
   getAllBookings,
   getBookingById,
   deleteBooking,
+  exportBookingReport,
 } from "./bookingThunk";
 
 const initialState = {
@@ -15,7 +16,7 @@ const initialState = {
   page: 1,
   limit: 10,
   totalPages: 1,
-
+  exportLoading: false,
   createLoading: false,
   listLoading: false,
   deleteLoading: false,
@@ -60,7 +61,20 @@ const bookingSlice = createSlice({
         state.createLoading = false;
         state.error = action.payload;
       });
+      // ============= Export ==============
+     builder
+     .addCase(exportBookingReport.pending, (state) => {
+      state.exportLoading = true;
+    })
 
+    .addCase(exportBookingReport.fulfilled, (state) => {
+      state.exportLoading = false;
+    })
+
+    .addCase(exportBookingReport.rejected, (state, action) => {
+      state.exportLoading = false;
+      state.error = action.payload;
+    });
     // ================= GET ALL =================
     builder
       .addCase(getAllBookings.pending, (state) => {
@@ -68,21 +82,22 @@ const bookingSlice = createSlice({
         state.error = null;
       })
       .addCase(getAllBookings.fulfilled, (state, action) => {
-  state.listLoading = false;
+        state.listLoading = false;
 
-  state.bookings = action.payload.data;
+        state.bookings = action.payload.data;
 
-  state.total = action.payload.pagination.total;
-  state.page = action.payload.pagination.page;
-  state.limit = action.payload.pagination.limit;
-  state.totalPages = action.payload.pagination.totalPages;
+        state.total = action.payload.pagination.total;
+        state.page = action.payload.pagination.page;
+        state.limit = action.payload.pagination.limit;
+        state.totalPages = action.payload.pagination.totalPages;
 
-  state.error = null;
-})
+        state.error = null;
+      })
       .addCase(getAllBookings.rejected, (state, action) => {
         state.listLoading = false;
         state.error = action.payload;
       });
+      // ============= export booking -=============
 
     // ================= GET BY ID =================
     builder
