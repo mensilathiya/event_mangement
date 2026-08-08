@@ -1,5 +1,5 @@
-import Sidebar from "../components/Sidebar";
-import Header from "../components/Header";
+import Sidebar from "../Components/Sidebar";
+import Header from "../Components/Header";
 import "../assets/CSS/DashboardLayout.css";
 
 /**
