@@ -27,7 +27,6 @@ const Booking = () => {
     listLoading,
     total,
     page,
-    event,
     limit,
     totalPages,
   } = useSelector((state) => state.booking);
@@ -46,6 +45,7 @@ const Booking = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState("10");
   const [openActionId, setOpenActionId] = useState(null);
+  const [actionMenuPos, setActionMenuPos] = useState(null);
   const [activePage, setActivePage] = useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [resendTarget, setResendTarget] = useState(null);
@@ -113,9 +113,41 @@ const Booking = () => {
     (total, booking) => total + Number(booking.amount || 0),
     0
   );
-  const toggleActionMenu = (id) => {
-    setOpenActionId((prev) => (prev === id ? null : id));
+  const toggleActionMenu = (id, event) => {
+    if (openActionId === id) {
+      setOpenActionId(null);
+      setActionMenuPos(null);
+      return;
+    }
+
+    const buttonRect = event.currentTarget.getBoundingClientRect();
+    const estimatedMenuHeight = 190; // approx height for 4 menu items
+    const spaceBelow = window.innerHeight - buttonRect.bottom;
+    const openUpward = spaceBelow < estimatedMenuHeight;
+
+    setActionMenuPos({
+      top: openUpward ? buttonRect.top : buttonRect.bottom,
+      right: window.innerWidth - buttonRect.right,
+      openUpward,
+    });
+    setOpenActionId(id);
   };
+
+  // reposition-safe: close the menu if the page scrolls or resizes,
+  // since the stored coordinates are viewport-relative
+  useEffect(() => {
+    if (openActionId === null) return;
+    const closeMenu = () => {
+      setOpenActionId(null);
+      setActionMenuPos(null);
+    };
+    window.addEventListener("scroll", closeMenu, true);
+    window.addEventListener("resize", closeMenu);
+    return () => {
+      window.removeEventListener("scroll", closeMenu, true);
+      window.removeEventListener("resize", closeMenu);
+    };
+  }, [openActionId]);
   // export booking
   const exportBookingToExcel = () => {
     const excelData = bookingRows.map((row, index) => ({
@@ -503,23 +535,46 @@ const Booking = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {!event ? (
-                      <tr>
-                        <td colSpan={10} className="bookingPageNoData">
-                          No Active Event Found
-                        </td>
-                      </tr>
-                    ) : bookingRows.length > 0 ? (
-                      bookingRows.map((row) => (
+                    {bookingRows.length > 0 ? (
+                      bookingRows.map((row, index) => (
                         <tr key={row._id}>
-                          {/* Existing row code */}
+                          <td className="bookingPage-hashCol">
+                            {(activePage - 1) * rowsPerPage + index + 1}
+                          </td>
+                          <td>{row.bookingNumber}</td>
+                          <td>{row.name}</td>
+                          <td>{row.mobileNumber}</td>
+                          <td>{row.eventId?.title}</td>
+                          <td>{row.ticketTypeId?.ticketName}</td>
+                          <td>{row.quantity}</td>
+                          <td>{row.amount}</td>
+                          <td>{row.createdBy?.name || "-"}</td>
 
                           <td>
                             <div className="bookingPage-actionWrapper">
-                              {/* Existing Action Button */}
+                              <button
+                                type="button"
+                                className="bookingPage-actionBtn"
+                                onClick={(event) => toggleActionMenu(row._id, event)}
+                              >
+                                Action <span className="bookingPage-actionCaret">&#9662;</span>
+                              </button>
 
-                              {openActionId === row._id && (
-                                <div className="bookingPage-actionMenu">
+                              {openActionId === row._id && actionMenuPos && (
+                                <div
+                                  className="bookingPage-actionMenu"
+                                  style={{
+                                    position: "fixed",
+                                    top: actionMenuPos.openUpward
+                                      ? undefined
+                                      : actionMenuPos.top + 4,
+                                    bottom: actionMenuPos.openUpward
+                                      ? window.innerHeight - actionMenuPos.top + 4
+                                      : undefined,
+                                    right: actionMenuPos.right,
+                                    left: "auto",
+                                  }}
+                                >
                                   <button
                                     type="button"
                                     className="bookingPage-actionMenuItem"
@@ -540,7 +595,7 @@ const Booking = () => {
                                     type="button"
                                     className="bookingPage-actionMenuItem"
                                     onClick={() => {
-                                      setResendTarget(row.mobile);
+                                      setResendTarget(row.mobileNumber);
                                       setOpenActionId(null);
                                     }}
                                   >

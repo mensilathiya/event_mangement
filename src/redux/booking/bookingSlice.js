@@ -70,8 +70,7 @@ const bookingSlice = createSlice({
       .addCase(getAllBookings.fulfilled, (state, action) => {
   state.listLoading = false;
 
-  state.event = action.payload.event;
-  state.bookings = action.payload.bookings;
+  state.bookings = action.payload.data;
 
   state.total = action.payload.pagination.total;
   state.page = action.payload.pagination.page;
