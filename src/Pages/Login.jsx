@@ -197,13 +197,6 @@ const Login = () => {
                   }
                   label="Remember Me"
                 />
-
-                <Link
-                  underline="hover"
-                  sx={{ cursor: "pointer", fontWeight: 600 }}
-                >
-                  Forgot Password?
-                </Link>
               </div>
 
               <Button

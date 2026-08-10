@@ -20,6 +20,7 @@ import { clearEntryReportState } from "../redux/entryReport/entryReportSlice";
 import { getDashboardSummary } from "../redux/dashboard/dashboardThunk";
 import useEventExpiryRefetch from "../hooks/useEventExpiryRefetch";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
 // Formats a Date object as "DD-MM-YYYY" — used for all frontend date
 // display (date-range filter input, popup footer, export filename). Does
@@ -581,7 +582,7 @@ export default function EntryReport() {
           <div className="erPage__titleBlock">
             <h1 className="erPage__title">Entry Report</h1>
             <div className="erPage__breadcrumb">
-              <span className="erPage__breadcrumbItem">Dashboard</span>
+             <Link to="/dashboard">Dashboard</Link>
               <span className="erPage__breadcrumbSep">-</span>
               <span className="erPage__breadcrumbItem erPage__breadcrumbItem--active">
                 Entry Report
@@ -894,17 +895,17 @@ export default function EntryReport() {
               </table>
             </div>
             {/* paginations */}
-            <div className="erPage__paginationBar">
-              <span className="erPage__paginationInfo">
+            <div className="permissionPagePagination">
+              <span className="permissionPagePaginationInfo">
                 Show {totalRecords === 0 ? 0 : startIndex + 1} - {endIndex} of {totalRecords}
               </span>
 
               {totalPages > 1 && (
-                <div className="erPage__paginationControls">
+                <div className="permissionPagePaginationControls">
 
                   <button
                     type="button"
-                    className="erPage__btn erPage__btn--reset"
+                    className="permissionPagePaginationArrow"
                     onClick={goToPreviousPage}
                     disabled={loading || currentPage === 1}
                   >
@@ -915,9 +916,9 @@ export default function EntryReport() {
                     <button
                       key={pageNum}
                       type="button"
-                      className={`erPage__btn ${currentPage === pageNum
-                          ? "erPage__btn--active"
-                          : "erPage__btn--reset"
+                      className={`permissionPagePaginationBtn ${currentPage === pageNum
+                          ? "permissionPagePaginationBtn--active"
+                          : "permissionPagePaginationBtn--reset"
                         }`}
                       onClick={() => handlePageChange(pageNum)}
                       disabled={loading}
@@ -928,7 +929,7 @@ export default function EntryReport() {
 
                   <button
                     type="button"
-                    className="erPage__btn erPage__btn--reset"
+                    className="permissionPagePaginationArrow"
                     onClick={goToNextPage}
                     disabled={loading || currentPage === totalPages}
                   >
@@ -937,7 +938,6 @@ export default function EntryReport() {
 
                 </div>
               )}
-
             </div>
           </div>
         </div>

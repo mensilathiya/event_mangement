@@ -11,7 +11,7 @@ import Login from "./Pages/Login";
 import DashboardPage from "./Pages/DashboardPage";
 import User from "./Pages/User";
 import Role from "./Pages/Role";
-import Permission from "./Pages/Permission";
+// import Permission from "./Pages/Permission";
 import Event from "./Pages/Event";
 import Booking from "./Pages/Booking";
 import ViewBooking from "./Pages/ViewBooking";
@@ -23,6 +23,7 @@ import TicketType from "./Components/TicketType";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Profile from "./Pages/Profile";
+import TopProgressLoader from "./Components/TopProgressLoader";
 function App() {
   const dispatch = useDispatch();
 
@@ -46,6 +47,8 @@ function App() {
       />
 
       <BrowserRouter>
+        <TopProgressLoader />
+
         <Routes>
 
           {/* Public Route */}
@@ -56,7 +59,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/user" element={<User />} />
             <Route path="/role" element={<Role />} />
-            <Route path="/permission" element={<Permission />} />
+            {/* <Route path="/permission" element={<Permission />} /> */}
             <Route path="/event" element={<Event />} />
             <Route path="/create-event" element={<CreateEvent />} />
             <Route path="/view-event/:id" element={<ViewEvent />} />

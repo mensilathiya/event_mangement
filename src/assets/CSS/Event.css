@@ -85,8 +85,9 @@ a{
   border-radius: 14px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   padding: 28px;
-  min-width: 0;
-  overflow: visible;
+  /* min-width: 0; */
+  min-height: 200px;
+  overflow-x: scroll;
 }
 
 .eventList__actionOverlay {
@@ -422,12 +423,6 @@ a{
     width: 100%;
     justify-content: center;
   }
-
-  /* Table scrolls horizontally only inside eventList__tableWrap */
-  .eventList__card {
-    overflow: visible;
-  }
-
   .eventList__tableWrap {
     overflow-x: auto;
     /* overflow-y: visible; */

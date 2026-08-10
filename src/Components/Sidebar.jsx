@@ -30,7 +30,7 @@ const menuItems = [
     submenu: [
       { label: 'Users', path: '/user' },
       { label: 'Roles', path: '/role' },
-      { label: 'Permissions', path: '/permission' },
+      // { label: 'Permissions', path: '/permission' },
     ],
   },
   {

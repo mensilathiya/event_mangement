@@ -153,11 +153,11 @@ const TicketType = () => {
                 {eventName}
               </h1>
               <div className="ticketType__breadcrumb">
-                <span>Dashboard</span>
+                <Link to="/dashboard">Dashboard</Link>
                 <span className="ticketType__breadcrumbSep">-</span>
-                <span className="ticketType__breadcrumbActive">
+                <Link to="/ticket-types" className="ticketType__breadcrumbActive">
                   Ticket Type
-                </span>
+                </Link>
               </div>
             </div>
 
@@ -190,6 +190,7 @@ const TicketType = () => {
                   <option value="10">10</option>
                   <option value="20">20</option>
                   <option value="50">50</option>
+                  <option value="100">100</option>
                 </select>
               </div>
 

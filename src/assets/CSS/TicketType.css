@@ -116,7 +116,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-top: 18px;
+  margin: 18px 0;
   font-size: 14px;
   color: #f0563f;
   text-decoration: none;
@@ -228,10 +228,12 @@
 /* ---------- Table wrapper: hidden overflow on desktop, scrolls only on tablet/mobile ---------- */
 
 .ticketType__tableWrapper {
-  width: 100%;
-  /* overflow-x: hidden; */
+ position: relative;
+ overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-   min-height: 120px;
+  padding-bottom: 80px; 
+  min-height: 120px;
 }
 
 /* Desktop: fixed layout + colgroup percentages guarantee the table always
@@ -243,7 +245,7 @@
   border-collapse: collapse;
 }
 
-.ticketType__colIndex {
+/* .ticketType__colIndex {
   width: 5%;
 }
 
@@ -273,7 +275,7 @@
 
 .ticketType__colAction {
   width: 8%;
-}
+} */
 
 .ticketType__th {
   text-align: left;

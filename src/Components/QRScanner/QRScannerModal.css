@@ -20,13 +20,17 @@
   --crmQr-accent-green-soft: rgba(0, 200, 83, 0.18);
 
   /* Result-state palette — each outcome gets its own distinct hue */
-  --crmQr-invalid: #d93025; /* red    — Invalid QR       */
+  --crmQr-invalid: #d93025;
+  /* red    — Invalid QR       */
   --crmQr-invalid-soft: rgba(217, 48, 37, 0.12);
-  --crmQr-used: #f59e0b; /* amber   — Ticket Used     */
+  --crmQr-used: #f59e0b;
+  /* amber   — Ticket Used     */
   --crmQr-used-soft: rgba(245, 158, 11, 0.14);
-  --crmQr-cancelled: #7c3aed; /* violet  — Ticket Cancelled */
+  --crmQr-cancelled: #7c3aed;
+  /* violet  — Ticket Cancelled */
   --crmQr-cancelled-soft: rgba(124, 58, 237, 0.12);
-  --crmQr-expired: #475569; /* slate   — Event Expired   */
+  --crmQr-expired: #475569;
+  /* slate   — Event Expired   */
   --crmQr-expired-soft: rgba(71, 85, 105, 0.14);
   --crmQr-loading: var(--crmQr-accent-purple);
   --crmQr-loading-soft: rgba(95, 37, 159, 0.12);
@@ -65,11 +69,9 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: radial-gradient(
-    circle at 50% 20%,
-    rgba(95, 37, 159, 0.35),
-    rgba(11, 15, 20, 0.85) 60%
-  );
+  background: radial-gradient(circle at 50% 20%,
+      rgba(95, 37, 159, 0.35),
+      rgba(11, 15, 20, 0.85) 60%);
   backdrop-filter: blur(6px);
   font-family: var(--crmQr-font);
   animation: crmQrFadeIn 0.22s ease-out;
@@ -79,6 +81,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -108,6 +111,7 @@
     opacity: 0;
     transform: translateY(16px) scale(0.97);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -120,11 +124,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 18px 20px;
-  background: linear-gradient(
-    135deg,
-    var(--crmQr-accent-purple) 0%,
-    var(--crmQr-accent-purple-dark) 100%
-  );
+  background: linear-gradient(135deg, #17a2b8, #0d7f91);
   flex-shrink: 0;
 }
 
@@ -293,12 +293,10 @@
   left: 4%;
   width: 92%;
   height: 2px;
-  background: linear-gradient(
-    90deg,
-    rgba(0, 200, 83, 0) 0%,
-    var(--crmQr-accent-green) 50%,
-    rgba(0, 200, 83, 0) 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(0, 200, 83, 0) 0%,
+      var(--crmQr-accent-green) 50%,
+      rgba(0, 200, 83, 0) 100%);
   box-shadow: 0 0 8px 1px var(--crmQr-accent-green-soft);
   animation: crmQrScanMove 2.1s ease-in-out infinite;
 }
@@ -308,10 +306,12 @@
     top: 6%;
     opacity: 0.4;
   }
+
   50% {
     top: 94%;
     opacity: 1;
   }
+
   100% {
     top: 6%;
     opacity: 0.4;
@@ -366,6 +366,7 @@
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -555,11 +556,9 @@
 
 .crmQrBtnPrimary {
   color: #ffffff;
-  background: linear-gradient(
-    135deg,
-    var(--crmQr-accent-purple) 0%,
-    var(--crmQr-accent-blue) 100%
-  );
+  background: linear-gradient(135deg,
+      var(--crmQr-accent-purple) 0%,
+      var(--crmQr-accent-blue) 100%);
   box-shadow: 0 8px 18px rgba(95, 37, 159, 0.28);
 }
 
@@ -646,6 +645,7 @@
 
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
+
   .crmQrOverlay,
   .crmQrModal,
   .crmQrScanLine,

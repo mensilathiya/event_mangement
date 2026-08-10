@@ -44,7 +44,78 @@ body {
   box-sizing: border-box;
 }
 
+/* pagination css */
+.permissionPagePagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 20px;
+  font-size: 13.5px;
+  color: #6b7085;
+}
 
+.permissionPagePaginationInfo {
+  color: #6b7085;
+  font-size: 13.5px;
+  white-space: nowrap;
+}
 
+.permissionPagePaginationControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.permissionPagePaginationArrow {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background-color: #f2f3f6;
+  color: #6b7085;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s ease;
+}
+
+.permissionPagePaginationArrow:hover:not(:disabled) {
+  background-color: #e5e6ec;
+}
+
+.permissionPagePaginationArrow:disabled {
+  cursor: not-allowed;
+  color: #c4c6d2;
+}
+
+.permissionPagePaginationBtn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background-color: transparent;
+  color: #6b7085;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.permissionPagePaginationBtn:hover {
+  background-color: #f2f3f6;
+}
+
+.permissionPagePaginationBtn--active,
+.permissionPagePaginationBtn--active:hover {
+  background-color: #3e97ff;
+  color: #ffffff;
+}
 
 

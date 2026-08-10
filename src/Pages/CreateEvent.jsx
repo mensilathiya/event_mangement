@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   FaArrowLeft,
   FaPlus,
@@ -281,7 +281,7 @@ export default function CreateEvent() {
         <div className="createEvent__header">
           <h1 className="createEvent__title">Create Event</h1>
           <div className="createEvent__breadcrumb">
-            <span>Dashboard</span>
+           <Link to="/dashboard">Dashboard</Link>
             <span className="createEvent__breadcrumbSep">-</span>
             <span className="createEvent__breadcrumbLink">Event</span>
             <span className="createEvent__breadcrumbLink">Create Event</span>

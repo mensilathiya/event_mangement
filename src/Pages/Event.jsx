@@ -206,7 +206,7 @@ const Event = () => {
             <div className="eventList__headerLeft">
               <h1 className="eventList__title">Event</h1>
               <div className="eventList__breadcrumb">
-                <span>Dashboard</span>
+                <Link to="/dashboard">Dashboard</Link>
                 <span className="eventList__breadcrumbSep">-</span>
                 <span className="eventList__breadcrumbActive">Event</span>
               </div>

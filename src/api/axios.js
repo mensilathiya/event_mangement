@@ -1,11 +1,27 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+  baseURL:
+    import.meta.env.VITE_API_URL || "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+let activeRequests = 0;
+
+const showLoader = () => {
+  activeRequests += 1;
+  window.dispatchEvent(new Event("api-loading-start"));
+};
+
+const hideLoader = () => {
+  activeRequests = Math.max(0, activeRequests - 1);
+
+  if (activeRequests === 0) {
+    window.dispatchEvent(new Event("api-loading-stop"));
+  }
+};
 
 api.interceptors.request.use(
   (config) => {
@@ -15,14 +31,24 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    showLoader();
+
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    hideLoader();
+    return Promise.reject(error);
+  }
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    hideLoader();
+    return response;
+  },
   (error) => {
+    hideLoader();
+
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");

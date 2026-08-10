@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import '../assets/CSS/Booking.css';
 import CreateBookingModal from "../Components/CreateBookingModal";
@@ -68,6 +68,14 @@ const Booking = () => {
   // button+menu is currently open — only ever attached to one wrapper
   // at a time, since only one menu can be open.
   const actionRef = useRef(null);
+  // Tracks which row's menu (if any) was opened by a CLICK, as opposed to
+  // just a hover. A pinned menu stays open when the mouse leaves the row
+  // and is only closed by: clicking its button again, clicking outside,
+  // Escape, or scroll/resize. A hover-only menu closes as soon as the
+  // mouse leaves the row. This lets hover and click share the single
+  // openActionId/actionMenuPos state below instead of needing two
+  // separate dropdown implementations.
+  const pinnedActionIdRef = useRef(null);
   const [activePage, setActivePage] = useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [resendTarget, setResendTarget] = useState(null);
@@ -143,24 +151,64 @@ const Booking = () => {
     (total, booking) => total + Number(booking.amount || 0),
     0
   );
+  // Computes the fixed-viewport position for a row's menu from its
+  // trigger element's rect. Shared by hover and click so both open the
+  // menu the exact same way — no duplicate positioning logic.
+  const computeActionMenuPos = (triggerEl) => {
+    const rect = triggerEl.getBoundingClientRect();
+    const estimatedMenuHeight = 190; // approx height for 4 menu items
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUpward = spaceBelow < estimatedMenuHeight;
+
+    return {
+      top: openUpward ? rect.top : rect.bottom,
+      right: window.innerWidth - rect.right,
+      openUpward,
+    };
+  };
+
+  const openActionMenu = (id, triggerEl) => {
+    setActionMenuPos(computeActionMenuPos(triggerEl));
+    setOpenActionId(id);
+  };
+
+  const closeActionMenu = () => {
+    setOpenActionId(null);
+    setActionMenuPos(null);
+    pinnedActionIdRef.current = null;
+  };
+
   const toggleActionMenu = (id, event) => {
+    // Clicking the trigger of the row whose menu is already pinned open
+    // closes it (requirement: click same button again → closes).
+    if (openActionId === id && pinnedActionIdRef.current === id) {
+      closeActionMenu();
+      return;
+    }
+    // Otherwise open this row's menu and pin it — clicking another row's
+    // button lands here too, which naturally replaces the previous
+    // openActionId/actionMenuPos, so the old menu closes and the new one
+    // opens (single source of truth, no leftover duplicate menu).
+    pinnedActionIdRef.current = id;
+    openActionMenu(id, event.currentTarget);
+  };
+
+  // Hover only opens/previews a menu; it never steals a menu the user
+  // has pinned open by clicking on a *different* row.
+  const handleActionMouseEnter = (id, event) => {
+    if (pinnedActionIdRef.current && pinnedActionIdRef.current !== id) return;
+    openActionMenu(id, event.currentTarget);
+  };
+
+  // Hover-only menus close on mouse leave; a click-pinned menu stays
+  // open until an explicit close (button click, outside click, Escape,
+  // scroll/resize) per the required click behavior.
+  const handleActionMouseLeave = (id) => {
+    if (pinnedActionIdRef.current === id) return;
     if (openActionId === id) {
       setOpenActionId(null);
       setActionMenuPos(null);
-      return;
     }
-
-    const buttonRect = event.currentTarget.getBoundingClientRect();
-    const estimatedMenuHeight = 190; // approx height for 4 menu items
-    const spaceBelow = window.innerHeight - buttonRect.bottom;
-    const openUpward = spaceBelow < estimatedMenuHeight;
-
-    setActionMenuPos({
-      top: openUpward ? buttonRect.top : buttonRect.bottom,
-      right: window.innerWidth - buttonRect.right,
-      openUpward,
-    });
-    setOpenActionId(id);
   };
 
   // Closes the open Action menu on: scrolling/resizing (stored
@@ -172,8 +220,7 @@ const Booking = () => {
     if (openActionId === null) return;
 
     const closeMenu = () => {
-      setOpenActionId(null);
-      setActionMenuPos(null);
+      closeActionMenu();
     };
 
     const handleOutsideClick = (event) => {
@@ -319,7 +366,7 @@ const Booking = () => {
               <div className="bookingPage-headerLeft">
                 <h1 className="bookingPage-title">Booking</h1>
                 <div className="bookingPage-breadcrumb">
-                  <span>Dashboard</span>
+                  <Link to="/dashboard">Dashboard</Link>
                   <span className="bookingPage-breadcrumbSep">-</span>
                   <span className="bookingPage-breadcrumbActive">Booking</span>
                 </div>
@@ -499,7 +546,7 @@ const Booking = () => {
                       setRowsPerPage(Number(e.target.value));
                       setActivePage(1);
                     }}
-                    className="eventList__pageSizeSelect"
+                    className="erPage__pageSizeSelect"
                   >
                     <option value={5}>5</option>
                     <option value={10}>10</option>
@@ -611,6 +658,8 @@ const Booking = () => {
                             <div
                               className="bookingPage-actionDropdownWrap"
                               ref={openActionId === row._id ? actionRef : null}
+                              onMouseEnter={(event) => handleActionMouseEnter(row._id, event)}
+                              onMouseLeave={() => handleActionMouseLeave(row._id)}
                             >
                               <button
                                 type="button"
@@ -646,7 +695,7 @@ const Booking = () => {
                                   <button
                                     type="button"
                                     className="bookingPage-actionMenuItem"
-                                    onClick={() => navigate(`/register-users/${row._id}`)}
+                                    onClick={() => window.open(`/register-users/${row._id}`, "_blank")}
                                   >
                                     Register Users
                                   </button>

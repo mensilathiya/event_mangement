@@ -251,7 +251,7 @@
   z-index: 15;
 }
 
-.permissionPagePagination {
+/* .permissionPagePagination {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -322,7 +322,7 @@
 .permissionPagePaginationActive:hover {
   background-color: #1976d2;
   color: #ffffff;
-}
+} */
 
 @media (max-width: 1023px) {
   .permissionPageMainArea {

@@ -58,6 +58,7 @@
   box-shadow: 0 2px 10px rgba(20, 24, 40, 0.05);
   padding: 24px;
   margin-bottom: 24px;
+  overflow-x: scroll;
 }
 
 /* Filters */
@@ -148,7 +149,7 @@
 
 .erPage__toolbarCenter {
   display: flex;
-  justify-content: center;
+  /* justify-content: center; */
   justify-self: center;
   width: 100%;
 }
@@ -160,25 +161,27 @@
 }
 
 .erPage__pageSizeSelect {
-  padding: 10px 14px;
-  border: 1px solid #e3e6ee;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #4a4f5c;
-  background: #fff;
-  outline: none;
-  cursor: pointer;
+      padding: 10px 14px;
+    border: none;
+    background-color: #f2f3f6;
+    border-radius: 8px;
+    font-size: 13.5px;
+    color: #1b2a4e;
+    outline: none;
+    cursor: pointer;
+    min-width: 90px;
+    margin-right: 20px;
 }
 
 .erPage__searchBox {
   width: 100%;
-  max-width: 420px;
+  max-width: 260px;
   display: flex;
   align-items: center;
   gap: 10px;
   background: #f4f5f9;
   border-radius: 8px;
-   margin-left: 20px;
+   /* margin-left: 20px; */
   padding: 10px 16px;
 }
 
