@@ -27,6 +27,16 @@ const entryReportSlice = createSlice({
       state.success = false;
       state.error = null;
       state.message = "";
+
+      // Previously this action only cleared transient loading/error flags.
+      // It was not dispatched anywhere in the codebase, so widening it to
+      // also reset the fetched report data is safe. EntryReport.jsx now
+      // dispatches this when the active event disappears (goes
+      // Inactive/Expired) while the user is on the page, so the old
+      // event's rows/pagination don't linger on screen looking valid.
+      state.entryReports = [];
+      state.pagination = null;
+      state.event = null;
     },
   },
 

@@ -30,7 +30,7 @@ import { LuScanQrCode } from "react-icons/lu";
 import { FaUsers } from "react-icons/fa";
 
 import EventIllustration from "../Components/EventIllustration";
-import { login } from "./../redux/slices/authSlice";
+import { login } from "../redux/auth/authSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 

@@ -13,10 +13,12 @@ import {
   getAllEntryReport,
   exportEntryReport,
 } from "../redux/entryReport/entryReportThunk";
+import { clearEntryReportState } from "../redux/entryReport/entryReportSlice";
 // Reusing the existing dashboard thunk so this page can obtain the active
 // event on its own, instead of depending on <DashboardPage /> having
 // already dispatched it. Same thunk DashboardPage already uses.
 import { getDashboardSummary } from "../redux/dashboard/dashboardThunk";
+import useEventExpiryRefetch from "../hooks/useEventExpiryRefetch";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
 // Formats a Date object as "DD-MM-YYYY" — used for all frontend date
@@ -171,6 +173,7 @@ export default function EntryReport() {
   if (mobileNumber) params.mobileNumber = mobileNumber;
   if (apiStartDate) params.startDate = apiStartDate;
   if (apiEndDate) params.endDate = apiEndDate;
+  if (searchTerm) params.search = searchTerm;
 
   return params;
 };
@@ -203,6 +206,62 @@ export default function EntryReport() {
     dispatch(getAllEntryReport(buildEntryReportParams(1)));
 
   }, [eventId, dispatch]);
+
+  // If the active event disappears (goes Inactive/Expired and the API no
+  // longer reports an eventId) while the user is already on this page, the
+  // fetch effect above simply stops firing — it never clears the old rows.
+  // Without this, the previous event's table/pagination would keep showing
+  // as if it were still valid. Clear it explicitly the moment eventId drops
+  // from a real value to none, so the page reflects "no active event"
+  // instead of stale data.
+  const prevEventIdRef = useRef(eventId);
+  useEffect(() => {
+    if (prevEventIdRef.current && !eventId) {
+      dispatch(clearEntryReportState());
+    }
+    prevEventIdRef.current = eventId;
+  }, [eventId, dispatch]);
+
+  // Auto-refetch when the active event's own end time is reached, so this
+  // page reflects Active -> Inactive/Expired automatically while the user
+  // stays on it — no manual browser refresh, no polling. Re-requests the
+  // dashboard summary (to pick up the new event/active-event state) and
+  // the entry report list for the current page/filters (not a reset),
+  // using the exact same thunks/params the rest of this page already uses.
+  useEventExpiryRefetch(eventEndDate ? eventEndDate.getTime() : null, () => {
+    dispatch(getDashboardSummary());
+    if (eventId) {
+      dispatch(getAllEntryReport(buildEntryReportParams(currentPage)));
+    }
+  });
+
+  // Skips the very first run of the toolbar-search effect (mount) and any
+  // run caused by handleReset/handleSearch programmatically clearing or
+  // resubmitting searchTerm, since those already dispatch their own fetch.
+  const skipSearchEffectRef = useRef(true);
+  // Lets handleSearch/handleReset cancel a pending debounced search so a
+  // stale duplicate call can't fire a few hundred ms after an explicit
+  // Search/Reset click.
+  const searchDebounceTimerRef = useRef(null);
+
+  // Toolbar "Search..." box — previously kept in React state only and
+  // never sent to the backend. Debounced so it doesn't fire on every
+  // keystroke, and always resets to page 1 like the main Search button.
+  useEffect(() => {
+    if (skipSearchEffectRef.current) {
+      skipSearchEffectRef.current = false;
+      return;
+    }
+    if (!eventId) return;
+
+    searchDebounceTimerRef.current = setTimeout(() => {
+      setPage(1);
+      dispatch(getAllEntryReport(buildEntryReportParams(1)));
+    }, 400);
+
+    return () => clearTimeout(searchDebounceTimerRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
   // Change page while keeping the currently applied filters intact.
   const handlePageSizeChange = (e) => {
@@ -366,6 +425,7 @@ export default function EntryReport() {
   };
   // search
  const handleSearch = () => {
+  if (searchDebounceTimerRef.current) clearTimeout(searchDebounceTimerRef.current);
   setPage(1);
 
   dispatch(
@@ -376,10 +436,16 @@ export default function EntryReport() {
 };
   // reset
   const handleReset = () => {
+    if (searchDebounceTimerRef.current) clearTimeout(searchDebounceTimerRef.current);
+    // Clearing searchTerm below would otherwise re-trigger the debounced
+    // search effect and fire a second, redundant request.
+    skipSearchEffectRef.current = true;
+
     setBookingId("");
     setMobileNumber("");
     setTicketId("");
     setName("");
+    setSearchTerm("");
     setDateRange("");
     setApiStartDate("");
     setApiEndDate("");
@@ -393,7 +459,7 @@ export default function EntryReport() {
     ]);
     setShowDatePicker(false);
     setPage(1);
-    // Reload default (unfiltered) data
+    // Reload default (unfiltered) data for the active event.
     dispatch(
   getAllEntryReport({
     page: 1,
@@ -412,6 +478,7 @@ export default function EntryReport() {
         ticketId,
         name,
         mobileNumber,
+        search: searchTerm,
         startDate: apiStartDate,
         endDate: apiEndDate,
       })
@@ -508,7 +575,7 @@ export default function EntryReport() {
     <div className="erPage_wrapper">
       <Sidebar />
       <div className="erPageMainArea">
-        <Header title="Permission" />
+        <Header title="Entry Report" />
         <div className="erPage__container">
           {/* Title + Breadcrumb */}
           <div className="erPage__titleBlock">
@@ -617,7 +684,7 @@ export default function EntryReport() {
                 onClick={handleSearch}
                 disabled={loading}
               >
-                Serch
+                Search
               </button>
               <button
                 className="erPage__btn erPage__btn--reset"
@@ -675,7 +742,7 @@ export default function EntryReport() {
                 <button
                   className="erPage__btn erPage__btn--export"
                   onClick={handleExport}
-                  disabled={exportLoading}
+                  disabled={exportLoading || !eventId}
                   aria-busy={exportLoading}
                 >
                   <svg

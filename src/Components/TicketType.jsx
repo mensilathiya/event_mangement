@@ -6,7 +6,6 @@ import Header from "./Header";
 import "../assets/CSS/TicketType.css";
 import { deleteTicketType, getAllTicketTypes } from "../redux/ticketType/ticketTypeThunk";
 import CreateTicketTypeModal from "./CreateTicketTypeModal";
-import DeleteTicketTypeModal from "./DeleteTicketTypeModal";
 import { FaChevronLeft, FaChevronRight, FaSearch } from "react-icons/fa";
 import Swal from "sweetalert2";
 import { clearTicketTypeState } from "../redux/ticketType/ticketTypeSlice";
@@ -33,8 +32,6 @@ const TicketType = () => {
   const {
     ticketTypes,
     total,
-    page,
-    limit,
     totalPages,
     loading,
     error,
@@ -44,9 +41,6 @@ const TicketType = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedTicketType, setSelectedTicketType] = useState(null);
-
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const isDeleteModalOpen = deleteTarget !== null;
 
   // ================= FETCH ON PAGE LOAD =================
   useEffect(() => {
@@ -85,9 +79,12 @@ const TicketType = () => {
     setOpenActionId((prev) => (prev === id ? null : id));
   };
 
-  const filteredData = (ticketTypes || []).filter((ticket) =>
-    (ticket.ticketName || "").toLowerCase().includes(search.toLowerCase())
-  );
+  // The backend already filters by `search` server-side (see
+  // ticketType.service.js). Re-filtering here client-side was redundant
+  // and could hide results the backend legitimately returned (e.g. if the
+  // backend search ever matches more than just ticketName). Render the
+  // server-provided list directly.
+  const rows = ticketTypes || [];
 
   const openCreateModal = () => {
     setIsEditMode(false);
@@ -107,14 +104,6 @@ const TicketType = () => {
     setSelectedTicketType(null);
   };
 
-  const openDeleteModal = (ticket) => {
-    setDeleteTarget(ticket);
-    setOpenActionId(null);
-  };
-
-  const closeDeleteModal = () => {
-    setDeleteTarget(null);
-  };
   // delete modal
   const handleDelete = async (ticket) => {
     const result = await Swal.fire({
@@ -258,7 +247,7 @@ const TicketType = () => {
                     </tr>
                   )}
 
-                  {!loading && !error && filteredData.map((ticket, index) => (
+                  {!loading && !error && rows.map((ticket, index) => (
                     <tr key={ticket._id} className="ticketType__tr">
                       <td className="ticketType__td">{index + 1}</td>
                       <td className="ticketType__td ticketType__tdName">
@@ -279,7 +268,7 @@ const TicketType = () => {
                         {ticket.availableCount}
                       </td>
                       <td className="ticketType__td">
-                        {ticket.createdBy?.name || ticket.createdOn || "-"}
+                        {ticket.createdBy?.name || "-"}
                       </td>
                       <td className="ticketType__td ticketType__tdAction">
                         <div className="ticketType__actionDropdown">
@@ -314,7 +303,7 @@ const TicketType = () => {
                     </tr>
                   ))}
 
-                  {!loading && !error && filteredData.length === 0 && (
+                  {!loading && !error && rows.length === 0 && (
                     <tr>
                       <td
                         className="ticketType__td ticketType__emptyRow"
@@ -384,14 +373,10 @@ const TicketType = () => {
         eventName={eventName}
         isEditMode={isEditMode}
         selectedTicketType={selectedTicketType}
+        currentPage={currentPage}
+        rowsPerPage={rowsPerPage}
+        search={search}
       />
-
-      {/* <DeleteTicketTypeModal
-        isOpen={isDeleteModalOpen}
-        onClose={closeDeleteModal}
-        ticketTypeId={deleteTarget?._id}
-        ticketName={deleteTarget?.ticketName}
-      /> */}
     </div>
   );
 };

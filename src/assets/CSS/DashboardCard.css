@@ -32,6 +32,10 @@
   text-align: left;
 }
 
+.cardAmountSecondary {
+  text-align: right;
+}
+
 .cardAmountValue {
   color: #1b2a4e;
   font-size: 30px;
@@ -85,6 +89,7 @@
   color: #1b2a4e;
   font-size: 14px;
   font-weight: 500;
+  word-break: break-word;
 }
 
 .rowValue {
@@ -98,6 +103,13 @@
   color: #9a9ca8;
   font-size: 14px;
   padding: 14px 0;
+}
+
+.cardNote {
+  color: #1b2a4e;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 4px 0 0 0;
 }
 
 .cardSkeleton {
@@ -149,5 +161,15 @@
 
   .cardAmountValue {
     font-size: 24px;
+  }
+
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .cardAmountSecondary {
+    text-align: left;
   }
 }

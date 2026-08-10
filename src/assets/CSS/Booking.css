@@ -419,7 +419,11 @@
   flex-direction: column;
   gap: 2px;
   min-width: 120px;
-  z-index: 20;
+  /* Menu renders as position:fixed via inline style at click time, so it
+     can visually sit over the Sidebar (z-index: 1001) or Header
+     (z-index: 900). Needs to be above both or it renders invisibly
+     behind them despite being "open" in state. */
+  z-index: 1100;
 }
 
 .bookingPage-actionMenuItem {

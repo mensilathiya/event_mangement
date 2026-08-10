@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 
-import { getProfile } from "./redux/slices/authSlice";
+import { getProfile } from "./redux/auth/authSlice";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
 
@@ -63,7 +63,7 @@ function App() {
             <Route path="/ticket-type/:eventId" element={<TicketType />} />
             <Route path="/booking" element={<Booking />} />
             <Route path="/view-booking/:id" element={<ViewBooking />} />
-            <Route path="/register-users" element={<RegisterUsers />} />
+            <Route path="/register-users/:id" element={<RegisterUsers />} />
             <Route path="/entry-report" element={<EntryReport />} />
             <Route path="/profile" element={<Profile />} />
           </Route>

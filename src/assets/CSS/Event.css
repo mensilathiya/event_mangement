@@ -156,10 +156,28 @@ a{
 .eventList__table {
   width: 100%;
   border-collapse: collapse;
-  overflow: auto;
-   /* min-width: 1100px;  */
-   table-layout: auto;
+  /* table-layout:auto let the browser size columns purely from content,
+     which produced uneven/misaligned columns once cell content varied in
+     length (e.g. after adding the Created By column and the longer
+     formatted date/time strings). Switching to table-layout:fixed with an
+     explicit colgroup (below) gives every column a predictable width —
+     the same approach already used successfully in TicketType.css. */
+  table-layout: fixed;
+  /* Matches the sum of the colgroup widths below (50+220+175+175+160+130+90+110+140).
+     Below this width .eventList__tableWrap scrolls horizontally instead of
+     compressing columns. */
+  min-width: 1250px;
 }
+
+.eventList__colHash { width: 50px; }
+.eventList__colTitle { width: 220px; }
+.eventList__colStart { width: 175px; }
+.eventList__colEnd { width: 175px; }
+.eventList__colVenue { width: 160px; }
+.eventList__colCreatedBy { width: 130px; }
+.eventList__colActive { width: 90px; }
+.eventList__colCreatedOn { width: 110px; }
+.eventList__colAction { width: 140px; }
 
 .eventList__table thead th {
   text-align: left;
@@ -267,10 +285,12 @@ a{
   border: none;
   border-radius: 8px;
   height: 38px;
+  min-width: 96px;
   padding: 0 16px;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+  white-space: nowrap;
   transition: background-color 0.2s ease;
 }
 
@@ -283,9 +303,19 @@ a{
 }
 
 .eventList__actionMenu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  /* Root cause of the original clipping bug: .eventList__tableWrap needs
+     overflow-x:auto for horizontal scrolling on narrow screens, and CSS
+     has no way to make one axis scrollable while leaving the other
+     genuinely "visible" on the same element — so overflow-y ends up
+     clipping too, and z-index cannot override that (z-index only affects
+     stacking order, not whether an ancestor's overflow clips a
+     descendant). The fix is to not be a descendant of that clipped box at
+     all: the menu is rendered via a React portal straight into
+     document.body (see Event.jsx), positioned here as
+     `position: fixed` with per-instance `top`/`right` set inline from the
+     trigger button's own getBoundingClientRect(). z-index is high because
+     it now sits in its own stacking context directly under <body>. */
+  position: fixed;
   background-color: #ffffff;
   border-radius: 10px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
@@ -294,7 +324,8 @@ a{
   flex-direction: column;
   gap: 4px;
   min-width: 150px;
-  z-index: 9999;
+  white-space: nowrap;
+  z-index: 99999;
 }
 
 .eventList__dropdown {
@@ -354,9 +385,6 @@ a{
 /* Tablet and below: table needs real width to stay legible,
    so it scrolls horizontally inside eventList__tableWrap only */
 @media (max-width: 1024px) {
-    .eventList__table {
-    min-width: 1100px;
-  }
   .eventList__tableWrap {
     overflow-x: auto;
   }
@@ -388,7 +416,10 @@ a{
   }
 
   .eventList__createBtn {
-    width: 50%;
+    /* Was 50% — inconsistent with the equivalent Create button on the
+       Ticket Type page (.ticketType__createBtn), which already goes
+       full width at this breakpoint. */
+    width: 100%;
     justify-content: center;
   }
 
@@ -400,11 +431,6 @@ a{
   .eventList__tableWrap {
     overflow-x: auto;
     /* overflow-y: visible; */
-  }
-
-  /* Dropdown stays visible above the table at every screen size */
-  .eventList__actionMenu {
-    z-index: 9999;
   }
 
   .eventList__footer {

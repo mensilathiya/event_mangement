@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import "../assets/CSS/DeleteBookingModal.css";
-import { deleteBooking, getAllBookings } from "../redux/booking/bookingThunk";
+import { deleteBooking } from "../redux/booking/bookingThunk";
 import { showError, showSuccess } from "../utilits/toast";
 
 export default function DeleteBookingModal({ bookingId,
@@ -71,9 +71,6 @@ export default function DeleteBookingModal({ bookingId,
             onChange={handleRemarkChange}
             disabled={isSubmitting}
           />
-          {/* {remarkError && (
-            <p className="bookingDeleteErrorText">{remarkError}</p>
-          )} */}
         </div>
 
         <div className="bookingDeleteFooter">

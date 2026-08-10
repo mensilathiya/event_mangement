@@ -37,6 +37,7 @@ export const getAllBookings = createAsyncThunk(
       status = "",
       fromDate = "",
       toDate = "",
+      search = "",
     } = {},
     thunkAPI
   ) => {
@@ -52,6 +53,7 @@ export const getAllBookings = createAsyncThunk(
         status,
         fromDate,
         toDate,
+        search,
       });
 
       return response;
@@ -76,6 +78,7 @@ export const getBookingById = createAsyncThunk(
     }
   }
 );
+
 // ================= EXPORT BOOKINGS =================
 export const exportBookingReport = createAsyncThunk(
   "booking/exportBookingReport",
@@ -108,6 +111,7 @@ export const exportBookingReport = createAsyncThunk(
     }
   }
 );
+
 // ================= DELETE BOOKING =================
 export const deleteBooking = createAsyncThunk(
   "booking/deleteBooking",

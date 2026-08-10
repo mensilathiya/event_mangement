@@ -1,0 +1,291 @@
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { loginApi } from "../../services/authService";
+import { getProfileApi } from "../../services/authService";
+import { updateProfileApi } from "../../services/authService";
+import { resetPasswordApi } from "../../services/authService";
+import { logoutApi } from "../../services/authService";
+
+// post api login
+export const login = createAsyncThunk(
+  "auth/login",
+  async (data, thunkAPI) => {
+    try {
+      return await loginApi(data);
+    } catch (error) {
+      // Always trust the backend's actual message when present. The
+      // backend intentionally returns the SAME generic message
+      // ("Invalid email/mobile or password") whether the username or
+      // the password was wrong — that's a deliberate security choice
+      // to avoid leaking which credential was incorrect. The frontend
+      // must never relabel that as something more specific (e.g.
+      // "Invalid username") and must never guess based on its own logic.
+      const backendMessage = error.response?.data?.message;
+
+      if (backendMessage) {
+        return thunkAPI.rejectWithValue(backendMessage);
+      }
+
+      if (!error.response) {
+        // Request never reached the server (offline, DNS failure, CORS, etc.)
+        return thunkAPI.rejectWithValue(
+          "Network error. Please check your connection and try again."
+        );
+      }
+
+      // Server responded but without a usable message (e.g. bare 500)
+      return thunkAPI.rejectWithValue(
+        "Something went wrong while signing in. Please try again."
+      );
+    }
+  }
+);
+
+//get api login
+export const getProfile = createAsyncThunk(
+  "auth/profile",
+
+  async (_, thunkAPI) => {
+    try {
+      return await getProfileApi();
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message
+      );
+    }
+  }
+);
+
+// put api update profile — accepts ONLY { name, email, mobile }
+export const updateProfile = createAsyncThunk(
+  "auth/updateProfile",
+  async (data, thunkAPI) => {
+    try {
+      return await updateProfileApi(data);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Failed to update profile"
+      );
+    }
+  }
+);
+
+// post api reset password — accepts ONLY
+// { currentPassword, newPassword, confirmPassword }
+export const resetPassword = createAsyncThunk(
+  "auth/resetPassword",
+  async (data, thunkAPI) => {
+    try {
+      return await resetPasswordApi(data);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Failed to reset password"
+      );
+    }
+  }
+);
+
+// post api logout — best-effort backend notification only. The backend
+// uses stateless JWT (confirmed: it does nothing except return
+// { success: true }), so the UI never waits on this. Local logout
+// (clearAuth) is what actually logs the user out and is dispatched
+// synchronously by the caller, independent of this thunk's result.
+export const logout = createAsyncThunk(
+  "auth/logout",
+  async (_, thunkAPI) => {
+    try {
+      return await logoutApi();
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Logout failed"
+      );
+    }
+  }
+);
+
+// Shared local cleanup. Used by the synchronous clearAuth reducer (the
+// instant path, dispatched directly by the UI) AND as a safety net by
+// logout.fulfilled/logout.rejected in case something dispatches the
+// logout thunk directly without clearing first — either way the result
+// is the same, nothing is duplicated.
+const clearAuthState = (state) => {
+  state.user = null;
+  state.token = null;
+  state.loading = false;
+  state.error = null;
+
+  state.profile = null;
+  state.profileLoading = false;
+  state.profileError = null;
+
+  state.updateLoading = false;
+  state.updateError = null;
+
+  state.resetPasswordLoading = false;
+  state.resetPasswordError = null;
+  state.resetPasswordSuccess = null;
+
+  state.logoutLoading = false;
+
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+};
+
+const authSlice = createSlice({
+  name: "auth",
+
+  initialState: {
+    user: JSON.parse(localStorage.getItem("user")) || null,
+    token: localStorage.getItem("token") || null,
+    loading: false,
+    error: null,
+
+    // Get Profile state — kept separate from login's loading/error so
+    // fetching the profile never affects the Login page's spinner/alert.
+    profile: null,
+    profileLoading: false,
+    profileError: null,
+
+    // Update Profile state — kept separate from both of the above so
+    // editing the profile never affects the initial page-load spinner
+    // or the Login page's loading/error.
+    updateLoading: false,
+    updateError: null,
+
+    // Reset Password state — passwords themselves are NEVER stored here,
+    // only the request status/message.
+    resetPasswordLoading: false,
+    resetPasswordError: null,
+    resetPasswordSuccess: null,
+
+    // Logout state
+    logoutLoading: false,
+  },
+
+  reducers: {
+    // Called when the Edit Profile modal opens, so a stale error from a
+    // previous failed attempt doesn't reappear on a fresh open.
+    resetProfileUpdateState: (state) => {
+      state.updateLoading = false;
+      state.updateError = null;
+    },
+
+    // Called when the Reset Password form opens/closes, so a stale
+    // success/error message from a previous attempt doesn't linger.
+    resetPasswordState: (state) => {
+      state.resetPasswordLoading = false;
+      state.resetPasswordError = null;
+      state.resetPasswordSuccess = null;
+    },
+
+    // Instant, synchronous local logout. This is what the UI dispatches
+    // directly — it does NOT wait on any network request, so the user
+    // is logged out and free to navigate immediately.
+    clearAuth: (state) => {
+      clearAuthState(state);
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(login.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+
+      .addCase(login.fulfilled, (state, action) => {
+        state.loading = false;
+
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+
+        // Save token
+        localStorage.setItem(
+          "token",
+          action.payload.token
+        );
+
+        // Save user
+        localStorage.setItem(
+          "user",
+          JSON.stringify(action.payload.user)
+        );
+      })
+
+      .addCase(login.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      .addCase(getProfile.pending, (state) => {
+        state.profileLoading = true;
+        state.profileError = null;
+      })
+
+      .addCase(getProfile.fulfilled, (state, action) => {
+        state.profileLoading = false;
+        // Backend response shape is { success, data }, not { user }.
+        // data never includes password (backend excludes it).
+        state.profile = action.payload.data;
+      })
+
+      .addCase(getProfile.rejected, (state, action) => {
+        state.profileLoading = false;
+        state.profileError = action.payload;
+      })
+
+      .addCase(updateProfile.pending, (state) => {
+        state.updateLoading = true;
+        state.updateError = null;
+      })
+
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.updateLoading = false;
+        // Update API already returns the updated Admin in { data },
+        // so we use it directly instead of firing another getProfile().
+        state.profile = action.payload.data;
+      })
+
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.updateLoading = false;
+        state.updateError = action.payload;
+      })
+
+      .addCase(resetPassword.pending, (state) => {
+        state.resetPasswordLoading = true;
+        state.resetPasswordError = null;
+        state.resetPasswordSuccess = null;
+      })
+
+      .addCase(resetPassword.fulfilled, (state, action) => {
+        state.resetPasswordLoading = false;
+        // Reset Password does not touch name/email/mobile/role/status,
+        // so state.profile is intentionally left untouched here.
+        state.resetPasswordSuccess =
+          action.payload?.message || "Password reset successfully";
+      })
+
+      .addCase(resetPassword.rejected, (state, action) => {
+        state.resetPasswordLoading = false;
+        state.resetPasswordError = action.payload;
+      })
+
+      .addCase(logout.pending, (state) => {
+        state.logoutLoading = true;
+      })
+
+      // Safety net only — under normal use the UI has already called
+      // clearAuth() synchronously before this ever settles.
+      .addCase(logout.fulfilled, (state) => {
+        clearAuthState(state);
+      })
+
+      .addCase(logout.rejected, (state) => {
+        clearAuthState(state);
+      });
+  },
+
+});
+
+export const { resetProfileUpdateState, resetPasswordState, clearAuth } =
+  authSlice.actions;
+
+export default authSlice.reducer;

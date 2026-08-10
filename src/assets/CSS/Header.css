@@ -49,6 +49,30 @@
   transform: scale(.98);
 }
 
+.logoutButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #1b2a4e;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background-color .2s ease, opacity .2s ease;
+}
+
+.logoutButton:hover {
+  background: #f4f4f7;
+}
+
+.logoutButton:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
 .hamburgerButton {
   display: none;
   background: transparent;

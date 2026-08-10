@@ -171,3 +171,98 @@
     margin-top: -50px;
   }
 }
+
+/* ============== Dynamic registration additions ============== */
+
+.bookingRegister-statusText {
+  color: #ffffff;
+  padding: 24px 40px;
+  margin: 0;
+}
+
+.bookingRegister-unavailableText {
+  color: #9a9ca8;
+  font-size: 13.5px;
+  margin: 0;
+  text-align: center;
+}
+
+.bookingRegister-photoPreviewImage {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Registered-member card body — nested inside the same .bookingRegister-card
+   grid-item + MEMBER label wrapper as the pending form's .bookingRegister-
+   cardBody, so every slot shares one grid structure. */
+.bookingRegister-registeredCard {
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 20px 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.bookingRegister-registeredAvatar {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  border-radius: 50%;
+  background-color: #d7d9e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.bookingRegister-registeredAvatarIcon {
+  width: 28px;
+  height: 28px;
+}
+
+.bookingRegister-registeredAvatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bookingRegister-registeredInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.bookingRegister-registeredName {
+  color: #1b2a4e;
+  font-weight: 700;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookingRegister-registeredMobile {
+  color: #1976d2;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.bookingRegister-registeredQr {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+@media (max-width: 700px) {
+  .bookingRegister-registeredCard {
+    padding: 16px 18px;
+  }
+}

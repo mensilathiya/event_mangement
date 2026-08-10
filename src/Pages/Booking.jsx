@@ -11,14 +11,35 @@ import { DateRange } from 'react-date-range';
 import { format } from 'date-fns';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
 import { exportBookingReport, getAllBookings } from "../redux/booking/bookingThunk";
 import { getAllEvents } from "../redux/event/eventThunk";
-import { FaChevronLeft, FaChevronRight, FaSearch } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+
+// Formats a createdAt value as "DD-MM-YYYY, <local time>" for the "Created
+// By" column. Returns "-" for missing/invalid values so nothing renders as
+// "Invalid Date".
+const formatCreatedAt = (value) => {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "-";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}, ${d.toLocaleTimeString()}`;
+};
 
 const columns = ["ID", "Name", "Mobile Number", "Event", "Ticket", "Qty", "Amount", "Created By"];
-const pageNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+
+const defaultFilters = {
+  bookingId: "",
+  mobileNumber: "",
+  name: "",
+  eventId: "",
+  status: "Success",
+  fromDate: "",
+  toDate: "",
+  search: "",
+};
 
 const Booking = () => {
   const dispatch = useDispatch();
@@ -26,8 +47,6 @@ const Booking = () => {
     bookings,
     listLoading,
     total,
-    page,
-    limit,
     totalPages,
   } = useSelector((state) => state.booking);
 
@@ -36,63 +55,74 @@ const Booking = () => {
 
   const [range, setRange] = useState([
     {
-      startDate: new Date(2026, 5, 22),
-      endDate: new Date(2026, 6, 21),
+      startDate: new Date(),
+      endDate: new Date(),
       key: 'selection',
     },
   ]);
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [rowsPerPage, setRowsPerPage] = useState("10");
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [openActionId, setOpenActionId] = useState(null);
   const [actionMenuPos, setActionMenuPos] = useState(null);
+  // Anchors outside-click detection to whichever row's action
+  // button+menu is currently open — only ever attached to one wrapper
+  // at a time, since only one menu can be open.
+  const actionRef = useRef(null);
   const [activePage, setActivePage] = useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [resendTarget, setResendTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const { events } = useSelector((state) => state.event);
-  const [filters, setFilters] = useState({
-    bookingId: "",
-    mobileNumber: "",
-    name: "",
-    eventId: "",
-    status: "Success",
-    fromDate: "",
-    toDate: "",
-  });
+  // `filters` is the draft form state bound to the inputs — updates on
+  // every keystroke but does NOT by itself trigger a fetch.
+  // `appliedFilters` is what's actually sent to the API — only updated by
+  // an explicit Search/Reset (or, for the toolbar quick-search, after a
+  // short debounce), so typing in Booking Id/Mobile/Name no longer fires
+  // a request on every keystroke.
+  const [filters, setFilters] = useState(defaultFilters);
+  const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
+  // Single source of truth for fetching the list: every handler below only
+  // updates state (activePage / rowsPerPage / appliedFilters); this effect
+  // is the only place that dispatches getAllBookings, so no handler needs
+  // to (and none now does) dispatch it directly — avoiding duplicate calls.
+  useEffect(() => {
+    dispatch(
+      getAllBookings({
+        page: activePage,
+        limit: rowsPerPage,
+        ...appliedFilters,
+      })
+    );
+  }, [dispatch, activePage, rowsPerPage, appliedFilters]);
   const handleFilterChange = (field) => (e) => {
     setFilters((prev) => ({
       ...prev,
       [field]: e.target.value,
     }));
   };
-  // Debounce the search term so we don't fire an API call on every keystroke
-  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  // Skips the very first run of the toolbar-search debounce effect (mount)
+  // and any run caused by handleReset clearing filters.search, since Reset
+  // already applies its own fetch via appliedFilters.
+  const skipToolbarSearchEffectRef = useRef(true);
+  // Lets handleSearch/handleReset cancel a pending debounced search so a
+  // stale duplicate request can't fire shortly after an explicit
+  // Search/Reset click.
+  const searchDebounceTimerRef = useRef(null);
+  // Toolbar "Search..." box — debounced so it doesn't fire a request on
+  // every keystroke, and always resets to page 1 like the main Search
+  // button.
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-    }, 500);
-    return () => clearTimeout(handler);
-  }, [searchTerm]);
-
-  // Reset to page 1 whenever the (debounced) search term changes
-  useEffect(() => {
-    setActivePage(1);
-  }, [debouncedSearch]);
-
-  // Guard against firing a duplicate request for the same params
-  // (e.g. React StrictMode double-invoke, or dependency reference churn)
-  const lastFetchedParamsRef = useRef(null);
-  // get all 
-  useEffect(() => {
-    dispatch(
-      getAllBookings({
-        page: activePage,
-        limit: rowsPerPage,
-        ...filters,
-      })
-    );
-  }, [dispatch, activePage, rowsPerPage]);
+    if (skipToolbarSearchEffectRef.current) {
+      skipToolbarSearchEffectRef.current = false;
+      return;
+    }
+    searchDebounceTimerRef.current = setTimeout(() => {
+      setActivePage(1);
+      setAppliedFilters((prev) => ({ ...prev, search: filters.search }));
+    }, 400);
+    return () => clearTimeout(searchDebounceTimerRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.search]);
   // events
   useEffect(() => {
     dispatch(
@@ -133,49 +163,64 @@ const Booking = () => {
     setOpenActionId(id);
   };
 
-  // reposition-safe: close the menu if the page scrolls or resizes,
-  // since the stored coordinates are viewport-relative
+  // Closes the open Action menu on: scrolling/resizing (stored
+  // coordinates are viewport-relative so they'd go stale), a click
+  // outside the open row's button+menu, or Escape. All four listeners
+  // are only attached while a menu is actually open, and all four are
+  // torn down together — no duplicate listeners, no leaks.
   useEffect(() => {
     if (openActionId === null) return;
+
     const closeMenu = () => {
       setOpenActionId(null);
       setActionMenuPos(null);
     };
+
+    const handleOutsideClick = (event) => {
+      // Click was on the open row's button or inside its menu — let
+      // that element's own onClick handle open/close instead, so this
+      // listener doesn't fight with the button's toggle.
+      if (actionRef.current && actionRef.current.contains(event.target)) {
+        return;
+      }
+      closeMenu();
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    };
+
     window.addEventListener("scroll", closeMenu, true);
     window.addEventListener("resize", closeMenu);
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleKeyDown);
+
     return () => {
       window.removeEventListener("scroll", closeMenu, true);
       window.removeEventListener("resize", closeMenu);
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [openActionId]);
   // handel search
   const handleSearch = () => {
-    if (activePage !== 1) {
-      setActivePage(1);
-      return;
-    }
-
-    dispatch(
-      getAllBookings({
-        page: 1,
-        limit: rowsPerPage,
-        ...filters,
-      })
-    );
+    // Cancel a pending debounced toolbar search so it can't fire again
+    // moments later with a now-stale value.
+    if (searchDebounceTimerRef.current) clearTimeout(searchDebounceTimerRef.current);
+    setAppliedFilters(filters);
+    setActivePage(1);
   };
   // handel reset
   const handleReset = () => {
-    const resetFilters = {
-      bookingId: "",
-      mobileNumber: "",
-      name: "",
-      eventId: "",
-      status: "Success",
-      fromDate: "",
-      toDate: "",
-    };
+    if (searchDebounceTimerRef.current) clearTimeout(searchDebounceTimerRef.current);
+    // Clearing filters.search below would otherwise re-trigger the
+    // debounced search effect and fire a second, redundant request.
+    skipToolbarSearchEffectRef.current = true;
 
-    setFilters(resetFilters);
+    setFilters(defaultFilters);
+    setAppliedFilters(defaultFilters);
 
     setRange([
       {
@@ -186,48 +231,29 @@ const Booking = () => {
     ]);
 
     setActivePage(1);
-
-    dispatch(
-      getAllBookings({
-        page: 1,
-        limit: rowsPerPage,
-        ...resetFilters,
-      })
-    );
   };
   // search
   const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-    setActivePage(1);
+    const value = e.target.value;
+
+    setFilters((prev) => ({
+      ...prev,
+      search: value,
+    }));
   };
-  // fetch bokings
+  // fetch bokings — used to refresh the list after actions that don't
+  // change activePage/rowsPerPage/appliedFilters (e.g. after creating or
+  // deleting a booking), so the automatic effect above wouldn't refire on
+  // its own.
   const fetchBookings = () => {
     dispatch(
       getAllBookings({
         page: activePage,
         limit: rowsPerPage,
-        search: searchTerm,
-        ...filters,
+        ...appliedFilters,
       })
     );
   };
-  // api call
-  useEffect(() => {
-    dispatch(
-      getAllBookings({
-        page: activePage,
-        limit: rowsPerPage,
-        search: searchTerm,
-        ...filters,
-      })
-    );
-  }, [
-    dispatch,
-    activePage,
-    rowsPerPage,
-    searchTerm,
-    filters,
-  ]);
   // pagination
   const startIndex =
     total === 0 ? 0 : (activePage - 1) * rowsPerPage;
@@ -251,23 +277,36 @@ const Booking = () => {
       setActivePage((prev) => prev + 1);
     }
   };
+  // If filtering/search shrinks the result set so the current page no
+  // longer exists, automatically fall back to the last valid page. This
+  // just corrects activePage — the fetch effect above then refetches with
+  // the corrected page on its own, so no direct dispatch is needed here.
+  useEffect(() => {
+    if (listLoading) return;
+    if (total === 0) return;
+    if (totalPages > 0 && activePage > totalPages) {
+      setActivePage(totalPages);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalPages, total]);
   // export booking
   const exportLoading = useSelector(
     (state) => state.booking.exportLoading
   );
   const handleExport = () => {
-  const params = {
-    bookingId: filters.bookingId || "",
-    mobileNumber: filters.mobileNumber || "",
-    name: filters.name || "",
-    eventId: filters.eventId || "",
-    status: filters.status || "",
-    fromDate: filters.fromDate || "",
-    toDate: filters.toDate || "",
-  };
+    const params = {
+      bookingId: appliedFilters.bookingId || "",
+      mobileNumber: appliedFilters.mobileNumber || "",
+      name: appliedFilters.name || "",
+      eventId: appliedFilters.eventId || "",
+      status: appliedFilters.status || "",
+      fromDate: appliedFilters.fromDate || "",
+      toDate: appliedFilters.toDate || "",
+      search: appliedFilters.search || "",
+    };
 
-  dispatch(exportBookingReport(params));
-};
+    dispatch(exportBookingReport(params));
+  };
   return (
     <>
 
@@ -332,14 +371,13 @@ const Booking = () => {
                 >
                   <option value="">All Events</option>
 
-                  {events?.map((event) => (
-                    <option
-                      key={event._id}
-                      value={event._id}
-                    >
-                      {event.title}
-                    </option>
-                  ))}
+                  {events
+                    ?.filter((event) => event.isActive === true)
+                    .map((event) => (
+                      <option key={event._id} value={event._id}>
+                        {event.title}
+                      </option>
+                    ))}
                 </select>
 
                 {/* Date Range */}
@@ -455,50 +493,51 @@ const Booking = () => {
             <div className="bookingPage-card">
               <div className="erPage__tableToolbar">
                 <div className="erPage__toolbarLeft">
-                <select
-                  value={rowsPerPage}
-                  onChange={(e) => {
-                    setRowsPerPage(Number(e.target.value));
-                    setActivePage(1);
-                  }}
-                  className="eventList__pageSizeSelect"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setActivePage(1);
+                    }}
+                    className="eventList__pageSizeSelect"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
 
                   <div className="erPage__toolbarCenter">
-                <div className="erPage__searchBox">
-                  <svg
-                    className="erPage__searchIcon"
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <circle cx="11" cy="11" r="7" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                  <input
-                    type="search"
-                    className="eventList__searchInput"
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    placeholder="Search..."
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                      }
-                    }}
-                  />
+                    <div className="erPage__searchBox">
+                      <svg
+                        className="erPage__searchIcon"
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <circle cx="11" cy="11" r="7" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                      <input
+                        type="search"
+                        className="eventList__searchInput"
+                        value={filters.search}
+                        onChange={handleSearchChange}
+                        placeholder="Search..."
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleSearch();
+                          }
+                        }}
+                      />
+                    </div>
+
                   </div>
-                  
-                </div>
                 </div>
                 <div className="erPage__toolbarRight">
                   <button
@@ -558,10 +597,21 @@ const Booking = () => {
                           <td>{row.ticketTypeId?.ticketName}</td>
                           <td>{row.quantity}</td>
                           <td>{row.amount}</td>
-                          <td>{row.createdBy?.name || "-"}</td>
+                          <td>
+                            <div>{row.createdBy?.name || "-"}</div>
+                            <div
+                              className="bookingPage-createdAt"
+                              style={{ fontSize: "12px", color: "#8b91a3", marginTop: "2px" }}
+                            >
+                              {formatCreatedAt(row.createdAt)}
+                            </div>
+                          </td>
 
                           <td>
-                            <div className="bookingPage-actionWrapper">
+                            <div
+                              className="bookingPage-actionDropdownWrap"
+                              ref={openActionId === row._id ? actionRef : null}
+                            >
                               <button
                                 type="button"
                                 className="bookingPage-actionBtn"
@@ -596,7 +646,7 @@ const Booking = () => {
                                   <button
                                     type="button"
                                     className="bookingPage-actionMenuItem"
-                                    onClick={() => navigate("/register-users")}
+                                    onClick={() => navigate(`/register-users/${row._id}`)}
                                   >
                                     Register Users
                                   </button>
@@ -700,14 +750,14 @@ const Booking = () => {
               </div>
             </div>
 
-            <div className="bookingPage-siteFooter">
+            {/* <div className="bookingPage-siteFooter">
               <span>2026 &copy; Keenthemes</span>
               <div className="bookingPage-siteFooterLinks">
                 <span>About</span>
                 <span>Support</span>
                 <span>Purchase</span>
               </div>
-            </div>
+            </div> */}
 
             {isCreateModalOpen && (
               <div
@@ -754,6 +804,7 @@ const Booking = () => {
                   userName={deleteTarget.name}
                   mobileNumber={deleteTarget.mobileNumber}
                   bookingNumber={deleteTarget.bookingNumber}
+                  onSuccess={fetchBookings}
                   onClose={() => setDeleteTarget(null)}
                 />
               </div>

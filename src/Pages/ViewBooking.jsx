@@ -19,13 +19,29 @@ function AvatarPlaceholder() {
     </svg>
   );
 }
+function QrPlaceholder() {
+  return (
+    <svg
+      className="bookingView-qrIcon"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect x="3" y="3" width="7" height="7" rx="1" fill="#c4c6d2" />
+      <rect x="14" y="3" width="7" height="7" rx="1" fill="#c4c6d2" />
+      <rect x="3" y="14" width="7" height="7" rx="1" fill="#c4c6d2" />
+      <rect x="14" y="14" width="3" height="3" fill="#c4c6d2" />
+      <rect x="18" y="14" width="3" height="3" fill="#c4c6d2" />
+      <rect x="14" y="18" width="3" height="3" fill="#c4c6d2" />
+      <rect x="18" y="18" width="3" height="3" fill="#c4c6d2" />
+    </svg>
+  );
+}
 const ViewBooking = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
 
   const { booking, detailsLoading, error } = useSelector((state) => state.booking);
   const { registerUser } = useSelector((state)=>state.bookingTicket)
- console.log(registerUser);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [isBookingUserModalOpen, setIsBookingUserModalOpen] = useState(false);
   const [resendMobile, setResendMobile] = useState(null);

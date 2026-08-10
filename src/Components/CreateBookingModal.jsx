@@ -93,7 +93,6 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
   const { createLoading, error, success, message } = useSelector(
     (state) => state.booking
   );
-  console.log(createLoading);
   const [formData, setFormData] = useState(initialFormData);
   // handele event changes
   const handleEventChange = async (e) => {
@@ -182,8 +181,6 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
       remark: formData.remark.trim(),
     };
 
-    console.log("Booking Payload:", payload);
-
     try {
       const response = await dispatch(createBooking(payload)).unwrap();
 
@@ -210,6 +207,12 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
 
   }, [error, dispatch]);
   useEffect(() => {
+    // The Booking page already loads the full events list into this same
+    // Redux slice before this modal can be opened. Only fetch here if
+    // that hasn't happened (e.g. the modal is opened from elsewhere), so
+    // opening the modal doesn't always trigger a duplicate request.
+    if (events?.length) return;
+
     dispatch(
       getAllEvents({
         page: 1,
@@ -217,7 +220,7 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
         search: "",
       })
     );
-  }, [dispatch]);
+  }, [dispatch, events]);
   // discount
   const subtotal = Number(formData.amount || 0);
   const discount = Number(formData.discount || 0);

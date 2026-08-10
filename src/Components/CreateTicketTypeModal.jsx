@@ -5,16 +5,7 @@ import { createTicketType, updateTicketType, getAllTicketTypes } from "../redux/
 import { clearTicketTypeState } from "../redux/ticketType/ticketTypeSlice";
 import dayjs from "dayjs";
 import MultipleDatePicker from "../Components/MultipleDatePicker";
-import {
-  TextField,
-  Popover,
-  Chip,
-  Stack,
-} from "@mui/material";
 
-import { LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { StaticDatePicker } from "@mui/x-date-pickers/StaticDatePicker";
 const CreateTicketTypeModal = ({
   isOpen = true,
   onClose = () => { },
@@ -22,6 +13,9 @@ const CreateTicketTypeModal = ({
   eventName,
   isEditMode = false,
   selectedTicketType = null,
+  currentPage = 1,
+  rowsPerPage = 10,
+  search = "",
 }) => {
   const dispatch = useDispatch();
 
@@ -37,9 +31,7 @@ const CreateTicketTypeModal = ({
   });
 
   const [formErrors, setFormErrors] = useState({});
-  const [anchorEl, setAnchorEl] = useState(null);
 
-  const calendarOpen = Boolean(anchorEl);
   // ================= PREFILL ON EDIT =================
   useEffect(() => {
     if (isEditMode && selectedTicketType) {
@@ -77,14 +69,7 @@ const CreateTicketTypeModal = ({
       [name]: "",
     }));
   };
-  // calender
-  const handleCalendarOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
 
-  const handleCalendarClose = () => {
-    setAnchorEl(null);
-  };
   // ================= VALIDATION =================
   const validate = () => {
     const errors = {};
@@ -105,6 +90,18 @@ const CreateTicketTypeModal = ({
         "Allow Day Count must match selected dates";
     }
 
+    // Mirrors the backend's past-date rejection so the user gets
+    // immediate feedback instead of a failed submit round-trip.
+    const today = dayjs().startOf("day");
+    const hasPastDate = formData.allowDates.some((date) =>
+      dayjs(date).isBefore(today)
+    );
+
+    if (hasPastDate) {
+      errors.allowDates =
+        "Allow Dates cannot include a date that has already passed";
+    }
+
     if (!formData.amount)
       errors.amount = "Amount is required";
 
@@ -117,30 +114,9 @@ const CreateTicketTypeModal = ({
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
-  const handleSelectDate = (value) => {
-    if (!value) return;
 
-    const date = dayjs(value).format("YYYY-MM-DD");
-
-    const exists = formData.allowDates.includes(date);
-
-    setFormData((prev) => ({
-      ...prev,
-      allowDates: exists
-        ? prev.allowDates.filter((d) => d !== date)
-        : [...prev.allowDates, date],
-    }));
-  };
-
-  const removeDate = (date) => {
-    setFormData((prev) => ({
-      ...prev,
-      allowDates: prev.allowDates.filter((d) => d !== date),
-    }));
-  };
   // ================= HANDLE SUBMIT (CREATE / UPDATE) =================
   const handleSubmit = () => {
-    console.log("Submit Clicked");
     if (!validate()) return;
 
     const payload = {
@@ -148,9 +124,11 @@ const CreateTicketTypeModal = ({
       ticketName: formData.ticketName,
       allowDayCount: Number(formData.allowDayCount),
       amount: Number(formData.amount),
-      allowDates: formData.allowDates.map((date) =>
-        new Date(date).toISOString().split("T")[0]
-      ),
+      // allowDates are already normalized "YYYY-MM-DD" strings from
+      // MultipleDatePicker — previously this ran them through
+      // `new Date(date).toISOString()`, which risked shifting the date
+      // by a day for users in timezones ahead of UTC.
+      allowDates: formData.allowDates,
       availableCount: Number(formData.availableCount),
       description: formData.description,
     };
@@ -165,12 +143,15 @@ const CreateTicketTypeModal = ({
   // ================= SUCCESS HANDLING =================
   useEffect(() => {
     if (success) {
+      // Refetch using the list's actual current page/limit/search instead
+      // of hardcoded defaults, so create/edit no longer silently resets
+      // the user's pagination and search.
       dispatch(
         getAllTicketTypes({
           eventId,
-          page: 1,
-          limit: 10,
-          search: "",
+          page: currentPage,
+          limit: rowsPerPage,
+          search,
         })
       );
 
@@ -178,7 +159,7 @@ const CreateTicketTypeModal = ({
 
       dispatch(clearTicketTypeState());
     }
-  }, [success, dispatch, eventId, onClose]);
+  }, [success, dispatch, eventId, currentPage, rowsPerPage, search, onClose]);
 
   // ================= RESET STATE ON CLOSE =================
   const handleClose = () => {

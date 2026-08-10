@@ -1,21 +1,40 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { Alert, CircularProgress } from "@mui/material";
 import { HiOutlineUser, HiOutlineMail, HiOutlineEye, HiOutlineEyeOff } from "react-icons/hi";
 
 import DashboardLayout from "../Components/DashboardLayout";
 import EditProfileModal from "../Components/EditProfileModal";
+import { getProfile, resetPassword, resetPasswordState } from "../redux/auth/authSlice";
 import "../assets/CSS/Profile.css";
 
-// Reusing the same placeholder-avatar convention already used in Header.jsx
-const PROFILE_IMAGE_URL =
-  "https://ui-avatars.com/api/?name=Shailesh+Savani&background=17a2b8&color=ffffff&bold=true";
+// Same symbol rule already used by the backend's resetPasswordValidation,
+// mirrored here for instant feedback.
+const SYMBOL_REGEX = /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\/;']/;
+
+const EMPTY_PASSWORD_FORM = {
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: "",
+};
 
 export default function Profile() {
-  const [user, setUser] = useState({
-    fullName: "Shailesh Savani",
-    email: "",
-    role: "admin",
-    avatar: PROFILE_IMAGE_URL,
-  });
+  const dispatch = useDispatch();
+  // Targeted selectors (rather than destructuring the whole state.auth
+  // object) so this page only re-renders when a field it actually
+  // displays changes.
+  const profile = useSelector((state) => state.auth.profile);
+  const profileLoading = useSelector((state) => state.auth.profileLoading);
+  const profileError = useSelector((state) => state.auth.profileError);
+  const resetPasswordLoading = useSelector((state) => state.auth.resetPasswordLoading);
+  const resetPasswordError = useSelector((state) => state.auth.resetPasswordError);
+  const resetPasswordSuccess = useSelector((state) => state.auth.resetPasswordSuccess);
+
+  // Fetch the real Admin profile on load / on refresh — backend stays
+  // the source of truth, we never rely on stale Redux data alone.
+  useEffect(() => {
+    dispatch(getProfile());
+  }, [dispatch]);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -24,14 +43,113 @@ export default function Profile() {
   const [showNewPwd, setShowNewPwd] = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
 
-  const handleSaveProfile = (updatedFields) => {
-    setUser((prev) => ({ ...prev, ...updatedFields }));
-    setIsEditOpen(false);
+  const [passwordForm, setPasswordForm] = useState(EMPTY_PASSWORD_FORM);
+  const [passwordErrors, setPasswordErrors] = useState({});
+
+  const handlePasswordFieldChange = (field) => (e) => {
+    setPasswordForm((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const handleOpenPasswordReset = () => {
+    setIsResettingPassword(true);
+    setPasswordForm(EMPTY_PASSWORD_FORM);
+    setPasswordErrors({});
+    dispatch(resetPasswordState());
   };
 
   const handleCancelPasswordReset = () => {
     setIsResettingPassword(false);
+    setPasswordForm(EMPTY_PASSWORD_FORM);
+    setPasswordErrors({});
+    dispatch(resetPasswordState());
   };
+
+  const validatePasswordForm = () => {
+    const errors = {};
+
+    if (!passwordForm.currentPassword.trim()) {
+      errors.currentPassword = "Current password is required";
+    }
+
+    if (!passwordForm.newPassword.trim()) {
+      errors.newPassword = "New password is required";
+    } else if (passwordForm.newPassword.trim().length < 8) {
+      errors.newPassword = "New password must be at least 8 characters long";
+    } else if (!SYMBOL_REGEX.test(passwordForm.newPassword)) {
+      errors.newPassword = "New password must contain at least one symbol";
+    }
+
+    if (!passwordForm.confirmPassword.trim()) {
+      errors.confirmPassword = "Confirm password is required";
+    } else if (passwordForm.confirmPassword !== passwordForm.newPassword) {
+      errors.confirmPassword = "New password and confirm password do not match";
+    }
+
+    setPasswordErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleUpdatePassword = async () => {
+    if (resetPasswordLoading) return; // guards against double-submit
+    if (!validatePasswordForm()) return;
+
+    const result = await dispatch(
+      resetPassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+        confirmPassword: passwordForm.confirmPassword,
+      })
+    );
+
+    if (resetPassword.fulfilled.match(result)) {
+      setIsResettingPassword(false);
+      setPasswordForm(EMPTY_PASSWORD_FORM);
+      setPasswordErrors({});
+    }
+    // On rejection, resetPasswordError is already set in Redux and
+    // rendered below — form stays open, entered values untouched.
+  };
+
+  // Backend has no profile image field yet — keep the existing
+  // ui-avatars.com fallback, just driven by the real name instead of
+  // a hardcoded string.
+  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    profile?.name || "Admin"
+  )}&background=17a2b8&color=ffffff&bold=true`;
+
+  // ===== Loading state =====
+  if (!profile && profileLoading) {
+    return (
+      <DashboardLayout title="Profile">
+        <div className="profileStateWrap">
+          <CircularProgress size={32} />
+          <p>Loading profile…</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ===== Error state =====
+  if (!profile && profileError) {
+    return (
+      <DashboardLayout title="Profile">
+        <div className="profileStateWrap profileStateError">
+          <p>{profileError || "Something went wrong while loading your profile."}</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Nothing to render yet (first paint, before the fetch has started/settled)
+  if (!profile) {
+    return (
+      <DashboardLayout title="Profile">
+        <div className="profileStateWrap">
+          <CircularProgress size={32} />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout title="Profile">
@@ -47,13 +165,13 @@ export default function Profile() {
 
       {/* Profile summary */}
       <div className="profileSummary">
-        <img src={user.avatar} alt={user.fullName} className="profileSummaryAvatar" />
+        <img src={avatarUrl} alt={profile.name} className="profileSummaryAvatar" />
         <div className="profileSummaryInfo">
-          <h2 className="profileSummaryName">{user.fullName}</h2>
+          <h2 className="profileSummaryName">{profile.name}</h2>
           <div className="profileSummaryMeta">
             <span className="metaItem">
               <HiOutlineUser />
-              {user.role}
+              {profile.role}
             </span>
             <span className="metaItem">
               <HiOutlineMail />
@@ -78,17 +196,17 @@ export default function Profile() {
         <div className="profileDetailsGrid">
           <div className="detailRow">
             <span className="detailLabel">Full Name</span>
-            <span className="detailValue">{user.fullName}</span>
+            <span className="detailValue">{profile.name}</span>
           </div>
           <div className="detailRow">
             <span className="detailLabel">Email</span>
-            <span className="detailValue">{user.email}</span>
+            <span className="detailValue">{profile.email}</span>
           </div>
           <div className="detailRow">
             <span className="detailLabel">
               Role <HiOutlineUser className="detailLabelIcon" />
             </span>
-            <span className="detailValue">{user.role}</span>
+            <span className="detailValue">{profile.role}</span>
           </div>
         </div>
       </section>
@@ -100,25 +218,49 @@ export default function Profile() {
         </div>
 
         {!isResettingPassword ? (
-          <div className="passwordRow">
-            <div className="passwordInfo">
-              <span className="detailLabel">Password</span>
-              <span className="passwordMask">••••••••••••</span>
+          <>
+            {resetPasswordSuccess && (
+              <Alert
+                severity="success"
+                sx={{ mb: 2 }}
+                onClose={() => dispatch(resetPasswordState())}
+              >
+                {resetPasswordSuccess}
+              </Alert>
+            )}
+
+            <div className="passwordRow">
+              <div className="passwordInfo">
+                <span className="detailLabel">Password</span>
+                <span className="passwordMask">••••••••••••</span>
+              </div>
+              <button
+                type="button"
+                className="primaryButton"
+                onClick={handleOpenPasswordReset}
+              >
+                Reset Password
+              </button>
             </div>
-            <button
-              type="button"
-              className="primaryButton"
-              onClick={() => setIsResettingPassword(true)}
-            >
-              Reset Password
-            </button>
-          </div>
+          </>
         ) : (
           <div className="passwordEditGrid">
+            {resetPasswordError && (
+              <Alert severity="error" sx={{ gridColumn: "1 / -1" }}>
+                {resetPasswordError}
+              </Alert>
+            )}
+
             <div className="passwordField">
               <label>Current Password</label>
               <div className="passwordInputWrap">
-                <input type={showCurrentPwd ? "text" : "password"} placeholder="Password" />
+                <input
+                  type={showCurrentPwd ? "text" : "password"}
+                  placeholder="Password"
+                  value={passwordForm.currentPassword}
+                  onChange={handlePasswordFieldChange("currentPassword")}
+                  disabled={resetPasswordLoading}
+                />
                 <button
                   type="button"
                   className="pwdToggle"
@@ -128,15 +270,25 @@ export default function Profile() {
                   {showCurrentPwd ? <HiOutlineEyeOff /> : <HiOutlineEye />}
                 </button>
               </div>
-              <p className="passwordHint">
-                Password must be at least 8 character and contain symbols
-              </p>
+              {passwordErrors.currentPassword ? (
+                <p className="modalFieldError">{passwordErrors.currentPassword}</p>
+              ) : (
+                <p className="passwordHint">
+                  Password must be at least 8 character and contain symbols
+                </p>
+              )}
             </div>
 
             <div className="passwordField">
               <label>New Password</label>
               <div className="passwordInputWrap">
-                <input type={showNewPwd ? "text" : "password"} placeholder="Password" />
+                <input
+                  type={showNewPwd ? "text" : "password"}
+                  placeholder="Password"
+                  value={passwordForm.newPassword}
+                  onChange={handlePasswordFieldChange("newPassword")}
+                  disabled={resetPasswordLoading}
+                />
                 <button
                   type="button"
                   className="pwdToggle"
@@ -146,12 +298,21 @@ export default function Profile() {
                   {showNewPwd ? <HiOutlineEyeOff /> : <HiOutlineEye />}
                 </button>
               </div>
+              {passwordErrors.newPassword && (
+                <p className="modalFieldError">{passwordErrors.newPassword}</p>
+              )}
             </div>
 
             <div className="passwordField">
               <label>Confirm New Password</label>
               <div className="passwordInputWrap">
-                <input type={showConfirmPwd ? "text" : "password"} placeholder="Password" />
+                <input
+                  type={showConfirmPwd ? "text" : "password"}
+                  placeholder="Password"
+                  value={passwordForm.confirmPassword}
+                  onChange={handlePasswordFieldChange("confirmPassword")}
+                  disabled={resetPasswordLoading}
+                />
                 <button
                   type="button"
                   className="pwdToggle"
@@ -161,16 +322,29 @@ export default function Profile() {
                   {showConfirmPwd ? <HiOutlineEyeOff /> : <HiOutlineEye />}
                 </button>
               </div>
+              {passwordErrors.confirmPassword && (
+                <p className="modalFieldError">{passwordErrors.confirmPassword}</p>
+              )}
             </div>
 
             <div className="passwordEditActions">
-              <button type="button" className="primaryButton">
-                Update Password
+              <button
+                type="button"
+                className="primaryButton"
+                onClick={handleUpdatePassword}
+                disabled={resetPasswordLoading}
+              >
+                {resetPasswordLoading ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  "Update Password"
+                )}
               </button>
               <button
                 type="button"
                 className="textButton"
                 onClick={handleCancelPasswordReset}
+                disabled={resetPasswordLoading}
               >
                 Cancel
               </button>
@@ -180,20 +354,25 @@ export default function Profile() {
       </section>
 
       {/* Footer */}
-      <footer className="profileFooter">
+      {/* <footer className="profileFooter">
         <span>2026 © Keenthemes</span>
         <div className="profileFooterLinks">
           <a href="#">About</a>
           <a href="#">Support</a>
           <a href="#">Purchase</a>
         </div>
-      </footer>
+      </footer> */}
 
       {isEditOpen && (
         <EditProfileModal
-          user={user}
+          user={{
+            name: profile.name,
+            email: profile.email,
+            mobile: profile.mobile,
+            role: profile.role,
+            avatar: avatarUrl,
+          }}
           onClose={() => setIsEditOpen(false)}
-          onSave={handleSaveProfile}
         />
       )}
     </DashboardLayout>

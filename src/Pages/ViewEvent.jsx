@@ -6,59 +6,34 @@ import Header from "../Components/Header";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getEventById } from "../redux/event/eventThunk";
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "-";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+};
+
 const ViewEvent = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("description");
-  // const [images, setImages] = useState([]);
-  // const [videos, setVideos] = useState([]);
   const { id } = useParams();
   const dispatch = useDispatch();
 
   const { event, loading } = useSelector(
     (state) => state.event
   );
-  // const handleImageSelect = (e) => {
-  //   const files = Array.from(e.target.files || []);
-  //   const newImages = files.map((file) => ({
-  //     id: `${file.name}-${file.lastModified}-${Math.random()
-  //       .toString(36)
-  //       .slice(2)}`,
-  //     url: URL.createObjectURL(file),
-  //     name: file.name,
-  //   }));
-  //   setImages((prev) => [...prev, ...newImages]);
-  //   e.target.value = "";
-  // };
 
-  // const handleVideoSelect = (e) => {
-  //   const files = Array.from(e.target.files || []);
-  //   const newVideos = files.map((file) => ({
-  //     id: `${file.name}-${file.lastModified}-${Math.random()
-  //       .toString(36)
-  //       .slice(2)}`,
-  //     url: URL.createObjectURL(file),
-  //     name: file.name,
-  //   }));
-  //   setVideos((prev) => [...prev, ...newVideos]);
-  //   e.target.value = "";
-  // };
-
-  // const removeImage = (id) => {
-  //   setImages((prev) => prev.filter((img) => img.id !== id));
-  // };
-
-  // const removeVideo = (id) => {
-  //   setVideos((prev) => prev.filter((vid) => vid.id !== id));
-  // };
   //view api call
   useEffect(() => {
     if (id) {
       dispatch(getEventById(id));
     }
   }, [dispatch, id]);
-  if (loading) {
-    return <h3>Loading...</h3>;
-  }
+
   return (
     <div className="Event__page">
       <Sidebar />
@@ -82,6 +57,12 @@ const ViewEvent = () => {
               <span className="viewEvent-backArrow">&#8592;</span> Back Page
             </button>
           </Link>
+
+          {loading ? (
+            <div className="viewEvent-card viewEvent-infoCard">
+              Loading event details...
+            </div>
+          ) : (
           <div className="viewEvent-layout">
             {/* Left column */}
             <div className="viewEvent-leftCol">
@@ -89,6 +70,16 @@ const ViewEvent = () => {
                 <h2 className="viewEvent-eventName">
                   {event?.title}
                 </h2>
+
+                <div className="viewEvent-detailBlock">
+                  <span className="viewEvent-detailLabel">Created By</span>
+                  <span className="viewEvent-detailValue"> {event?.createdBy?.name || "-"}</span>
+                </div>
+
+                <div className="viewEvent-detailBlock">
+                  <span className="viewEvent-detailLabel">Created On</span>
+                  <span className="viewEvent-detailValue"> {formatDate(event?.createdAt)}</span>
+                </div>
 
                 <div className="viewEvent-detailBlock">
                   <span className="viewEvent-detailLabel">Start Date &amp; Time</span>
@@ -199,82 +190,12 @@ const ViewEvent = () => {
               {activeTab === "media" && (
                 <div className="viewEvent-card viewEvent-contentCard">
                   <p style={{ fontWeight: "600" }}>Photos</p>
-                  {/* <div className="viewEvent-uploadSection">
-                <span className="viewEvent-sectionLabel">Upload Images</span>
-                <label className="viewEvent-uploadBox">
-                  <span className="viewEvent-uploadIcon">&#8613;</span>
-                  <span className="viewEvent-uploadText">
-                    Click to select images
-                  </span>
-                  
-                </label>
-
-                {images.length > 0 && (
-                  <div className="viewEvent-previewGrid">
-                    {images.map((img) => (
-                      <div className="viewEvent-previewCard" key={img.id}>
-                        <img
-                          src={img.url}
-                          alt={img.name}
-                          className="viewEvent-previewImage"
-                        />
-                        <button
-                          type="button"
-                          className="viewEvent-removeBtn"
-                          onClick={() => removeImage(img.id)}
-                          aria-label="Remove image"
-                        >
-                          &#10005;
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div> */}
-
-                  {/* <div className="viewEvent-uploadSection">
-                <span className="viewEvent-sectionLabel">Upload Videos</span>
-                <label className="viewEvent-uploadBox">
-                  <span className="viewEvent-uploadIcon">&#8613;</span>
-                  <span className="viewEvent-uploadText">
-                    Click to select videos
-                  </span>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    multiple
-                    className="viewEvent-uploadInput"
-                    onChange={handleVideoSelect}
-                  />
-                </label>
-
-                {videos.length > 0 && (
-                  <div className="viewEvent-previewGrid">
-                    {videos.map((vid) => (
-                      <div className="viewEvent-previewCard" key={vid.id}>
-                        <video
-                          src={vid.url}
-                          className="viewEvent-previewVideo"
-                          controls
-                        />
-                        <button
-                          type="button"
-                          className="viewEvent-removeBtn"
-                          onClick={() => removeVideo(vid.id)}
-                          aria-label="Remove video"
-                        >
-                          &#10005;
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div> */}
                   <p style={{ fontWeight: "600", marginTop: "30px" }}>Videos</p>
                 </div>
               )}
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

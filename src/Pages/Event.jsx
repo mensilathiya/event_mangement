@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import "../assets/CSS/Event.css";
 import Sidebar from "../Components/Sidebar";
 import Header from "../Components/Header";
-import { Link, Links } from "react-router-dom";
-import { FaSearch, FaSort } from "react-icons/fa";
+import { Link } from "react-router-dom";
+import { FaSearch, FaSort, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllEvents, changeEventStatus } from "../redux/event/eventThunk";
 import Swal from "sweetalert2";
@@ -13,15 +14,49 @@ const columns = [
   { key: "startDateTime", label: "Start Date & Time" },
   { key: "endDateTime", label: "End Date & Time" },
   { key: "venueName", label: "Venue Name" },
+  { key: "createdBy", label: "Created By" },
   { key: "isActive", label: "Is Active" },
   { key: "createdOn", label: "Created On" },
 ];
+
+// DD-MM-YYYY — used for "Created On", and reused below by formatDateTime so
+// the date portion of Start/End Date & Time stays in the exact same format
+// instead of duplicating the padding/format logic a second time.
+const formatDate = (dateStr) => {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "-";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+};
+
+// DD-MM-YYYY hh:mm AM/PM — for Start/End Date & Time. The API returns raw
+// ISO strings (e.g. "2026-09-02T08:51:00.000Z"); this renders them in the
+// viewer's local time via the standard Date getters, which is correct here
+// since events are stored as proper UTC instants (see CreateEvent.jsx's
+// IST-offset fix) — it does not touch or reformat the stored value itself,
+// only how it's displayed.
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "-";
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours === 0 ? 12 : hours;
+  const hh = String(hours).padStart(2, "0");
+  return `${formatDate(dateStr)} ${hh}:${minutes} ${ampm}`;
+};
 
 const Event = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [openActionId, setOpenActionId] = useState(null);
+  const [actionMenuPos, setActionMenuPos] = useState(null);
   const dispatch = useDispatch();
   const [search, setSearch] = useState("");
   const {
@@ -30,11 +65,6 @@ const Event = () => {
     total,
     totalPages,
   } = useSelector((state) => state.event);
-  const hasActiveEvent = useSelector(
-  (state) => state.event.events?.some((e) => e.status === "Active")
-);
-  // get all event
-
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -46,7 +76,6 @@ const Event = () => {
   }, [searchTerm]);
 
   useEffect(() => {
-     if (!hasActiveEvent) return;
     dispatch(
       getAllEvents({
         page: currentPage,
@@ -54,7 +83,33 @@ const Event = () => {
         search,
       })
     );
-  }, [dispatch,hasActiveEvent, currentPage, rowsPerPage, search]);
+  }, [dispatch, currentPage, rowsPerPage, search]);
+
+  // The dropdown is rendered via a portal at a fixed viewport position
+  // computed at the moment it's opened (see toggleActionMenu below). If the
+  // page or the table's horizontal scroll moves after that, the stored
+  // coordinates go stale — closing on scroll/resize is simpler and safer
+  // than re-measuring and repositioning a portaled element on every scroll
+  // tick. `capture: true` is needed because scroll events don't bubble, so
+  // a listener on `window` only sees them for the table's internal
+  // horizontal scroll if it's registered on the capture phase.
+  useEffect(() => {
+    if (openActionId === null) return;
+
+    const closeMenu = () => {
+      setOpenActionId(null);
+      setActionMenuPos(null);
+    };
+
+    window.addEventListener("scroll", closeMenu, true);
+    window.addEventListener("resize", closeMenu);
+
+    return () => {
+      window.removeEventListener("scroll", closeMenu, true);
+      window.removeEventListener("resize", closeMenu);
+    };
+  }, [openActionId]);
+
   // pervious page
   const goToPreviousPage = () => {
     if (currentPage > 1) {
@@ -74,8 +129,6 @@ const Event = () => {
     setCurrentPage(1);
   };
   const handleSearchChange = (e) => {
-      if (!hasActiveEvent) return;
-
     setSearchTerm(e.target.value);
     setCurrentPage(1);
   };
@@ -85,13 +138,30 @@ const Event = () => {
       setCurrentPage((prev) => prev + 1);
     }
   };
-  const toggleActionMenu = (id) => {
-    setOpenActionId((prev) => (prev === id ? null : id));
+  const toggleActionMenu = (id, e) => {
+    if (openActionId === id) {
+      setOpenActionId(null);
+      setActionMenuPos(null);
+      return;
+    }
+
+    // Position the (portaled) menu against the button's own bounding box,
+    // right-aligned to it — matching how it used to be anchored via
+    // `right: 0` on `.eventList__actionWrapper`, just computed in JS now
+    // since the menu no longer lives inside that wrapper's DOM subtree.
+    const rect = e.currentTarget.getBoundingClientRect();
+    setActionMenuPos({
+      top: rect.bottom + 8,
+      right: window.innerWidth - rect.right,
+    });
+    setOpenActionId(id);
   };
-  if (loading) {
-    return <h3>Loading...</h3>;
-  }
-  
+
+  const closeActionMenu = () => {
+    setOpenActionId(null);
+    setActionMenuPos(null);
+  };
+
   // status changes
   const handleStatusChange = async (id) => {
     const result = await Swal.fire({
@@ -103,8 +173,10 @@ const Event = () => {
       cancelButtonText: "Cancel",
     });
 
-    if (result.isConfirmed) {
-      dispatch(changeEventStatus(id));
+    if (!result.isConfirmed) return;
+
+    try {
+      await dispatch(changeEventStatus(id)).unwrap();
 
       Swal.fire({
         icon: "success",
@@ -113,8 +185,15 @@ const Event = () => {
         timer: 1500,
         showConfirmButton: false,
       });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error || "Failed to update status.",
+      });
     }
   };
+
   return (
 
     <div className="Event__page">
@@ -143,17 +222,14 @@ const Event = () => {
             {openActionId !== null && (
               <div
                 className="eventList__actionOverlay"
-                onClick={() => setOpenActionId(null)}
+                onClick={closeActionMenu}
               />
             )}
 
             <div className="eventList__toolbar">
               <select
                 value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
+                onChange={handleRowsPerPageChange}
                 className="eventList__pageSizeSelect"
               >
                 <option value="5">5</option>
@@ -181,6 +257,17 @@ const Event = () => {
 
             <div className="eventList__tableWrap">
               <table className="eventList__table">
+                <colgroup>
+                  <col className="eventList__colHash" />
+                  <col className="eventList__colTitle" />
+                  <col className="eventList__colStart" />
+                  <col className="eventList__colEnd" />
+                  <col className="eventList__colVenue" />
+                  <col className="eventList__colCreatedBy" />
+                  <col className="eventList__colActive" />
+                  <col className="eventList__colCreatedOn" />
+                  <col className="eventList__colAction" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th className="eventList__hashCol">#</th>
@@ -196,9 +283,15 @@ const Event = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {events.length === 0 ? (
+                  {loading ? (
                     <tr>
-                      <td colSpan="8" style={{ textAlign: "center" }}>
+                      <td colSpan="9" style={{ textAlign: "center" }}>
+                        Loading events...
+                      </td>
+                    </tr>
+                  ) : events.length === 0 ? (
+                    <tr>
+                      <td colSpan="9" style={{ textAlign: "center" }}>
                         No Events Found
                       </td>
                     </tr>
@@ -206,15 +299,15 @@ const Event = () => {
                     <tr key={event._id}>
                       <td>{index + 1}</td>
                       <td className="eventList__titleCell">{event.title}</td>
-                      <td>{event.startDateTime}</td>
-                      <td>{event.endDateTime}</td>
+                      <td>{formatDateTime(event.startDateTime)}</td>
+                      <td>{formatDateTime(event.endDateTime)}</td>
                       <td>{event.venueName}</td>
+                      <td>{event.createdBy?.name || "-"}</td>
                       <td>
                         <span
                           className={`eventList__toggle ${event.isActive ? "eventList__toggleOn" : ""
                             }`}
                           onClick={() => {
-                            console.log("Toggle Clicked");
                             handleStatusChange(event._id);
                           }}
                           style={{ cursor: "pointer" }}
@@ -223,94 +316,106 @@ const Event = () => {
                         </span>
                       </td>
                       <td>
-                        {new Date(event.createdAt).toLocaleDateString("en-GB")}
+                        {formatDate(event.createdAt)}
                       </td>
                       <td className="eventList__actionCol">
                         <div className="eventList__actionWrapper">
                           <button
                             type="button"
                             className="eventList__actionButton"
-                            onClick={() => toggleActionMenu(event._id)}
+                            onClick={(e) => toggleActionMenu(event._id, e)}
                           >
                             Action <span className="eventList__actionCaret">&#9662;</span>
                           </button>
 
-                          {openActionId === event._id && (
-                            <div className="eventList__actionMenu">
-                              <Link to={`/view-event/${event._id}`}>
-                                <button
-                                  type="button"
-                                  className="eventList__actionItem"
-                                >
-                                  View
-                                </button>
-                              </Link>
-                              <Link
-                                to={`/ticket-type/${event._id}`}
-                                state={{
-                                  eventName: event.title,
-                                  eventId: event._id,
+                          {openActionId === event._id &&
+                            actionMenuPos &&
+                            createPortal(
+                              <div
+                                className="eventList__actionMenu"
+                                style={{
+                                  top: `${actionMenuPos.top}px`,
+                                  right: `${actionMenuPos.right}px`,
                                 }}
                               >
-                                <button type="button" className="eventList__actionItem">
-                                  Ticket Type
-                                </button>
-                              </Link>
-                            </div>
-                          )}
+                                <Link to={`/view-event/${event._id}`}>
+                                  <button
+                                    type="button"
+                                    className="eventList__actionItem"
+                                    onClick={closeActionMenu}
+                                  >
+                                    View
+                                  </button>
+                                </Link>
+                                <Link
+                                  to={`/ticket-type/${event._id}`}
+                                  state={{
+                                    eventName: event.title,
+                                    eventId: event._id,
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    className="eventList__actionItem"
+                                    onClick={closeActionMenu}
+                                  >
+                                    Ticket Type
+                                  </button>
+                                </Link>
+                              </div>,
+                              document.body
+                            )}
                         </div>
                       </td>
                     </tr>
                   )
                   )}
-
                 </tbody>
-
-                <div className="permissionPagePagination">
-
-                  <span className="permissionPagePaginationInfo">
-                    Show {total === 0 ? 0 : startIndex + 1} - {endIndex} of {total}
-                  </span>
-                  {totalPages > 1 && (
-                    <div className="permissionPagePaginationControls">
-
-                      <button
-                        type="button"
-                        className="permissionPagePaginationArrow"
-                        onClick={goToPreviousPage}
-                        disabled={currentPage === 1}
-                      >
-                        <FaChevronLeft />
-                      </button>
-
-                      {pageNumbers.map((page) => (
-                        <button
-                          key={page}
-                          type="button"
-                          className={`permissionPagePaginationBtn ${currentPage === page
-                            ? "permissionPagePaginationActive"
-                            : ""
-                            }`}
-                          onClick={() => setCurrentPage(page)}
-                        >
-                          {page}
-                        </button>
-                      ))}
-
-                      <button
-                        type="button"
-                        className="permissionPagePaginationArrow"
-                        onClick={goToNextPage}
-                        disabled={currentPage === totalPages}
-                      >
-                        <FaChevronRight />
-                      </button>
-
-                    </div>
-                  )}
-                </div>
-
               </table>
+            </div>
+
+            <div className="permissionPagePagination">
+
+              <span className="permissionPagePaginationInfo">
+                Show {total === 0 ? 0 : startIndex + 1} - {endIndex} of {total}
+              </span>
+              {totalPages > 1 && (
+                <div className="permissionPagePaginationControls">
+
+                  <button
+                    type="button"
+                    className="permissionPagePaginationArrow"
+                    onClick={goToPreviousPage}
+                    disabled={currentPage === 1}
+                  >
+                    <FaChevronLeft />
+                  </button>
+
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      className={`permissionPagePaginationBtn ${currentPage === page
+                        ? "permissionPagePaginationActive"
+                        : ""
+                        }`}
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    className="permissionPagePaginationArrow"
+                    onClick={goToNextPage}
+                    disabled={currentPage === totalPages}
+                  >
+                    <FaChevronRight />
+                  </button>
+
+                </div>
+              )}
             </div>
 
             {/* <div className="eventList__pagination">
@@ -318,14 +423,14 @@ const Event = () => {
             </div> */}
           </div>
 
-          <div className="eventList__footer">
+          {/* <div className="eventList__footer">
             <span>2026 &copy; Keenthemes</span>
             <div className="eventList__footerLinks">
               <span>About</span>
               <span>Support</span>
               <span>Purchase</span>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

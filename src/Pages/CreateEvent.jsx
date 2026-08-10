@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   FaArrowLeft,
   FaPlus,
@@ -19,6 +19,32 @@ import Header from "../Components/Header";
 
 // Module-level constants — created once, not on every render.
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg"];
+
+// The app is used by Admins in India, and `datetime-local` inputs produce an
+// offset-less string like "2026-08-15T20:00" (the browser's own wall-clock
+// value, no timezone info attached). Sent as-is, that string is ambiguous:
+// when the server parses it, JS treats an offset-less date-time string as
+// *local time of whichever machine is running the code* — not the Admin's
+// browser. If the server isn't also running in IST, the stored Date ends up
+// shifted by the difference between the two timezones.
+//
+// Fix: attach the fixed IST offset (+05:30) explicitly before sending, so
+// the string is a fully-qualified, unambiguous ISO 8601 value regardless of
+// what timezone the server itself runs in. This intentionally hardcodes IST
+// rather than pulling in a timezone library, since every Admin using this
+// form is in India — if that ever changes, this is the one place to revisit.
+const IST_OFFSET = "+05:30";
+
+const toISTISOString = (localDateTimeValue) => {
+  if (!localDateTimeValue) return localDateTimeValue;
+  // `datetime-local` values are "YYYY-MM-DDTHH:mm" (no seconds). Pad with
+  // ":00" seconds, then attach the explicit offset.
+  const withSeconds =
+    localDateTimeValue.length === 16
+      ? `${localDateTimeValue}:00`
+      : localDateTimeValue;
+  return `${withSeconds}${IST_OFFSET}`;
+};
 
 const REQUIRED_FIELDS = [
   { key: "title", label: "Title" },
@@ -186,8 +212,8 @@ export default function CreateEvent() {
   }, []);
 
   const handleClose = useCallback(() => {
-    // navigation / close logic goes here
-  }, []);
+    navigate("/event");
+  }, [navigate]);
 
   // Builds the multipart payload expected by createEventApi and dispatches
   // the existing Service -> Thunk -> Slice flow. Validation runs first so we
@@ -203,6 +229,23 @@ export default function CreateEvent() {
       }
     }
 
+    if (Number.isNaN(Number(formData.latitude))) {
+      showError("Latitude must be a valid number");
+      return;
+    }
+
+    if (Number.isNaN(Number(formData.longitude))) {
+      showError("Longitude must be a valid number");
+      return;
+    }
+
+    // Compare using the same wall-clock values the Admin actually selected
+    // (browser-local, i.e. IST) rather than any server timezone assumption.
+    if (new Date(formData.startDateTime) < new Date()) {
+      showError("Start Date & Time cannot be in the past");
+      return;
+    }
+
     if (new Date(formData.endDateTime) <= new Date(formData.startDateTime)) {
       showError("End Date & Time must be after Start Date & Time");
       return;
@@ -210,8 +253,10 @@ export default function CreateEvent() {
 
     const payload = new FormData();
     payload.append("title", formData.title);
-    payload.append("startDateTime", formData.startDateTime);
-    payload.append("endDateTime", formData.endDateTime);
+    // Attach the explicit IST offset so the stored Date is unambiguous
+    // regardless of the server's own timezone (see toISTISOString above).
+    payload.append("startDateTime", toISTISOString(formData.startDateTime));
+    payload.append("endDateTime", toISTISOString(formData.endDateTime));
     payload.append("venueName", formData.venueName);
     payload.append("latitude", formData.latitude);
     payload.append("longitude", formData.longitude);
@@ -241,12 +286,10 @@ export default function CreateEvent() {
             <span className="createEvent__breadcrumbLink">Event</span>
             <span className="createEvent__breadcrumbLink">Create Event</span>
           </div>
-          <Link to={'/event'}>
           <button type="button" className="createEvent__backLink" onClick={handleClose}>
             <FaArrowLeft />
             Back Page
           </button>
-          </Link>
         </div>
 
         <div className="createEvent__body">
