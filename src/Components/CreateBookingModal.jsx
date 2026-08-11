@@ -353,7 +353,7 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
               Mobile Number <span className="bookingCreateRequired">*</span>
             </label>
             <input
-              type="text"
+              type="number"
               className="bookingCreateInput"
               placeholder="Mobile Number"
               value={formData.mobile}

@@ -327,6 +327,11 @@ export default function EntryReport() {
     if (left + popupWidth + margin > viewportWidth) {
       left = Math.max(margin, viewportWidth - popupWidth - margin);
     }
+    // Symmetric guard on the left edge too — without this, a popup wider
+    // than the space to the right of a left-clamped `rect.left` (e.g. on
+    // a "desktop" width just above the tablet breakpoint) could still
+    // render partly off-screen to the left.
+    left = Math.max(margin, left);
 
     // Prefer opening below the input; flip above it if there isn't enough
     // room below, so the calendar is never clipped by the viewport edge.
@@ -335,6 +340,7 @@ export default function EntryReport() {
       const spaceAbove = rect.top - 8 - popupHeight;
       top = spaceAbove >= margin ? spaceAbove : margin;
     }
+    top = Math.max(margin, top);
 
     setPopupPos({ top, left });
   };
@@ -344,9 +350,17 @@ export default function EntryReport() {
   useLayoutEffect(() => {
     if (!showDatePicker) return;
     updatePopupPosition();
+    // The very first call above can only guess the popup's real width/
+    // height (the 700x420 fallback) since it hasn't painted with actual
+    // content yet on the very first open. Re-measure on the next frame,
+    // once it has real dimensions, to correct any small initial
+    // misplacement — this is what "parts of the picker can get clipped"
+    // traced back to for edge-case viewport widths.
+    const raf = requestAnimationFrame(updatePopupPosition);
     window.addEventListener("resize", updatePopupPosition);
     window.addEventListener("scroll", updatePopupPosition, true);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener("resize", updatePopupPosition);
       window.removeEventListener("scroll", updatePopupPosition, true);
     };
@@ -657,7 +671,11 @@ export default function EntryReport() {
                   <div
                     className="erPage__dateRangePopup"
                     ref={datePickerRef}
-                    style={popupPos ? { top: popupPos.top, left: popupPos.left } : undefined}
+                    style={
+                      popupPos
+                        ? { top: popupPos.top, left: popupPos.left, transform: "none" }
+                        : undefined
+                    }
                   >
                     <DateRangePicker
                       ranges={tempRange}

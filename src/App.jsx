@@ -67,8 +67,13 @@ function App() {
             <Route path="/booking" element={<Booking />} />
             <Route path="/view-booking/:id" element={<ViewBooking />} />
             <Route path="/register-users/:id" element={<RegisterUsers />} />
-            <Route path="/entry-report" element={<EntryReport />} />
             <Route path="/profile" element={<Profile />} />
+          </Route>
+
+          {/* Entry Report requires the "Entry Report" permission
+              (Admin always passes) in addition to being authenticated. */}
+          <Route element={<ProtectedRoute permission="Entry Report" />}>
+            <Route path="/entry-report" element={<EntryReport />} />
           </Route>
 
         </Routes>

@@ -5,6 +5,7 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import "../assets/CSS/TicketType.css";
 import { deleteTicketType, getAllTicketTypes } from "../redux/ticketType/ticketTypeThunk";
+import { getEventById } from "../redux/event/eventThunk";
 import CreateTicketTypeModal from "./CreateTicketTypeModal";
 import { FaChevronLeft, FaChevronRight, FaSearch } from "react-icons/fa";
 import Swal from "sweetalert2";
@@ -41,6 +42,26 @@ const TicketType = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedTicketType, setSelectedTicketType] = useState(null);
+
+  // ================= EVENT DETAILS (for Allow Dates range restriction) =================
+  // Ticket Type only had eventId/eventName before; the modal's calendar needs the
+  // Event's actual startDateTime/endDateTime, fetched via the existing getEventById.
+  const { event: eventDetails, loading: eventDetailsLoading } = useSelector(
+    (state) => state.event
+  );
+
+  useEffect(() => {
+    if (eventId) {
+      dispatch(getEventById(eventId));
+    }
+  }, [dispatch, eventId]);
+
+  // state.event.event is shared app-wide; guard against a stale, different
+  // event's data still being in the store while this one is loading.
+  const isCurrentEventLoaded =
+    eventDetails && (eventDetails._id === eventId || eventDetails.id === eventId);
+  const eventStartDate = isCurrentEventLoaded ? eventDetails.startDateTime : null;
+  const eventEndDate = isCurrentEventLoaded ? eventDetails.endDateTime : null;
 
   // ================= FETCH ON PAGE LOAD =================
   useEffect(() => {
@@ -372,6 +393,9 @@ const TicketType = () => {
         onClose={closeModal}
         eventId={eventId}
         eventName={eventName}
+        eventStartDate={eventStartDate}
+        eventEndDate={eventEndDate}
+        eventDatesLoading={eventDetailsLoading}
         isEditMode={isEditMode}
         selectedTicketType={selectedTicketType}
         currentPage={currentPage}

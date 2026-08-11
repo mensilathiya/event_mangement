@@ -391,10 +391,15 @@
   max-height: 85vh;
   overflow-x: auto;
   overflow-y: auto;
-  /* top: calc(100% + 8px); */
+  /* Fallback position for the case where popupPos hasn't been computed
+     yet (e.g. the JS positioning is scoped to >992px widths only — see
+     EntryReport.jsx's DESKTOP_BREAKPOINT). Centers the popup properly;
+     the >992px inline style overrides this (and explicitly cancels this
+     transform) whenever popupPos is set, and the <=992px media queries
+     below override it again with their own explicit positioning. */
   left: 50%;
-  top:50%;
-  /* transform: translateX(-50%); */
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 .rdrDefinedRangesWrapper{
   display: none;

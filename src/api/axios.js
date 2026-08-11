@@ -49,7 +49,11 @@ api.interceptors.response.use(
   (error) => {
     hideLoader();
 
-    if (error.response?.status === 401) {
+    // Do not redirect/reload when login credentials are invalid.
+    // Let authSlice handle the login error and show it on the Login page.
+    const isLoginRequest = error.config?.url?.includes("/auth/login");
+
+    if (error.response?.status === 401 && !isLoginRequest) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/";

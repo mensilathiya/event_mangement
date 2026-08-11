@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 
 import {
   MdDashboard,
@@ -52,6 +53,32 @@ const menuItems = [
 
 export default function Sidebar() {
   const location = useLocation();
+
+  // Current user/role/permissions — same source pattern as ProtectedRoute:
+  // prefer the live profile (from getProfile()), fall back to the user
+  // cached at login (available immediately on refresh, before getProfile
+  // resolves). Admin is never restricted here, matching the backend and
+  // preserving Admin's existing full menu unconditionally.
+  const profile = useSelector((state) => state.auth.profile);
+  const authUser = useSelector((state) => state.auth.user);
+  const currentUser = profile || authUser;
+  const role = currentUser?.role;
+  const userPermissions = Array.isArray(currentUser?.permissions)
+    ? currentUser.permissions
+    : [];
+
+  const hasPermission = (permission) =>
+    role === 'admin' || userPermissions.includes(permission);
+
+  // Only "Entry Report" currently maps to a real permission from the
+  // Checker/User system — every other item is left exactly as before.
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (item.label === 'Entry Report') {
+      return hasPermission('Entry Report');
+    }
+
+    return true;
+  });
 
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMenu, setExpandedMenu] = useState(null);
@@ -129,7 +156,7 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className='nav'>
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             // =========================
             // SUBMENU ITEM
             // =========================

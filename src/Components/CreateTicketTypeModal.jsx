@@ -6,11 +6,57 @@ import { clearTicketTypeState } from "../redux/ticketType/ticketTypeSlice";
 import dayjs from "dayjs";
 import MultipleDatePicker from "../Components/MultipleDatePicker";
 
+// Extracts a plain "YYYY-MM-DD" calendar date from either an ISO date
+// string from the API (e.g. "2026-08-11T00:00:00.000Z") or a Date instance
+// from the calendar (react-day-picker represents a selected day as a
+// *local*-midnight Date). These two need different handling:
+// - ISO strings are sliced directly — never routed through `new Date()` +
+//   getters, since that conversion can shift the date by a day depending
+//   on the viewer's timezone offset relative to UTC.
+// - Date instances use LOCAL getters (not UTC) — they already represent
+//   the exact local calendar day the user clicked, so converting via UTC
+//   getters would shift it backward for timezones ahead of UTC (e.g. IST).
+const toDateOnlyString = (value) => {
+  if (!value) return null;
+
+  if (typeof value === "string") {
+    const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return match[1];
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return toDateOnlyString(parsed);
+  }
+
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+// "YYYY-MM-DD" -> a local-midnight Date instance, matching how
+// react-day-picker represents calendar days internally, so range bounds
+// passed into it are never off by a timezone conversion.
+const parseDateOnlyToLocalDate = (dateOnly) => {
+  if (!dateOnly) return null;
+  const [y, m, d] = dateOnly.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
+// "YYYY-MM-DD" -> "DD-MM-YYYY" for user-facing messages.
+const formatDisplayDate = (dateOnly) => {
+  if (!dateOnly) return "";
+  const [y, m, d] = dateOnly.split("-");
+  return `${d}-${m}-${y}`;
+};
+
 const CreateTicketTypeModal = ({
   isOpen = true,
   onClose = () => { },
   eventId = null,
   eventName,
+  eventStartDate = null,
+  eventEndDate = null,
+  eventDatesLoading = false,
   isEditMode = false,
   selectedTicketType = null,
   currentPage = 1,
@@ -31,6 +77,32 @@ const CreateTicketTypeModal = ({
   });
 
   const [formErrors, setFormErrors] = useState({});
+
+  // ================= EVENT DATE RANGE (for Allow Dates) =================
+  const eventStartDateOnly = toDateOnlyString(eventStartDate);
+  const eventEndDateOnly = toDateOnlyString(eventEndDate);
+  const hasValidEventRange = Boolean(eventStartDateOnly && eventEndDateOnly);
+
+  // Local-midnight Date instances for the calendar's native min/max
+  // disabling — react-day-picker's `disabled` matcher expects real Date
+  // objects, and these must be local-midnight to match how it represents
+  // the dates the user actually clicks (see MultipleDatePicker.jsx).
+  const eventStartDateObj = parseDateOnlyToLocalDate(eventStartDateOnly);
+  const eventEndDateObj = parseDateOnlyToLocalDate(eventEndDateOnly);
+
+  // formData.allowDates entries are Date objects from the calendar (see
+  // MultipleDatePicker.jsx's onChange) — normalize before comparing.
+  const isDateWithinEventRange = (rawDate) => {
+    if (!hasValidEventRange) return false;
+    const dateOnly = toDateOnlyString(rawDate);
+    return Boolean(dateOnly) && dateOnly >= eventStartDateOnly && dateOnly <= eventEndDateOnly;
+  };
+
+  const eventRangeErrorMessage = eventDatesLoading
+    ? "Loading event dates..."
+    : hasValidEventRange
+      ? `Allow Dates must be between ${formatDisplayDate(eventStartDateOnly)} and ${formatDisplayDate(eventEndDateOnly)}.`
+      : "Event dates are not available.";
 
   // ================= PREFILL ON EDIT =================
   useEffect(() => {
@@ -54,6 +126,38 @@ const CreateTicketTypeModal = ({
       });
     }
   }, [isEditMode, selectedTicketType]);
+
+  // ================= ALLOW DATES CHANGE (event-range enforced) =================
+  // MultipleDatePicker is given minDate/maxDate below so react-day-picker's
+  // own `disabled` matcher blocks clicking a new invalid date in the grid.
+  // This handler is still the guaranteed backstop for anything that gets
+  // through — but it must NOT blanket-filter the whole array: an existing
+  // Ticket Type being edited may already have dates that no longer fall in
+  // the Event's (possibly since-changed) range, and those must stay
+  // selected as-is rather than being silently dropped. Only brand-new
+  // selections are gated against the range.
+  const handleAllowDatesChange = (dates) => {
+    const incoming = Array.isArray(dates) ? dates : [];
+    const prevDates = formData.allowDates;
+    const prevKeys = new Set(prevDates.map(toDateOnlyString));
+
+    const kept = incoming.filter((d) => prevKeys.has(toDateOnlyString(d)));
+    const added = incoming.filter((d) => !prevKeys.has(toDateOnlyString(d)));
+    const validAdded = added.filter(isDateWithinEventRange);
+    const rejectedSome = validAdded.length !== added.length;
+
+    setFormData((prev) => ({ ...prev, allowDates: [...kept, ...validAdded] }));
+
+    setFormErrors((prev) => {
+      if (rejectedSome) {
+        return { ...prev, allowDates: eventRangeErrorMessage };
+      }
+      if (!prev.allowDates) return prev;
+      const next = { ...prev };
+      delete next.allowDates;
+      return next;
+    });
+  };
 
   // ================= HANDLE FIELD CHANGE =================
   const handleChange = (e) => {
@@ -100,6 +204,16 @@ const CreateTicketTypeModal = ({
     if (hasPastDate) {
       errors.allowDates =
         "Allow Dates cannot include a date that has already passed";
+    }
+
+    // Every selected date must fall within the Event's own start/end range.
+    if (!errors.allowDates) {
+      const outOfRange = formData.allowDates.some(
+        (date) => !isDateWithinEventRange(date)
+      );
+      if (outOfRange) {
+        errors.allowDates = eventRangeErrorMessage;
+      }
     }
 
     if (!formData.amount)
@@ -256,12 +370,10 @@ const CreateTicketTypeModal = ({
 
             <MultipleDatePicker
               value={formData.allowDates}
-              onChange={(dates) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  allowDates: dates,
-                }))
-              }
+              onChange={handleAllowDatesChange}
+              minDate={eventStartDateObj}
+              maxDate={eventEndDateObj}
+              disabled={!hasValidEventRange}
             />
 
             {formErrors.allowDates && (

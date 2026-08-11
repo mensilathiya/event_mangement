@@ -111,7 +111,7 @@
   border: none;
   border-radius: 8px;
   font-size: 13.5px;
-  color: #1b2a4e;
+  color: #575757;
   background-color: #f2f3f6;
   outline: none;
   transition: box-shadow 0.2s ease;
@@ -121,7 +121,7 @@
 
 .bookingCreateSelect {
   cursor: pointer;
-  color: #a7abbd;
+  color: #575757;
   appearance: none;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%236b7085' stroke-width='1.6' fill='none' fill-rule='evenodd'/></svg>");
   background-repeat: no-repeat;

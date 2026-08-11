@@ -5,14 +5,27 @@ import QRScannerModal from "./QRScanner/QRScannerModal";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { logout, clearAuth } from "../redux/auth/authSlice";
+import {  clearAuth } from "../redux/auth/authSlice";
+import Swal from "sweetalert2";
 
 export default function Header({ title = "Dashboard" }) {
   const [openScanner, setOpenScanner] = useState(false);
   const profile = useSelector((state) => state.auth.profile);
+  const authUser = useSelector((state) => state.auth.user);
   const token = useSelector((state) => state.auth.token);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  // Same current-user resolution pattern as Sidebar/ProtectedRoute:
+  // prefer the live profile, fall back to the user cached at login.
+  // Admin always sees the button (existing behavior preserved); a
+  // Checker/User needs the "QR Pass" permission.
+  const currentUser = profile || authUser;
+  const role = currentUser?.role;
+  const userPermissions = Array.isArray(currentUser?.permissions)
+    ? currentUser.permissions
+    : [];
+  const canScanQr = role === "admin" || userPermissions.includes("QR Pass");
 
   const handleMenuClick = () => {
     window.dispatchEvent(new Event("toggle-sidebar"));
@@ -29,17 +42,25 @@ export default function Header({ title = "Dashboard" }) {
       profile?.name || "Admin"
     )}&background=17a2b8&color=ffffff&bold=true`;
 
-  const handleLogout = () => {
-    if (!token) return; // already logged out / guards a double click
+  const handleLogout = async () => {
+    if (!token) return;
 
-    // Local logout is instant and synchronous — the user is logged out
-    // and can navigate immediately, with no wait on the network.
-    // The backend call is fired alongside it as a best-effort
-    // notification only; the UI never awaits it, since the backend's
-    // JWT logout is stateless and doesn't need to complete for the
-    // user to be safely logged out on this device.
-    dispatch(logout());
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Are you sure you want to logout?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Logout",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+    });
+
+    if (!result.isConfirmed) return;
+
+    // Only clear local auth state
     dispatch(clearAuth());
+
+    // SPA navigation — NO refresh
     navigate("/", { replace: true });
   };
 
@@ -58,14 +79,16 @@ export default function Header({ title = "Dashboard" }) {
         <span className="pageTitle">{title}</span>
 
         <div className="headerRight">
-          <button
-            type="button"
-            className="scanQrButton"
-            onClick={handleScanQr}
-          >
-            <LuScanQrCode />
-            <span>Scan QR</span>
-          </button>
+          {canScanQr && (
+            <button
+              type="button"
+              className="scanQrButton"
+              onClick={handleScanQr}
+            >
+              <LuScanQrCode />
+              <span>Scan QR</span>
+            </button>
+          )}
 
           <button
             type="button"
