@@ -40,7 +40,7 @@ const ViewBooking = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
 
-  const { booking, detailsLoading, error } = useSelector((state) => state.booking);
+  const { booking, detailsLoading, detailsError } = useSelector((state) => state.booking);
   const { registerUser } = useSelector((state)=>state.bookingTicket)
   const [openMenuId, setOpenMenuId] = useState(null);
   const [isBookingUserModalOpen, setIsBookingUserModalOpen] = useState(false);
@@ -83,7 +83,17 @@ const ViewBooking = () => {
     );
   }
 
-  if (!booking || error) {
+  // Human-readable error message — never render the raw error value
+  // directly in JSX since it could be an object depending on how the
+  // API/thunk fails.
+  const detailsErrorMessage =
+    typeof detailsError === "string"
+      ? detailsError
+      : detailsError
+        ? "Failed to load booking details. Please try again."
+        : "";
+
+  if (!booking || detailsErrorMessage) {
     return (
       <div className="bookingPage-wrapper">
         <Sidebar />
@@ -103,7 +113,20 @@ const ViewBooking = () => {
               <span className="bookingView-backArrow">&#8592;</span> Back Page
             </Link>
 
-            <p>No Booking Found</p>
+            {detailsErrorMessage ? (
+              <>
+                <p className="bookingView-stateError">{detailsErrorMessage}</p>
+                <button
+                  type="button"
+                  className="bookingView-stateRetryBtn"
+                  onClick={() => id && dispatch(getBookingById(id))}
+                >
+                  Retry
+                </button>
+              </>
+            ) : (
+              <p>No Booking Found</p>
+            )}
           </div>
         </div>
       </div>

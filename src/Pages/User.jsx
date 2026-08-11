@@ -23,7 +23,13 @@ export default function User() {
   const { users, loading, error, pagination } = useSelector(
     (state) => state.user
   );
+  // searchTerm tracks the raw input value; search is the debounced value
+  // actually sent to the API. Previously there was only searchTerm, and it
+  // was used directly as the getUsers dependency — firing a request on
+  // every keystroke instead of after the user pauses typing, unlike the
+  // debounced pattern already used in Event.jsx/TicketType.jsx.
   const [searchTerm, setSearchTerm] = useState("");
+  const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Tracks which row's Action dropdown is currently open
@@ -51,16 +57,27 @@ export default function User() {
     { length: totalPages },
     (_, index) => index + 1
   );
+
+  // Debounce the search input before it affects the API call / page reset.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchTerm);
+      setActivePage(1);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   // fetch user
   useEffect(() => {
-  dispatch(
-    getUsers({
-      page: activePage,
-      limit: rowsPerPage,
-      search: searchTerm,
-    })
-  );
-}, [dispatch, activePage, rowsPerPage, searchTerm]);
+    dispatch(
+      getUsers({
+        page: activePage,
+        limit: rowsPerPage,
+        search,
+      })
+    );
+  }, [dispatch, activePage, rowsPerPage, search]);
   // Ref for detecting outside clicks to close the action dropdown
   const actionMenuRef = useRef(null);
   // action drpdown
@@ -128,6 +145,17 @@ export default function User() {
 
       showSuccess(res.message);
 
+      // Refetch so the deactivated user disappears from the list
+      // immediately, using the list's current page/limit/search rather
+      // than resetting them.
+      dispatch(
+        getUsers({
+          page: activePage,
+          limit: rowsPerPage,
+          search,
+        })
+      );
+
       dispatch(clearUserState());
 
       handleCloseDeleteModal();
@@ -190,15 +218,11 @@ export default function User() {
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
-                    setActivePage(1);
                   }} />
               </div>
             </div>
 
             <div className="userPage__tableWrapper">
-              {loading && (
-                <h3>Loading...</h3>
-              )}
               <table className="userPage__table">
                 <thead>
                   <tr>
@@ -213,12 +237,36 @@ export default function User() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => (
+                  {loading && (
+                    <tr>
+                      <td colSpan={columns.length} style={{ textAlign: "center" }}>
+                        Loading users...
+                      </td>
+                    </tr>
+                  )}
+
+                  {!loading && error && (
+                    <tr>
+                      <td colSpan={columns.length} style={{ textAlign: "center" }}>
+                        {typeof error === "string" ? error : "Failed to load users."}
+                      </td>
+                    </tr>
+                  )}
+
+                  {!loading && !error && users.length === 0 && (
+                    <tr>
+                      <td colSpan={columns.length} style={{ textAlign: "center" }}>
+                        No users found.
+                      </td>
+                    </tr>
+                  )}
+
+                  {!loading && !error && users.map((user) => (
                     <tr key={user._id}>
                       <td>
                         <img
                           src={
-                            user.image ||
+                            user.profileImage ||
                             `https://ui-avatars.com/api/?name=${user.name}`
                           }
                           alt={user.name}
@@ -347,6 +395,9 @@ export default function User() {
             onClose={handleCloseModal}
             isEditMode={modalMode === "edit"}
             editUserData={selectedUser}
+            currentPage={activePage}
+            rowsPerPage={rowsPerPage}
+            search={search}
           />
         </div>
       )}

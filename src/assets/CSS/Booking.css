@@ -353,6 +353,52 @@
   border-bottom: none;
 }
 
+.bookingPage-stateCell {
+  text-align: center;
+  padding: 48px 16px !important;
+  border-bottom: none !important;
+}
+
+.bookingPage-stateWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.bookingPage-stateIcon {
+  fill: #000000;
+  margin-bottom: 6px;
+}
+
+.bookingPage-stateText {
+  font-size: 14px;
+  font-weight: 500;
+  color: #8b91a3;
+  margin: 0;
+}
+
+.bookingPage-stateText--error {
+  color: #e0331e;
+}
+
+.bookingPage-stateRetryBtn {
+  background-color: #f2f3f6;
+  color: #1b2a4e;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.bookingPage-stateRetryBtn:hover {
+  background-color: #e5e6ec;
+}
+
 .bookingPage-nameCell {
   font-weight: 600;
   color: #1b2a4e;

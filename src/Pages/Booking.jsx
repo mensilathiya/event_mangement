@@ -46,6 +46,7 @@ const Booking = () => {
   const {
     bookings,
     listLoading,
+    listError,
     total,
     totalPages,
   } = useSelector((state) => state.booking);
@@ -68,6 +69,7 @@ const Booking = () => {
   // button+menu is currently open — only ever attached to one wrapper
   // at a time, since only one menu can be open.
   const actionRef = useRef(null);
+  const actionMenuRef = useRef(null);
   // Tracks which row's menu (if any) was opened by a CLICK, as opposed to
   // just a hover. A pinned menu stays open when the mouse leaves the row
   // and is only closed by: clicking its button again, clicking outside,
@@ -151,6 +153,23 @@ const Booking = () => {
     (total, booking) => total + Number(booking.amount || 0),
     0
   );
+  // Human-readable error message — never render the raw error value
+  // directly in JSX since it could be an object depending on how the
+  // API/thunk fails.
+  const listErrorMessage =
+    typeof listError === "string"
+      ? listError
+      : listError
+        ? "Failed to load bookings. Please try again."
+        : "";
+  // Shared fallback for any table cell that could come back as
+  // undefined/null/NaN/"" from the API — renders "-" instead of leaking
+  // those raw values into the UI.
+  const safeCell = (value) => {
+    if (value === undefined || value === null || value === "") return "-";
+    if (typeof value === "number" && Number.isNaN(value)) return "-";
+    return value;
+  };
   // Computes the fixed-viewport position for a row's menu from its
   // trigger element's rect. Shared by hover and click so both open the
   // menu the exact same way — no duplicate positioning logic.
@@ -179,16 +198,18 @@ const Booking = () => {
   };
 
   const toggleActionMenu = (id, event) => {
-    // Clicking the trigger of the row whose menu is already pinned open
-    // closes it (requirement: click same button again → closes).
-    if (openActionId === id && pinnedActionIdRef.current === id) {
-      closeActionMenu();
+    if (openActionId === id) {
+      // If the row is already open because it was hovered, clicking it
+      // should pin the menu open instead of immediately closing it.
+      if (pinnedActionIdRef.current === id) {
+        closeActionMenu();
+      } else {
+        pinnedActionIdRef.current = id;
+        openActionMenu(id, event.currentTarget);
+      }
       return;
     }
-    // Otherwise open this row's menu and pin it — clicking another row's
-    // button lands here too, which naturally replaces the previous
-    // openActionId/actionMenuPos, so the old menu closes and the new one
-    // opens (single source of truth, no leftover duplicate menu).
+
     pinnedActionIdRef.current = id;
     openActionMenu(id, event.currentTarget);
   };
@@ -203,8 +224,16 @@ const Booking = () => {
   // Hover-only menus close on mouse leave; a click-pinned menu stays
   // open until an explicit close (button click, outside click, Escape,
   // scroll/resize) per the required click behavior.
-  const handleActionMouseLeave = (id) => {
+  const handleActionMouseLeave = (id, event) => {
     if (pinnedActionIdRef.current === id) return;
+    const relatedTarget = event.relatedTarget || document.elementFromPoint(event.clientX, event.clientY);
+    if (
+      actionRef.current &&
+      actionMenuRef.current &&
+      (actionRef.current.contains(relatedTarget) || actionMenuRef.current.contains(relatedTarget))
+    ) {
+      return;
+    }
     if (openActionId === id) {
       setOpenActionId(null);
       setActionMenuPos(null);
@@ -228,6 +257,9 @@ const Booking = () => {
       // that element's own onClick handle open/close instead, so this
       // listener doesn't fight with the button's toggle.
       if (actionRef.current && actionRef.current.contains(event.target)) {
+        return;
+      }
+      if (actionMenuRef.current && actionMenuRef.current.contains(event.target)) {
         return;
       }
       closeMenu();
@@ -631,21 +663,48 @@ const Booking = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {bookingRows.length > 0 ? (
+                    {listLoading ? (
+                      <tr>
+                        <td colSpan={10} className="bookingPage-stateCell">
+                          <div className="bookingPage-stateWrap">
+                            <p className="bookingPage-stateText">
+                              Loading bookings...
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : listErrorMessage ? (
+                      <tr>
+                        <td colSpan={10} className="bookingPage-stateCell">
+                          <div className="bookingPage-stateWrap">
+                            <p className="bookingPage-stateText bookingPage-stateText--error">
+                              {listErrorMessage}
+                            </p>
+                            <button
+                              type="button"
+                              className="bookingPage-stateRetryBtn"
+                              onClick={fetchBookings}
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : bookingRows.length > 0 ? (
                       bookingRows.map((row, index) => (
                         <tr key={row._id}>
                           <td className="bookingPage-hashCol">
                             {(activePage - 1) * rowsPerPage + index + 1}
                           </td>
-                          <td>{row.bookingNumber}</td>
-                          <td>{row.name}</td>
-                          <td>{row.mobileNumber}</td>
-                          <td>{row.eventId?.title}</td>
-                          <td>{row.ticketTypeId?.ticketName}</td>
-                          <td>{row.quantity}</td>
-                          <td>{row.amount}</td>
+                          <td>{safeCell(row.bookingNumber)}</td>
+                          <td>{safeCell(row.name)}</td>
+                          <td>{safeCell(row.mobileNumber)}</td>
+                          <td>{safeCell(row.eventId?.title)}</td>
+                          <td>{safeCell(row.ticketTypeId?.ticketName)}</td>
+                          <td>{safeCell(row.quantity)}</td>
+                          <td>{safeCell(row.amount)}</td>
                           <td>
-                            <div>{row.createdBy?.name || "-"}</div>
+                            <div>{safeCell(row.createdBy?.name)}</div>
                             <div
                               className="bookingPage-createdAt"
                               style={{ fontSize: "12px", color: "#8b91a3", marginTop: "2px" }}
@@ -659,7 +718,7 @@ const Booking = () => {
                               className="bookingPage-actionDropdownWrap"
                               ref={openActionId === row._id ? actionRef : null}
                               onMouseEnter={(event) => handleActionMouseEnter(row._id, event)}
-                              onMouseLeave={() => handleActionMouseLeave(row._id)}
+                              onMouseLeave={(event) => handleActionMouseLeave(row._id, event)}
                             >
                               <button
                                 type="button"
@@ -672,6 +731,7 @@ const Booking = () => {
                               {openActionId === row._id && actionMenuPos && (
                                 <div
                                   className="bookingPage-actionMenu"
+                                  ref={actionMenuRef}
                                   style={{
                                     position: "fixed",
                                     top: actionMenuPos.openUpward
@@ -687,7 +747,10 @@ const Booking = () => {
                                   <button
                                     type="button"
                                     className="bookingPage-actionMenuItem"
-                                    onClick={() => navigate(`/view-booking/${row._id}`)}
+                                    onClick={() => {
+                                      closeActionMenu();
+                                      navigate(`/view-booking/${row._id}`);
+                                    }}
                                   >
                                     View Booking
                                   </button>
@@ -695,7 +758,10 @@ const Booking = () => {
                                   <button
                                     type="button"
                                     className="bookingPage-actionMenuItem"
-                                    onClick={() => window.open(`/register-users/${row._id}`, "_blank")}
+                                    onClick={() => {
+                                      closeActionMenu();
+                                      window.open(`/register-users/${row._id}`, "_blank");
+                                    }}
                                   >
                                     Register Users
                                   </button>
@@ -704,8 +770,8 @@ const Booking = () => {
                                     type="button"
                                     className="bookingPage-actionMenuItem"
                                     onClick={() => {
+                                      closeActionMenu();
                                       setResendTarget(row.mobileNumber);
-                                      setOpenActionId(null);
                                     }}
                                   >
                                     Resend Ticket
@@ -715,13 +781,13 @@ const Booking = () => {
                                     type="button"
                                     className="bookingPage-actionMenuItem"
                                     onClick={() => {
+                                      closeActionMenu();
                                       setDeleteTarget({
                                         id: row._id,
                                         name: row.name,
-                                        mobile: row.mobileNumber,
+                                        mobileNumber: row.mobileNumber,
                                         bookingNumber: row.bookingNumber,
                                       });
-                                      setOpenActionId(null);
                                     }}
                                   >
                                     Delete Booking
@@ -734,8 +800,20 @@ const Booking = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={10} className="bookingPageNoData">
-                          No Bookings Found
+                        <td colSpan={10} className="bookingPage-stateCell">
+                          <div className="bookingPage-stateWrap">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 460 512"
+                              width="120"
+                              className="bookingPage-stateIcon"
+                            >
+                              <path d="M220.6 130.3l-67.2 28.2V43.2L98.7 233.5l54.7-24.2v130.3l67.2-209.3zm-83.2-96.7l-1.3 4.7-15.2 52.9C80.6 106.7 52 145.8 52 191.5c0 52.3 34.3 95.9 83.4 105.5v53.6C57.5 340.1 0 272.4 0 191.6c0-80.5 59.8-147.2 137.4-158zm311.4 447.2c-11.2 11.2-23.1 12.3-28.6 10.5-5.4-1.8-27.1-19.9-60.4-44.4-33.3-24.6-33.6-35.7-43-56.7-9.4-20.9-30.4-42.6-57.5-52.4l-9.7-14.7c-24.7 16.9-53 26.9-81.3 28.7l2.1-6.6 15.9-49.5c46.5-11.9 80.9-54 80.9-104.2 0-54.5-38.4-102.1-96-107.1V32.3C254.4 37.4 320 106.8 320 191.6c0 33.6-11.2 64.7-29 90.4l14.6 9.6c9.8 27.1 31.5 48 52.4 57.4s32.2 9.7 56.8 43c24.6 33.2 42.7 54.9 44.5 60.3s.7 17.3-10.5 28.5zm-9.9-17.9c0-4.4-3.6-8-8-8s-8 3.6-8 8 3.6 8 8 8 8-3.6 8-8z" />
+                            </svg>
+                            <p className="bookingPage-stateText">
+                              No Bookings Found.
+                            </p>
+                          </div>
                         </td>
                       </tr>
                     )}

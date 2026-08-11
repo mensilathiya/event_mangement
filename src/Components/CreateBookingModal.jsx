@@ -23,36 +23,43 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
   const [ticketTypes, setTicketTypes] = useState([]);
   const { events } = useSelector((state) => state.event);
   const activeEvent = events?.find((event) => event.isActive === true);
+  const [fieldErrors, setFieldErrors] = useState({});
+  // Returns a { fieldName: message } map instead of a single message so
+  // each error can render directly below its own field, per the project's
+  // validation pattern (see EditProfileModal). Only falls back to a toast
+  // for things that aren't tied to one specific field.
   const validateForm = () => {
+    const errors = {};
 
-    if (!formData.eventId)
-      return "Please select event.";
+    if (!formData.eventId) errors.eventId = "Please select an event.";
 
-    if (!formData.ticketType)
-      return "Please select ticket.";
+    if (!formData.ticketType) errors.ticketType = "Please select a ticket.";
 
     if (!formData.qty || Number(formData.qty) <= 0)
-      return "Please enter valid quantity.";
+      errors.qty = "Please enter a valid quantity.";
 
-    if (!formData.name.trim())
-      return "Please enter name.";
-
-    if (!/^[A-Za-z ]+$/.test(formData.name))
-      return "Name is invalid.";
+    if (!formData.name.trim()) {
+      errors.name = "Please enter name.";
+    } else if (!/^[A-Za-z ]+$/.test(formData.name)) {
+      errors.name = "Name is invalid.";
+    }
 
     if (!/^[6-9]\d{9}$/.test(formData.mobile))
-      return "Please enter valid mobile number.";
+      errors.mobile = "Please enter a valid mobile number.";
 
     if (
       formData.email &&
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
     )
-      return "Please enter valid email.";
+      errors.email = "Please enter a valid email.";
 
     if (Number(formData.discount) < 0)
-      return "Discount cannot be negative.";
+      errors.discount = "Discount cannot be negative.";
+    else if (Number(formData.discount) > Number(formData.amount || 0))
+      errors.discount = "Discount cannot exceed the amount.";
 
-    return null;
+    setFieldErrors(errors);
+    return errors;
   };
   // event redux
   useEffect(() => {
@@ -90,9 +97,7 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
       }
     });
   }, [events, dispatch]);
-  const { createLoading, error, success, message } = useSelector(
-    (state) => state.booking
-  );
+  const { createLoading } = useSelector((state) => state.booking);
   const [formData, setFormData] = useState(initialFormData);
   // handele event changes
   const handleEventChange = async (e) => {
@@ -107,6 +112,7 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
     }));
 
     setTicketTypes([]);
+    setFieldErrors((prev) => ({ ...prev, eventId: undefined, ticketType: undefined }));
 
     if (!eventId) return;
 
@@ -126,7 +132,9 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
   };
   // handel qty changes
   const handleQtyChange = (e) => {
-    const qty = Number(e.target.value) || 0;
+    // Clamp to a non-negative value so a stray "-" can't produce a
+    // negative quantity/amount preview before validation even runs.
+    const qty = Math.max(0, Number(e.target.value) || 0);
 
     const selectedTicket = ticketTypes.find(
       (ticket) => ticket._id === formData.ticketType
@@ -139,6 +147,7 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
       qty,
       amount: qty * ticketPrice,
     }));
+    setFieldErrors((prev) => (prev.qty ? { ...prev, qty: undefined } : prev));
   };
   // handel ticket change
   const handleTicketChange = (e) => {
@@ -155,17 +164,24 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
       ticketType: ticketId,
       amount: (prev.qty || 0) * price,
     }));
+    setFieldErrors((prev) => (prev.ticketType ? { ...prev, ticketType: undefined } : prev));
   };
   // handel change
   const handleChange = (field) => (e) => {
     setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    // Clear that field's inline error as soon as the user edits it, so the
+    // message doesn't linger after they've corrected it but before the
+    // next submit attempt re-validates.
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
   };
   // handel create 
   const handleCreate = async () => {
-    const validationError = validateForm();
+    const errors = validateForm();
 
-    if (validationError) {
-      showError(validationError);
+    if (Object.keys(errors).length > 0) {
+      // Field-specific messages render below their inputs (see JSX below);
+      // no generic toast here since every error above is attributable to
+      // a specific field.
       return;
     }
 
@@ -192,20 +208,17 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
       onSuccess();
       onClose();
 
-    } catch (error) {
-      console.log("Booking Error:", error);
-      showError(error?.message || error || "Failed to create booking.");
-    }
-  };
-  // error
-  useEffect(() => {
-
-    if (error) {
-      showError(error);
+    } catch (err) {
+      // `.unwrap()` throws the same string set as createError below, so
+      // this is the single place that shows the create-failure toast —
+      // there's no separate effect watching createError, which would
+      // otherwise fire a second, duplicate toast for the same failure.
+      showError(
+        typeof err === "string" ? err : err?.message || "Failed to create booking."
+      );
       dispatch(clearBookingState());
     }
-
-  }, [error, dispatch]);
+  };
   useEffect(() => {
     // The Booking page already loads the full events list into this same
     // Redux slice before this modal can be opened. Only fetch here if
@@ -258,6 +271,9 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
                   </option>
                 ))}
             </select>
+            {fieldErrors.eventId && (
+              <p className="bookingCreateFieldError">{fieldErrors.eventId}</p>
+            )}
           </div>
           <div className="bookingCreateFieldGroup">
             <label className="bookingCreateLabel">
@@ -282,6 +298,9 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
                 ))
               }
             </select>
+            {fieldErrors.ticketType && (
+              <p className="bookingCreateFieldError">{fieldErrors.ticketType}</p>
+            )}
           </div>
           <div className="bookingCreateFieldGroup">
             <label className="bookingCreateLabel">
@@ -295,6 +314,9 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
               value={formData.qty}
               onChange={handleQtyChange}
             />
+            {fieldErrors.qty && (
+              <p className="bookingCreateFieldError">{fieldErrors.qty}</p>
+            )}
           </div>
 
           <div className="bookingCreateFieldGroup">
@@ -321,6 +343,9 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
               value={formData.name}
               onChange={handleChange("name")}
             />
+            {fieldErrors.name && (
+              <p className="bookingCreateFieldError">{fieldErrors.name}</p>
+            )}
           </div>
 
           <div className="bookingCreateFieldGroup">
@@ -334,6 +359,9 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
               value={formData.mobile}
               onChange={handleChange("mobile")}
             />
+            {fieldErrors.mobile && (
+              <p className="bookingCreateFieldError">{fieldErrors.mobile}</p>
+            )}
           </div>
 
           <div className="bookingCreateFieldGroup bookingCreateFullRow">
@@ -345,6 +373,9 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
               value={formData.email}
               onChange={handleChange("email")}
             />
+            {fieldErrors.email && (
+              <p className="bookingCreateFieldError">{fieldErrors.email}</p>
+            )}
           </div>
 
           <div className="bookingCreateFieldGroup">
@@ -356,6 +387,9 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
               value={formData.discount}
               onChange={handleChange("discount")}
             />
+            {fieldErrors.discount && (
+              <p className="bookingCreateFieldError">{fieldErrors.discount}</p>
+            )}
           </div>
 
           <div className="bookingCreateFieldGroup">

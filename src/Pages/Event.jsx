@@ -51,6 +51,17 @@ const formatDateTime = (dateStr) => {
   return `${formatDate(dateStr)} ${hh}:${minutes} ${ampm}`;
 };
 
+// Single source of truth for "has this event's window closed" — compares
+// endDateTime against the current time. Reuse this wherever expiry needs
+// to be checked or displayed, instead of comparing dates inline, so
+// Expired is decided consistently everywhere on the frontend.
+const isEventExpired = (event) => {
+  if (!event?.endDateTime) return false;
+  const endTime = new Date(event.endDateTime).getTime();
+  if (Number.isNaN(endTime)) return false;
+  return Date.now() >= endTime;
+};
+
 const Event = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -163,7 +174,18 @@ const Event = () => {
   };
 
   // status changes
-  const handleStatusChange = async (id) => {
+  const handleStatusChange = async (event) => {
+    // Expired events can never be (re)activated from the frontend — block
+    // before the confirm dialog even opens, and don't call the API.
+    if (isEventExpired(event)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Event Expired",
+        text: "This event has already expired and cannot be activated.",
+      });
+      return;
+    }
+
     const result = await Swal.fire({
       icon: "warning",
       title: "Are you sure?",
@@ -176,7 +198,7 @@ const Event = () => {
     if (!result.isConfirmed) return;
 
     try {
-      await dispatch(changeEventStatus(id)).unwrap();
+      await dispatch(changeEventStatus(event._id)).unwrap();
 
       Swal.fire({
         icon: "success",
@@ -304,16 +326,25 @@ const Event = () => {
                       <td>{event.venueName}</td>
                       <td>{event.createdBy?.name || "-"}</td>
                       <td>
-                        <span
-                          className={`eventList__toggle ${event.isActive ? "eventList__toggleOn" : ""
-                            }`}
-                          onClick={() => {
-                            handleStatusChange(event._id);
-                          }}
-                          style={{ cursor: "pointer" }}
-                        >
-                          <span className="eventList__toggleKnob" />
-                        </span>
+                        {isEventExpired(event) ? (
+                          <span
+                            className="eventList__statusExpired"
+                            style={{ color: "#dc3545", fontWeight: 600 }}
+                          >
+                            Expired
+                          </span>
+                        ) : (
+                          <span
+                            className={`eventList__toggle ${event.isActive ? "eventList__toggleOn" : ""
+                              }`}
+                            onClick={() => {
+                              handleStatusChange(event);
+                            }}
+                            style={{ cursor: "pointer" }}
+                          >
+                            <span className="eventList__toggleKnob" />
+                          </span>
+                        )}
                       </td>
                       <td>
                         {formatDate(event.createdAt)}

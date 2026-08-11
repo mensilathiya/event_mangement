@@ -59,7 +59,9 @@ export const getAllBookings = createAsyncThunk(
       return response;
     } catch (error) {
       return thunkAPI.rejectWithValue(
-        error.response?.data || error.message
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to load bookings"
       );
     }
   }

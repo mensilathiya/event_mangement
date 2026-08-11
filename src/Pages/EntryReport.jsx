@@ -14,6 +14,7 @@ import {
   exportEntryReport,
 } from "../redux/entryReport/entryReportThunk";
 import { clearEntryReportState } from "../redux/entryReport/entryReportSlice";
+import { showSuccess, showError } from "../utilits/toast";
 // Reusing the existing dashboard thunk so this page can obtain the active
 // event on its own, instead of depending on <DashboardPage /> having
 // already dispatched it. Same thunk DashboardPage already uses.
@@ -159,25 +160,31 @@ export default function EntryReport() {
 
   // Builds the API params from the current filter values, matching the
   // entry-report backend's query contract exactly.
- const buildEntryReportParams = (
-  targetPage = 1,
-  customLimit = pageSize
-) => {
-  const params = {
-    page: targetPage,
-    limit: customLimit,
+  const buildEntryReportParams = (
+    targetPage = 1,
+    customLimit = pageSize
+  ) => {
+    const params = {
+      page: targetPage,
+      limit: customLimit,
+    };
+
+    // eventId is a required query param for the entry-report API (see the
+    // fetch effect below and handleExport, which already sends it). It was
+    // never being added here, so every list request — initial load, search,
+    // filters, pagination, and rows-per-page — was missing it.
+    if (eventId) params.eventId = eventId;
+
+    if (bookingId) params.bookingId = bookingId;
+    if (ticketId) params.ticketId = ticketId;
+    if (name) params.name = name;
+    if (mobileNumber) params.mobileNumber = mobileNumber;
+    if (apiStartDate) params.startDate = apiStartDate;
+    if (apiEndDate) params.endDate = apiEndDate;
+    if (searchTerm) params.search = searchTerm;
+
+    return params;
   };
-
-  if (bookingId) params.bookingId = bookingId;
-  if (ticketId) params.ticketId = ticketId;
-  if (name) params.name = name;
-  if (mobileNumber) params.mobileNumber = mobileNumber;
-  if (apiStartDate) params.startDate = apiStartDate;
-  if (apiEndDate) params.endDate = apiEndDate;
-  if (searchTerm) params.search = searchTerm;
-
-  return params;
-};
 
   // Pagination values as returned by the API: { page, limit, total, totalPages }
   const currentPage = pagination?.page ?? page;
@@ -266,19 +273,19 @@ export default function EntryReport() {
 
   // Change page while keeping the currently applied filters intact.
   const handlePageSizeChange = (e) => {
-  const newSize = Number(e.target.value);
+    const newSize = Number(e.target.value);
 
-  setPageSize(newSize);
-  setPage(1);
+    setPageSize(newSize);
+    setPage(1);
 
-  dispatch(
-    getAllEntryReport(
-      buildEntryReportParams(1, newSize)
-    )
-  );
-};
+    dispatch(
+      getAllEntryReport(
+        buildEntryReportParams(1, newSize)
+      )
+    );
+  };
 
-  
+
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [committedRange, setCommittedRange] = useState(null);
@@ -425,16 +432,16 @@ export default function EntryReport() {
     setShowDatePicker(false);
   };
   // search
- const handleSearch = () => {
-  if (searchDebounceTimerRef.current) clearTimeout(searchDebounceTimerRef.current);
-  setPage(1);
+  const handleSearch = () => {
+    if (searchDebounceTimerRef.current) clearTimeout(searchDebounceTimerRef.current);
+    setPage(1);
 
-  dispatch(
-    getAllEntryReport(
-      buildEntryReportParams(1)
-    )
-  );
-};
+    dispatch(
+      getAllEntryReport(
+        buildEntryReportParams(1)
+      )
+    );
+  };
   // reset
   const handleReset = () => {
     if (searchDebounceTimerRef.current) clearTimeout(searchDebounceTimerRef.current);
@@ -460,13 +467,18 @@ export default function EntryReport() {
     ]);
     setShowDatePicker(false);
     setPage(1);
-    // Reload default (unfiltered) data for the active event.
+    // Reload default (unfiltered) data for the active event. Built inline
+    // (not via buildEntryReportParams) because the filter state setters
+    // above haven't committed yet in this closure — only page/limit/eventId
+    // are needed for a reset. eventId must still be included since it's a
+    // required query param.
     dispatch(
-  getAllEntryReport({
-    page: 1,
-    limit: pageSize,
-  })
-);
+      getAllEntryReport({
+        page: 1,
+        limit: pageSize,
+        ...(eventId ? { eventId } : {}),
+      })
+    );
   };
   // export
   const handleExport = async () => {
@@ -511,6 +523,13 @@ export default function EntryReport() {
       link.remove();
 
       window.URL.revokeObjectURL(downloadUrl);
+
+      showSuccess("Entry report exported successfully.");
+    } else if (exportEntryReport.rejected.match(resultAction)) {
+      // resultAction.payload is always a safe string here — the thunk uses
+      // rejectWithValue(error?.response?.data?.message || "Failed to export
+      // entry report"), never the raw error/response object.
+      showError(resultAction.payload || "Failed to export entry report");
     }
   };
 
@@ -582,7 +601,7 @@ export default function EntryReport() {
           <div className="erPage__titleBlock">
             <h1 className="erPage__title">Entry Report</h1>
             <div className="erPage__breadcrumb">
-             <Link to="/dashboard">Dashboard</Link>
+              <Link to="/dashboard">Dashboard</Link>
               <span className="erPage__breadcrumbSep">-</span>
               <span className="erPage__breadcrumbItem erPage__breadcrumbItem--active">
                 Entry Report
@@ -808,14 +827,7 @@ export default function EntryReport() {
                     <tr className="erPage__emptyRow">
                       <td colSpan={COLUMNS.length} className="erPage__emptyCell">
                         <div className="erPage__emptyState">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 460 512"
-                            width="200"
-                            className="mb-3"
-                          >
-                            <path d="M220.6 130.3l-67.2 28.2V43.2L98.7 233.5l54.7-24.2v130.3l67.2-209.3zm-83.2-96.7l-1.3 4.7-15.2 52.9C80.6 106.7 52 145.8 52 191.5c0 52.3 34.3 95.9 83.4 105.5v53.6C57.5 340.1 0 272.4 0 191.6c0-80.5 59.8-147.2 137.4-158zm311.4 447.2c-11.2 11.2-23.1 12.3-28.6 10.5-5.4-1.8-27.1-19.9-60.4-44.4-33.3-24.6-33.6-35.7-43-56.7-9.4-20.9-30.4-42.6-57.5-52.4l-9.7-14.7c-24.7 16.9-53 26.9-81.3 28.7l2.1-6.6 15.9-49.5c46.5-11.9 80.9-54 80.9-104.2 0-54.5-38.4-102.1-96-107.1V32.3C254.4 37.4 320 106.8 320 191.6c0 33.6-11.2 64.7-29 90.4l14.6 9.6c9.8 27.1 31.5 48 52.4 57.4s32.2 9.7 56.8 43c24.6 33.2 42.7 54.9 44.5 60.3s.7 17.3-10.5 28.5zm-9.9-17.9c0-4.4-3.6-8-8-8s-8 3.6-8 8 3.6 8 8 8 8-3.6 8-8z" />
-                          </svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 512" width="120" class="bookingPage-stateIcon"><path d="M220.6 130.3l-67.2 28.2V43.2L98.7 233.5l54.7-24.2v130.3l67.2-209.3zm-83.2-96.7l-1.3 4.7-15.2 52.9C80.6 106.7 52 145.8 52 191.5c0 52.3 34.3 95.9 83.4 105.5v53.6C57.5 340.1 0 272.4 0 191.6c0-80.5 59.8-147.2 137.4-158zm311.4 447.2c-11.2 11.2-23.1 12.3-28.6 10.5-5.4-1.8-27.1-19.9-60.4-44.4-33.3-24.6-33.6-35.7-43-56.7-9.4-20.9-30.4-42.6-57.5-52.4l-9.7-14.7c-24.7 16.9-53 26.9-81.3 28.7l2.1-6.6 15.9-49.5c46.5-11.9 80.9-54 80.9-104.2 0-54.5-38.4-102.1-96-107.1V32.3C254.4 37.4 320 106.8 320 191.6c0 33.6-11.2 64.7-29 90.4l14.6 9.6c9.8 27.1 31.5 48 52.4 57.4s32.2 9.7 56.8 43c24.6 33.2 42.7 54.9 44.5 60.3s.7 17.3-10.5 28.5zm-9.9-17.9c0-4.4-3.6-8-8-8s-8 3.6-8 8 3.6 8 8 8 8-3.6 8-8z"></path></svg>
                           <p className="erPage__emptyText">
                             No Entry Reports Found.
                           </p>
@@ -917,8 +929,8 @@ export default function EntryReport() {
                       key={pageNum}
                       type="button"
                       className={`permissionPagePaginationBtn ${currentPage === pageNum
-                          ? "permissionPagePaginationBtn--active"
-                          : "permissionPagePaginationBtn--reset"
+                        ? "permissionPagePaginationBtn--active"
+                        : "permissionPagePaginationBtn--reset"
                         }`}
                       onClick={() => handlePageChange(pageNum)}
                       disabled={loading}

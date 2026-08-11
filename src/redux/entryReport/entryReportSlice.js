@@ -65,17 +65,22 @@ const entryReportSlice = createSlice({
 
     // ================= EXPORT ENTRY REPORT =================
 
+    // NOTE: export pending/rejected intentionally do NOT touch `state.error`.
+    // That field drives the main table's API-error state (see EntryReport.jsx
+    // errorMessage). It previously was shared with export, so triggering an
+    // export failure while a valid list was already loaded made the whole
+    // table flip to the error view even though the list fetch itself never
+    // failed. Export success/failure is now surfaced via toast in the page
+    // component instead, using the thunk's own fulfilled/rejected result.
     builder
       .addCase(exportEntryReport.pending, (state) => {
         state.exportLoading = true;
-        state.error = null;
       })
       .addCase(exportEntryReport.fulfilled, (state) => {
         state.exportLoading = false;
       })
-      .addCase(exportEntryReport.rejected, (state, action) => {
+      .addCase(exportEntryReport.rejected, (state) => {
         state.exportLoading = false;
-        state.error = action.payload;
       });
   },
 });

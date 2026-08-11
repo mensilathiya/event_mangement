@@ -132,6 +132,13 @@
   color: #a7abbd;
 }
 
+.bookingCreateFieldError {
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #e0331e;
+}
+
 .bookingCreateInput:focus,
 .bookingCreateSelect:focus {
   box-shadow: 0 0 0 4px rgba(255, 91, 31, 0.12);

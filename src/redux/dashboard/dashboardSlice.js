@@ -16,6 +16,7 @@ const dashboardSlice = createSlice({
     clearDashboardState: (state) => {
       state.loading = false;
       state.error = null;
+      state.dashboardData = null;
     },
   },
 

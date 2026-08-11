@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { FaTimes, FaPencilAlt, FaUser } from "react-icons/fa";
-import { createUser, updateUser } from "../redux/user/userThunk";
+import { createUser, updateUser, getUsers } from "../redux/user/userThunk";
 import { clearUserState } from "../redux/user/userSlice";
 import "../assets/CSS/CreateUserModal.css";
 import { showError, showSuccess } from "../utilits/toast";
 
-export default function CreateUserModal({ onClose, isEditMode = false, editUserData = null }) {
+export default function CreateUserModal({
+  onClose,
+  isEditMode = false,
+  editUserData = null,
+  currentPage = 1,
+  rowsPerPage = 10,
+  search = "",
+}) {
   const dispatch = useDispatch();
 
   const [formData, setFormData] = useState({
@@ -209,6 +216,20 @@ export default function CreateUserModal({ onClose, isEditMode = false, editUserD
         showSuccess("User created successfully");
       }
 
+      // Refetch using the list's actual current page/limit/search instead
+      // of relying on the list to somehow already reflect the change —
+      // previously nothing refetched the list after create/edit, so a
+      // newly created or edited user would not appear until some other
+      // state change (page, rows-per-page, or search) happened to
+      // re-trigger User.jsx's own fetch effect.
+      dispatch(
+        getUsers({
+          page: currentPage,
+          limit: rowsPerPage,
+          search,
+        })
+      );
+
       dispatch(clearUserState());
 
       onClose();
@@ -387,12 +408,12 @@ export default function CreateUserModal({ onClose, isEditMode = false, editUserD
         </div>
 
         <div className="modalFooter">
-          <button type="button" className="closeButton" onClick={onClose} disabled={loading}>
+          <button type="button" className="modalCloseButton" onClick={onClose} disabled={loading}>
             Close
           </button>
           <button
             type="button"
-            className="createButton"
+            className="modalCreateButton"
             onClick={handleSubmit}
             disabled={loading}
           >

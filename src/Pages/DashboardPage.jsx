@@ -262,6 +262,12 @@ export default function DashboardPage() {
                 <DashboardCardSkeleton />
                 <DashboardCardSkeleton />
               </>
+            ) : error && !dashboardData ? (
+              // Request failed and there's no prior data to fall back on —
+              // the error bar above already shows the message and Retry,
+              // so render nothing here rather than empty-state cards that
+              // would make a failure look like "no data".
+              null
             ) : (
               <>
                 <div className="fullWidth">

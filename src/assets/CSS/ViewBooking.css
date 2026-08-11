@@ -50,6 +50,29 @@
   font-size: 15px;
 }
 
+.bookingView-stateError {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e0331e;
+  margin: 0 0 14px 0;
+}
+
+.bookingView-stateRetryBtn {
+  background-color: #f2f3f6;
+  color: #1b2a4e;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.bookingView-stateRetryBtn:hover {
+  background-color: #e5e6ec;
+}
+
 .bookingView-content {
   display: grid;
   grid-template-columns: 1fr 1.6fr;
