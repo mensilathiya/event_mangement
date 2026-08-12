@@ -14,6 +14,10 @@ import {
   exportEntryReport,
 } from "../redux/entryReport/entryReportThunk";
 import { clearEntryReportState } from "../redux/entryReport/entryReportSlice";
+// Existing qr redux slice — the same selector QRScannerModal already reads
+// to know a check-in just succeeded. Reused here purely to trigger a
+// refetch; QRScannerModal's own scanning/verification logic is untouched.
+import { selectCheckInSuccess } from "../redux/qr/qrSlice";
 import { showSuccess, showError } from "../utilits/toast";
 // Reusing the existing dashboard thunk so this page can obtain the active
 // event on its own, instead of depending on <DashboardPage /> having
@@ -242,6 +246,24 @@ export default function EntryReport() {
       dispatch(getAllEntryReport(buildEntryReportParams(currentPage)));
     }
   });
+
+  // Auto-refresh when a Checker's QR scan successfully checks a ticket in,
+  // so a newly-scanned entry shows up here immediately instead of requiring
+  // a manual page refresh. checkInSuccess comes from the existing qr redux
+  // slice — the exact same flag QRScannerModal already reads after
+  // dispatch(checkInQr(...)).unwrap() succeeds — so this fires whenever a
+  // check-in completes anywhere in the app while this page is mounted,
+  // without needing any change to the scanner/verification flow itself.
+  // Refetches with the currently applied filters/page (not a reset), same
+  // as every other refetch on this page.
+  const checkInSuccess = useSelector(selectCheckInSuccess);
+  const prevCheckInSuccessRef = useRef(false);
+  useEffect(() => {
+    if (checkInSuccess && !prevCheckInSuccessRef.current && eventId) {
+      dispatch(getAllEntryReport(buildEntryReportParams(currentPage)));
+    }
+    prevCheckInSuccessRef.current = checkInSuccess;
+  }, [checkInSuccess, eventId, dispatch, currentPage]);
 
   // Skips the very first run of the toolbar-search effect (mount) and any
   // run caused by handleReset/handleSearch programmatically clearing or

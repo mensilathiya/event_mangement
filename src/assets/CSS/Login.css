@@ -2,7 +2,7 @@
   width: 100%;
   min-height: 100vh;
   background: #f4f7fc;
-  overflow-x: hidden;
+  overflow-y: hidden;
 }
 
 .emsLogin__container {
@@ -17,6 +17,7 @@
   align-items: center;
   color: #fff;
   padding: 40px;
+  box-sizing: border-box;
 }
 
 .emsLogin__illustrationWrapper {
@@ -157,6 +158,161 @@
 .emsLogin__button:focus-visible {
   outline: 2px solid #1e40af;
   outline-offset: 2px;
+}
+
+/* ===== Email / Mobile field (plain HTML, replacing MUI TextField) =====
+   Same approach as the password field above: mirrors the MUI outlined
+   field's look with a plain <input> so the visual result doesn't change. */
+.emsLogin__mobileField {
+  margin: 16px 0 8px;
+}
+
+.emsLogin__mobileLabel {
+  display: block;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 6px;
+}
+
+.emsLogin__mobileInputWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.23);
+  border-radius: 4px;
+  padding: 0 14px;
+  height: 56px;
+  box-sizing: border-box;
+  background: #fff;
+  transition: border-color 0.15s ease;
+}
+
+.emsLogin__mobileInputWrapper:focus-within {
+  border-color: #1976d2;
+  border-width: 2px;
+  padding: 0 13px; /* compensate for the extra 1px border so it doesn't shift */
+}
+
+.emsLogin__mobileInputWrapper--error {
+  border-color: #d32f2f;
+}
+
+.emsLogin__mobileInputWrapper--error:focus-within {
+  border-color: #d32f2f;
+}
+
+.emsLogin__mobileStartIcon {
+  color: rgba(0, 0, 0, 0.54);
+  flex-shrink: 0;
+  font-size: 20px !important;
+}
+
+.emsLogin__mobileInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-family: inherit;
+  color: rgba(0, 0, 0, 0.87);
+  background: transparent;
+  height: 100%;
+  min-width: 0;
+}
+
+.emsLogin__mobileErrorText {
+  display: block;
+  margin-top: 4px;
+  margin-left: 14px;
+  font-size: 12px;
+  color: #d32f2f;
+}
+
+/* ===== Password field (plain HTML, replacing MUI TextField) =====
+   Mirrors the MUI outlined field's look — label, rounded border,
+   height, focus/error states — as closely as reasonably possible with
+   a plain <input>, so swapping the implementation doesn't visibly
+   change the page. */
+.emsLogin__passwordField {
+  margin: 16px 0 8px;
+}
+
+.emsLogin__passwordLabel {
+  display: block;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 6px;
+}
+
+.emsLogin__passwordInputWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.23);
+  border-radius: 4px;
+  padding: 0 14px;
+  height: 56px;
+  box-sizing: border-box;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.emsLogin__passwordInputWrapper:focus-within {
+  border-color: #1976d2;
+  border-width: 2px;
+  padding: 0 13px; /* compensate for the extra 1px border so it doesn't shift */
+}
+
+.emsLogin__passwordInputWrapper--error {
+  border-color: #d32f2f;
+}
+
+.emsLogin__passwordInputWrapper--error:focus-within {
+  border-color: #d32f2f;
+}
+
+.emsLogin__passwordStartIcon {
+  color: rgba(0, 0, 0, 0.54);
+  flex-shrink: 0;
+  font-size: 20px !important;
+}
+
+.emsLogin__passwordInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-family: inherit;
+  color: rgba(0, 0, 0, 0.87);
+  background: transparent;
+  height: 100%;
+  min-width: 0;
+}
+
+.emsLogin__passwordToggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 8px;
+  margin: 0 -8px 0 0;
+  border-radius: 50%;
+  color: rgba(0, 0, 0, 0.54);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.emsLogin__passwordToggleBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.emsLogin__passwordErrorText {
+  display: block;
+  margin-top: 4px;
+  margin-left: 14px;
+  font-size: 12px;
+  color: #d32f2f;
 }
 
 /* ===== Responsive ===== */

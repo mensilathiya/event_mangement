@@ -39,6 +39,9 @@
 body {
   font-family: 'Poppins', sans-serif !important;
   box-sizing: border-box !important;
+    margin: 0;
+  padding:0;
+  height: 100vh;
 }
 *{
   box-sizing: border-box;

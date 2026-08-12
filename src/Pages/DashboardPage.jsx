@@ -215,15 +215,15 @@ export default function DashboardPage() {
         rows: passBookingRows,
         emptyText: !passBookingRows?.length ? "No Bookings Available" : undefined,
       },
-      {
-        key: "bookingCounts",
-        title: "Booking Counts",
-        amountValue: undefined,
-        amountLabel: undefined,
-        columns: ["Date", "Counts"],
-        rows: bookingCountRows,
-        emptyText: !bookingCountRows?.length ? "No Data Available" : undefined,
-      },
+      // {
+      //   key: "bookingCounts",
+      //   title: "Booking Counts",
+      //   amountValue: undefined,
+      //   amountLabel: undefined,
+      //   columns: ["Date", "Counts"],
+      //   rows: bookingCountRows,
+      //   emptyText: !bookingCountRows?.length ? "No Data Available" : undefined,
+      // },
     ],
     [dashboardData, bookingCountRows, totalBookingRows, totalBookingQty, passBookingRows, todayPassBookingRows]
   );

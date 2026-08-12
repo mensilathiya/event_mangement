@@ -6,21 +6,13 @@ import {
   Checkbox,
   CircularProgress,
   FormControlLabel,
-  IconButton,
-  InputAdornment,
-  TextField,
   Box,
   Grid,
   Paper,
   Typography,
 } from "@mui/material";
 
-import {
-  Visibility,
-  VisibilityOff,
-  EmailOutlined,
-  LockOutlined,
-} from "@mui/icons-material";
+import { EmailOutlined, LockOutlined } from "@mui/icons-material";
 
 import { BsCalendarEventFill, BsFillTicketFill } from "react-icons/bs";
 import { LuScanQrCode } from "react-icons/lu";
@@ -29,6 +21,7 @@ import { FaUsers } from "react-icons/fa";
 import { login } from "../redux/auth/authSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { HiOutlineEye, HiOutlineEyeOff } from "react-icons/hi";
 
 const FEATURES = [
   { icon: <BsCalendarEventFill />, label: "Events" },
@@ -171,6 +164,14 @@ const Login = () => {
     setShowPassword((prev) => !prev);
   };
 
+  // Without this, the input's default mousedown behavior (stealing focus)
+  // can interfere with the click on the icon actually registering,
+  // which is why the toggle can feel like it "doesn't properly work."
+  // This is the exact pairing MUI's own docs use for this pattern.
+  const handleMouseDownPassword = (event) => {
+    event.preventDefault();
+  };
+
   return (
     <Box className="emsLogin__page">
       <Grid container className="emsLogin__container">
@@ -246,67 +247,99 @@ const Login = () => {
                 </Alert>
               )}
 
-              {/* Email / Mobile */}
-              <TextField
-                fullWidth
-                label="Email or Mobile Number"
-                name="login"
-                value={formData.login}
-                onChange={handleChange}
-                margin="normal"
-                size="medium"
-                error={!!errors.login}
-                helperText={errors.login}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <EmailOutlined />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              {/* Email / Mobile — plain HTML input (not MUI TextField),
+                  same structure/approach as the password field below. */}
+              <div className="emsLogin__mobileField">
+                <label
+                  htmlFor="login"
+                  className="emsLogin__mobileLabel"
+                >
+                  Email or Mobile Number
+                </label>
 
-              {/* Password */}
-              <TextField
-                fullWidth
-                label="Password"
-                name="password"
-                margin="normal"
-                size="medium"
-                type={showPassword ? "text" : "password"}
-                value={formData.password}
-                onChange={handleChange}
-                error={!!errors.password}
-                helperText={errors.password}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockOutlined />
-                    </InputAdornment>
-                  ),
+                <div
+                  className={
+                    "emsLogin__mobileInputWrapper" +
+                    (errors.login
+                      ? " emsLogin__mobileInputWrapper--error"
+                      : "")
+                  }
+                >
+                  <EmailOutlined className="emsLogin__mobileStartIcon" />
 
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={handleTogglePassword}
-                        edge="end"
-                        type="button"
-                        aria-label={
-                          showPassword
-                            ? "Hide password"
-                            : "Show password"
-                        }
-                      >
-                        {showPassword ? (
-                          <VisibilityOff />
-                        ) : (
-                          <Visibility />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
+                  <input
+                    id="login"
+                    name="login"
+                    type="text"
+                    value={formData.login}
+                    onChange={handleChange}
+                    autoComplete="username"
+                    className="emsLogin__mobileInput"
+                  />
+                </div>
+
+                {errors.login && (
+                  <span className="emsLogin__mobileErrorText">
+                    {errors.login}
+                  </span>
+                )}
+              </div>
+
+              {/* Password — plain HTML input (not MUI TextField). Structure
+                  intentionally mirrors the MUI field above it (start icon,
+                  label, end toggle button) purely so the visual result
+                  stays as close as possible to the original. */}
+              <div className="emsLogin__passwordField">
+                <label
+                  htmlFor="password"
+                  className="emsLogin__passwordLabel"
+                >
+                  Password
+                </label>
+
+                <div
+                  className={
+                    "emsLogin__passwordInputWrapper" +
+                    (errors.password
+                      ? " emsLogin__passwordInputWrapper--error"
+                      : "")
+                  }
+                >
+                  <LockOutlined className="emsLogin__passwordStartIcon" />
+
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleChange}
+                    autoComplete="current-password"
+                    className="emsLogin__passwordInput"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleTogglePassword}
+                    onMouseDown={handleMouseDownPassword}
+                    className="emsLogin__passwordToggleBtn"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showPassword ? (
+                      <HiOutlineEyeOff />
+                    ) : (
+                      <HiOutlineEye />
+                    )}
+                  </button>
+                </div>
+
+                {errors.password && (
+                  <span className="emsLogin__passwordErrorText">
+                    {errors.password}
+                  </span>
+                )}
+              </div>
 
               {/* Remember Me */}
               <div className="emsLogin__optionRow">
