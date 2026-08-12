@@ -26,7 +26,7 @@ const ViewEvent = () => {
   const { event, loading } = useSelector(
     (state) => state.event
   );
-
+  console.log(event);
   //view api call
   useEffect(() => {
     if (id) {

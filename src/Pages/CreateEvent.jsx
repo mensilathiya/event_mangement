@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   FaArrowLeft,
   FaPlus,
@@ -8,7 +8,7 @@ import {
   FaUpload,
   FaTimes,
 } from "react-icons/fa";
-import { createEvent } from "../redux/event/eventThunk";
+import { createEvent, updateEvent, getEventById } from "../redux/event/eventThunk";
 import { clearEventState } from "../redux/event/eventSlice";
 import { showSuccess, showError } from "../utilits/toast";
 import RichTextEditor from "../Components/RichTextEditor";
@@ -89,22 +89,44 @@ const getNowLocalDateTimeString = () => {
   )}:${pad(now.getMinutes())}`;
 };
 
+// Reverse of toISTISOString, for edit-mode prefill: converts a stored ISO
+// datetime (e.g. "2026-09-02T08:51:00.000Z") into the "YYYY-MM-DDTHH:mm"
+// shape <input type="datetime-local"> expects. Uses the browser's local
+// Date getters — the same approach Event.jsx's formatDateTime already
+// relies on to display Start/End correctly — so it round-trips the exact
+// wall-clock value an IST-based Admin originally entered.
+const toLocalDateTimeInputValue = (isoString) => {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
+};
+
 // Returns an error message, or null when valid. `getNowLocalDateTimeString()`
 // is re-evaluated on every call (never cached), so the check always reflects
 // the actual current local time, not a value captured once at page load.
 // Required-field emptiness is handled separately by the required-fields
 // check, so an empty value is not treated as an error here.
-const validateStartDateTime = (value) => {
+//
+// `skipPastCheck` is used in edit mode: an event that's already Expired
+// legitimately has a start/end in the past, and editing other fields on
+// it must not be blocked just because those existing date values are now
+// "in the past" relative to today. "End before Start" is still enforced
+// either way — that's a real data-integrity error, not a past-date one.
+const validateStartDateTime = (value, skipPastCheck = false) => {
   if (!value) return null;
-  if (value < getNowLocalDateTimeString()) {
+  if (!skipPastCheck && value < getNowLocalDateTimeString()) {
     return "Start date and time cannot be in the past.";
   }
   return null;
 };
 
-const validateEndDateTime = (value, startValue) => {
+const validateEndDateTime = (value, startValue, skipPastCheck = false) => {
   if (!value) return null;
-  if (value < getNowLocalDateTimeString()) {
+  if (!skipPastCheck && value < getNowLocalDateTimeString()) {
     return "End date and time cannot be in the past.";
   }
   if (startValue && value < startValue) {
@@ -209,7 +231,21 @@ const INITIAL_FORM_DATA = {
 export default function CreateEvent() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { loading, error, success, message } = useSelector((state) => state.event);
+
+  // This page is reused for both Create and Edit — no /edit-event/:id or
+  // /create-event/:id route. Edit mode is driven entirely by whether
+  // Event.jsx navigated here with an eventId in location.state.
+  const eventId = location.state?.eventId || null;
+  const isEditMode = Boolean(eventId);
+
+  // True only while the initial getEventById fetch (to populate the form)
+  // is in flight. Kept separate from the shared `loading` flag in the
+  // slice, which is also used by the Create/Update submit button — mixing
+  // the two would show "Creating..."/disable the button during the fetch.
+  const [isFetchingEvent, setIsFetchingEvent] = useState(isEditMode);
+  const [fetchError, setFetchError] = useState(null);
 
   // Single consolidated state object for all plain form fields.
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
@@ -218,6 +254,14 @@ export default function CreateEvent() {
   // not a plain serializable field, and is appended to FormData independently.
   const [uploadedImage, setUploadedImage] = useState(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+
+  // The event's current image, as returned by the API (a Cloudinary URL,
+  // not a File). Shown as the preview in edit mode until/unless the Admin
+  // picks a new file. If they never pick a new file, no "image" field is
+  // sent on update at all — eventService.updateEvent already keeps the
+  // existing image untouched in that case, so nothing else needs to change
+  // there.
+  const [existingImageUrl, setExistingImageUrl] = useState(null);
 
   // Field-level validation/API errors, keyed by formData field name, shown
   // directly under their respective inputs instead of via Toastify.
@@ -244,12 +288,63 @@ export default function CreateEvent() {
     return () => URL.revokeObjectURL(url);
   }, [uploadedImage]);
 
+  // Edit mode: fetch the event by id and populate the form. Runs once per
+  // eventId (i.e. once per visit to this page in edit mode) — not on every
+  // render — since re-fetching on unrelated state changes would stomp
+  // whatever the Admin has already typed.
+  useEffect(() => {
+    if (!isEditMode) return;
+
+    let cancelled = false;
+    setIsFetchingEvent(true);
+    setFetchError(null);
+
+    dispatch(getEventById(eventId))
+      .unwrap()
+      .then((payload) => {
+        if (cancelled) return;
+        const event = payload?.data;
+        if (!event) return;
+
+        setFormData({
+          title: event.title || "",
+          startDateTime: toLocalDateTimeInputValue(event.startDateTime),
+          endDateTime: toLocalDateTimeInputValue(event.endDateTime),
+          venueName: event.venueName || "",
+          latitude: event.latitude != null ? String(event.latitude) : "",
+          longitude: event.longitude != null ? String(event.longitude) : "",
+          address: event.address || "",
+          description: event.description || "",
+          termsConditions: event.termsConditions || "",
+          videoLink: "",
+          videoLinks: Array.isArray(event.videoLinks) ? event.videoLinks : [],
+        });
+        setExistingImageUrl(event.image || null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setFetchError(
+          typeof err === "string" ? err : "Failed to load event details."
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setIsFetchingEvent(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, eventId]);
+
   // Drive success/error feedback, form reset, redirect, and store cleanup
   // from a single source of truth (the slice) rather than duplicating this
   // logic inside handleSubmit's promise chain.
   useEffect(() => {
     if (success) {
-      showSuccess(message || "Event created successfully");
+      showSuccess(
+        message || (isEditMode ? "Event updated successfully" : "Event created successfully")
+      );
       setFormData(INITIAL_FORM_DATA);
       setUploadedImage(null);
       setFormErrors({});
@@ -266,7 +361,7 @@ export default function CreateEvent() {
       }
       dispatch(clearEventState());
     }
-  }, [success, error, message, dispatch, navigate]);
+  }, [success, error, message, dispatch, navigate, isEditMode]);
 
   const openDateTimePicker = useCallback((ref) => {
     setNowLocalDateTime(getNowLocalDateTimeString());
@@ -350,18 +445,18 @@ export default function CreateEvent() {
       setFormErrors((prev) => {
         const next = { ...prev };
 
-        const startErr = validateStartDateTime(val);
+        const startErr = validateStartDateTime(val, isEditMode);
         if (startErr) next.startDateTime = startErr;
         else delete next.startDateTime;
 
-        const endErr = validateEndDateTime(formData.endDateTime, val);
+        const endErr = validateEndDateTime(formData.endDateTime, val, isEditMode);
         if (endErr) next.endDateTime = endErr;
         else delete next.endDateTime;
 
         return next;
       });
     },
-    [formData.endDateTime]
+    [formData.endDateTime, isEditMode]
   );
 
   // End Date & Time: validates immediately against both "now" and Start.
@@ -370,7 +465,7 @@ export default function CreateEvent() {
       const val = e.target.value;
       setFormData((prev) => ({ ...prev, endDateTime: val }));
       setFormErrors((prev) => {
-        const endErr = validateEndDateTime(val, formData.startDateTime);
+        const endErr = validateEndDateTime(val, formData.startDateTime, isEditMode);
         if (!endErr) {
           if (!prev.endDateTime) return prev;
           const next = { ...prev };
@@ -380,7 +475,7 @@ export default function CreateEvent() {
         return { ...prev, endDateTime: endErr };
       });
     },
-    [formData.startDateTime]
+    [formData.startDateTime, isEditMode]
   );
 
   // RichTextEditor passes the HTML string directly (not an event).
@@ -477,14 +572,22 @@ export default function CreateEvent() {
 
     // Start/End Date & Time — final safety-net check, reusing the exact
     // same validators the live field handlers use (so "now" is evaluated
-    // fresh here too, never a stale captured value).
+    // fresh here too, never a stale captured value). In edit mode the
+    // past-date check is skipped: an already-Expired event legitimately
+    // has a start/end in the past, and saving other changes to it must
+    // not be blocked just because of that. "End before Start" is still
+    // enforced regardless of mode.
     if (!errors.startDateTime) {
-      const startErr = validateStartDateTime(formData.startDateTime);
+      const startErr = validateStartDateTime(formData.startDateTime, isEditMode);
       if (startErr) errors.startDateTime = startErr;
     }
 
     if (!errors.endDateTime) {
-      const endErr = validateEndDateTime(formData.endDateTime, formData.startDateTime);
+      const endErr = validateEndDateTime(
+        formData.endDateTime,
+        formData.startDateTime,
+        isEditMode
+      );
       if (endErr) errors.endDateTime = endErr;
     }
 
@@ -512,9 +615,16 @@ export default function CreateEvent() {
     if (uploadedImage) {
       payload.append("image", uploadedImage);
     }
+    // No "image" field appended when editing without a new file — the
+    // backend (eventService.updateEvent) already keeps the existing
+    // image/imagePublicId untouched whenever req.file is absent.
 
-    dispatch(createEvent(payload));
-  }, [loading, formData, uploadedImage, dispatch]);
+    if (isEditMode) {
+      dispatch(updateEvent({ id: eventId, data: payload }));
+    } else {
+      dispatch(createEvent(payload));
+    }
+  }, [loading, formData, uploadedImage, dispatch, isEditMode, eventId]);
 
   // Derived from the `nowLocalDateTime` state so it stays in sync with
   // whatever the pickers were last refreshed to (see openDateTimePicker /
@@ -524,19 +634,21 @@ export default function CreateEvent() {
       ? formData.startDateTime
       : nowLocalDateTime;
 
+  const pageTitle = isEditMode ? "Edit Event" : "Create Event";
+
   return (
     <div className="Event__page">
        <Sidebar/>
          <div className="EventPage__mainArea">
-               <Header title="Create Event" />
+               <Header title={pageTitle} />
       <div className="createEvent__container">
         <div className="createEvent__header">
-          <h1 className="createEvent__title">Create Event</h1>
+          <h1 className="createEvent__title">{pageTitle}</h1>
           <div className="createEvent__breadcrumb">
            <Link to="/dashboard">Dashboard</Link>
             <span className="createEvent__breadcrumbSep">-</span>
             <span className="createEvent__breadcrumbLink">Event</span>
-            <span className="createEvent__breadcrumbLink">Create Event</span>
+            <span className="createEvent__breadcrumbLink">{pageTitle}</span>
           </div>
           <button type="button" className="createEvent__backLink" onClick={handleClose}>
             <FaArrowLeft />
@@ -544,6 +656,15 @@ export default function CreateEvent() {
           </button>
         </div>
 
+        {isEditMode && isFetchingEvent ? (
+          <div className="createEvent__body" style={{ textAlign: "center", padding: "40px 0" }}>
+            Loading event details...
+          </div>
+        ) : isEditMode && fetchError ? (
+          <div className="createEvent__body" style={{ textAlign: "center", padding: "40px 0", color: "#dc3545" }}>
+            {fetchError}
+          </div>
+        ) : (
         <div className="createEvent__body">
           <div className="createEvent__grid">
             <div className="createEvent__column">
@@ -706,9 +827,9 @@ export default function CreateEvent() {
                       className="createEvent__uploadInput"
                       onChange={handleImageChange}
                     />
-                    {imagePreviewUrl ? (
+                    {imagePreviewUrl || existingImageUrl ? (
                       <img
-                        src={imagePreviewUrl}
+                        src={imagePreviewUrl || existingImageUrl}
                         alt="Event preview"
                         className="createEvent__uploadPreviewImg"
                       />
@@ -822,10 +943,17 @@ export default function CreateEvent() {
               onClick={handleSubmit}
               disabled={loading}
             >
-              {loading ? "Creating..." : "Create"}
+              {loading
+                ? isEditMode
+                  ? "Updating..."
+                  : "Creating..."
+                : isEditMode
+                ? "Update"
+                : "Create"}
             </button>
           </div>
         </div>
+        )}
       </div>
       </div>
     </div>

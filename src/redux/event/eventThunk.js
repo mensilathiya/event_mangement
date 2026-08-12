@@ -3,7 +3,9 @@ import {
   createEventApi,
   getEventByIdApi,
   getAllEventsApi,
-  changeEventStatusApi
+  changeEventStatusApi,
+  updateEventApi,
+  deleteEventApi,
 } from "../../services/eventService";
 
 // ================= CREATE EVENT =================
@@ -48,6 +50,35 @@ export const getAllEvents = createAsyncThunk(
     }
   }
 );
+// ================= UPDATE EVENT =================
+export const updateEvent = createAsyncThunk(
+  "event/updateEvent",
+  async ({ id, data }, thunkAPI) => {
+    try {
+      const response = await updateEventApi(id, data);
+      return response.data;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Failed to update event"
+      );
+    }
+  }
+);
+
+// ================= DELETE EVENT =================
+export const deleteEvent = createAsyncThunk(
+  "event/deleteEvent",
+  async (id, thunkAPI) => {
+    try {
+      return await deleteEventApi(id);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Failed to delete event"
+      );
+    }
+  }
+);
+
 // Change Event Status
 export const changeEventStatus = createAsyncThunk(
   "event/changeEventStatus",

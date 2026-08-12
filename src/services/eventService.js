@@ -22,8 +22,27 @@ export const getAllEventsApi = async (params) => {
 
   return response.data;
 };
+// Update Event
+// Same response shape as createEventApi (raw axios response) since the
+// thunk needs response.data the same way createEvent's thunk does.
+export const updateEventApi = (id, data) => {
+  return api.put(`/events/${id}/update`, data, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+};
+
+// Delete Event
+// Same response shape as changeEventStatusApi (already-unwrapped .data)
+// since there's no form data to re-populate from the result.
+export const deleteEventApi = async (id) => {
+  const response = await api.delete(`/events/${id}/delete`);
+  return response.data;
+};
+
 // Change Event Status
 export const changeEventStatusApi = async (id) => {
   const response = await api.patch(`/events/${id}/status`);
   return response.data;
-};  
+};

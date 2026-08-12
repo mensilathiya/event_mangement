@@ -54,25 +54,43 @@ const menuItems = [
 export default function Sidebar() {
   const location = useLocation();
 
-  // Current user/role/permissions — same source pattern as ProtectedRoute:
-  // prefer the live profile (from getProfile()), fall back to the user
-  // cached at login (available immediately on refresh, before getProfile
-  // resolves). Admin is never restricted here, matching the backend and
-  // preserving Admin's existing full menu unconditionally.
+  // Current user/role/permissions — prefer the live profile (from
+  // getProfile()), fall back to the user cached at login (available
+  // immediately on refresh, before getProfile() resolves).
+  //
+  // IMPORTANT: role/permissions are resolved field-by-field, not by
+  // picking `profile` OR `authUser` wholesale. `/auth/profile` serves
+  // Admin and Checker/User from two different backend models — if that
+  // response ever omits or differently-shapes `role`/`permissions` for
+  // one of them, an all-or-nothing `profile || authUser` would silently
+  // lose a value that `authUser` (set correctly at login) still has,
+  // e.g. right after getProfile() resolves. Falling back per-field means
+  // a gap in one response can't blank out a value the other already has.
   const profile = useSelector((state) => state.auth.profile);
   const authUser = useSelector((state) => state.auth.user);
   const currentUser = profile || authUser;
-  const role = currentUser?.role;
-  const userPermissions = Array.isArray(currentUser?.permissions)
-    ? currentUser.permissions
+  const role = profile?.role ?? authUser?.role;
+  const userPermissions = Array.isArray(profile?.permissions)
+    ? profile.permissions
+    : Array.isArray(authUser?.permissions)
+    ? authUser.permissions
     : [];
 
   const hasPermission = (permission) =>
     role === 'admin' || userPermissions.includes(permission);
 
-  // Only "Entry Report" currently maps to a real permission from the
-  // Checker/User system — every other item is left exactly as before.
+  // Checker is locked to Entry Report ONLY — Dashboard, Event, Booking,
+  // User Management (Users/Roles), and any future module are all hidden
+  // for this role, regardless of what's added to `menuItems` later.
+  // Non-checker roles (currently just Admin) keep the existing behavior
+  // unchanged, including the Entry Report permission gate below.
+  const isChecker = role === 'checker';
+
   const visibleMenuItems = menuItems.filter((item) => {
+    if (isChecker) {
+      return item.label === 'Entry Report' && hasPermission('Entry Report');
+    }
+
     if (item.label === 'Entry Report') {
       return hasPermission('Entry Report');
     }

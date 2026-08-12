@@ -6,12 +6,28 @@ import { useSelector } from "react-redux";
 // (matches backend authorize behavior). A Checker/User must have the
 // named permission in their `permissions` array.
 //
+// Optional `adminOnly` prop gates a route to Admin exclusively, regardless
+// of any permission a Checker/User might hold — e.g.
+// <Route element={<ProtectedRoute adminOnly />}><Route path="/dashboard" ... />
+// This is separate from `permission` because Dashboard-style routes have
+// no corresponding entry in the Checker `permissions` enum at all; it's
+// not "missing a permission", it's "not for this role, ever".
+// A non-admin hitting an adminOnly route is sent to /entry-report (the
+// only page Checker currently has access to) rather than /dashboard,
+// since redirecting an already-blocked role back to /dashboard would loop.
+//
 // Current-user source: prefer the live `profile` (fetched via
 // getProfile() from the backend on app load — always up to date), and
 // fall back to the `user` object cached at login time in localStorage
 // (available immediately, before getProfile() resolves, so there's no
 // flash of "no access" right after a refresh).
-const ProtectedRoute = ({ permission = null }) => {
+//
+// role/permissions are resolved field-by-field below (profile's value if
+// present, else authUser's) rather than picking one object wholesale —
+// see the matching comment in Sidebar.jsx/Header.jsx for why: an
+// all-or-nothing pick can silently lose a correct value from authUser
+// the moment profile populates, if /auth/profile ever omits that field.
+const ProtectedRoute = ({ permission = null, adminOnly = false }) => {
   const token = localStorage.getItem("token");
 
   const profile = useSelector((state) => state.auth.profile);
@@ -21,11 +37,17 @@ const ProtectedRoute = ({ permission = null }) => {
     return <Navigate to="/" replace />;
   }
 
+  const role = profile?.role ?? authUser?.role;
+
+  if (adminOnly && role !== "admin") {
+    return <Navigate to="/entry-report" replace />;
+  }
+
   if (permission) {
-    const currentUser = profile || authUser;
-    const role = currentUser?.role;
-    const permissions = Array.isArray(currentUser?.permissions)
-      ? currentUser.permissions
+    const permissions = Array.isArray(profile?.permissions)
+      ? profile.permissions
+      : Array.isArray(authUser?.permissions)
+      ? authUser.permissions
       : [];
 
     const hasAccess = role === "admin" || permissions.includes(permission);

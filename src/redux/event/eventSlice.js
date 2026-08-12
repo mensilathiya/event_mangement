@@ -4,6 +4,8 @@ import {
   getEventById,
   getAllEvents,
   changeEventStatus,
+  updateEvent,
+  deleteEvent,
 } from "./eventThunk";
 
 const initialState = {
@@ -83,6 +85,50 @@ const eventSlice = createSlice({
         state.totalPages = action.payload.pagination.totalPages;
       })
       .addCase(getAllEvents.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+
+    // ================= UPDATE EVENT =================
+    builder
+      .addCase(updateEvent.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateEvent.fulfilled, (state, action) => {
+        state.loading = false;
+        state.success = true;
+        state.message = action.payload.message;
+        state.event = action.payload.data;
+
+        // Keep the list in sync without a refetch, same as changeEventStatus.
+        state.events = state.events.map((event) =>
+          event._id === action.payload.data._id
+            ? action.payload.data
+            : event
+        );
+      })
+      .addCase(updateEvent.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+
+    // ================= DELETE EVENT =================
+    builder
+      .addCase(deleteEvent.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteEvent.fulfilled, (state, action) => {
+        state.loading = false;
+
+        // action.meta.arg is the id passed into dispatch(deleteEvent(id)).
+        state.events = state.events.filter(
+          (event) => event._id !== action.meta.arg
+        );
+        state.total = Math.max(0, state.total - 1);
+      })
+      .addCase(deleteEvent.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

@@ -5,43 +5,67 @@ import QRScannerModal from "./QRScanner/QRScannerModal";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import {  clearAuth } from "../redux/auth/authSlice";
+import { clearAuth } from "../redux/auth/authSlice";
 import Swal from "sweetalert2";
 
 export default function Header({ title = "Dashboard" }) {
   const [openScanner, setOpenScanner] = useState(false);
+
   const profile = useSelector((state) => state.auth.profile);
   const authUser = useSelector((state) => state.auth.user);
   const token = useSelector((state) => state.auth.token);
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Same current-user resolution pattern as Sidebar/ProtectedRoute:
-  // prefer the live profile, fall back to the user cached at login.
-  // Admin always sees the button (existing behavior preserved); a
-  // Checker/User needs the "QR Pass" permission.
+  // Current logged-in user
+  // Prefer profile API data, otherwise use login data
   const currentUser = profile || authUser;
-  const role = currentUser?.role;
-  const userPermissions = Array.isArray(currentUser?.permissions)
-    ? currentUser.permissions
-    : [];
-  const canScanQr = role === "admin" || userPermissions.includes("QR Pass");
 
+  // Resolved per-field, not by picking `profile` OR `authUser` wholesale —
+  // see the matching comment in Sidebar.jsx. If /auth/profile ever omits
+  // role/permissions for a Checker while `authUser` (from login) still has
+  // them, an all-or-nothing pick would silently blank both out.
+  const role = profile?.role ?? authUser?.role;
+
+  const userPermissions = Array.isArray(profile?.permissions)
+    ? profile.permissions
+    : Array.isArray(authUser?.permissions)
+    ? authUser.permissions
+    : [];
+
+  // Admin can always scan.
+  // Checker/User needs QR Pass permission.
+  const canScanQr =
+    role === "admin" || userPermissions.includes("QR Pass");
+
+  // Checker's header is locked to the QR Scanner action only — the
+  // profile image becomes display-only (no click, no navigation to
+  // /profile) for this role. Logout is intentionally left available for
+  // every role, Checker included, since there's otherwise no way to end
+  // the session.
+  const isChecker = role === "checker";
+console.log("HEADER ROLE:", role);
+console.log("HEADER PERMISSIONS:", userPermissions);
+console.log("CAN SCAN QR:", canScanQr);
+  // Open sidebar
   const handleMenuClick = () => {
     window.dispatchEvent(new Event("toggle-sidebar"));
   };
 
+  // Open QR Scanner
   const handleScanQr = () => {
-    console.log('hello');
-
     setOpenScanner(true);
   };
 
+  // Profile image
   const PROFILE_IMAGE_URL =
+    currentUser?.profileImage ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      profile?.name || "Admin"
+      currentUser?.name || "User"
     )}&background=17a2b8&color=ffffff&bold=true`;
 
+  // Logout
   const handleLogout = async () => {
     if (!token) return;
 
@@ -57,16 +81,17 @@ export default function Header({ title = "Dashboard" }) {
 
     if (!result.isConfirmed) return;
 
-    // Only clear local auth state
+    // Clear local auth state
     dispatch(clearAuth());
 
-    // SPA navigation — NO refresh
+    // Navigate without page refresh
     navigate("/", { replace: true });
   };
 
   return (
     <>
       <header className="header">
+        {/* Hamburger */}
         <button
           type="button"
           className="hamburgerButton"
@@ -76,9 +101,11 @@ export default function Header({ title = "Dashboard" }) {
           <HiOutlineMenu />
         </button>
 
+        {/* Page Title */}
         <span className="pageTitle">{title}</span>
 
         <div className="headerRight">
+          {/* Scan QR */}
           {canScanQr && (
             <button
               type="button"
@@ -90,6 +117,7 @@ export default function Header({ title = "Dashboard" }) {
             </button>
           )}
 
+          {/* Logout */}
           <button
             type="button"
             className="logoutButton"
@@ -100,19 +128,23 @@ export default function Header({ title = "Dashboard" }) {
             <HiOutlineLogout />
           </button>
 
+          {/* Profile — display-only for Checker: no click, no /profile nav */}
           <div
-            onClick={() => navigate("/profile")}
+            onClick={isChecker ? undefined : () => navigate("/profile")}
             className="profileWrap"
+            style={isChecker ? { cursor: "default" } : undefined}
+            aria-disabled={isChecker || undefined}
           >
             <img
               src={PROFILE_IMAGE_URL}
-              alt="User profile"
+              alt={currentUser?.name || "User profile"}
               className="profileImage"
             />
           </div>
         </div>
       </header>
-      {/* // qr scanner */}
+
+      {/* QR Scanner */}
       <QRScannerModal
         isOpen={openScanner}
         onClose={() => setOpenScanner(false)}

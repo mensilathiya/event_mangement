@@ -3,10 +3,10 @@ import { createPortal } from "react-dom";
 import "../assets/CSS/Event.css";
 import Sidebar from "../Components/Sidebar";
 import Header from "../Components/Header";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FaSearch, FaSort, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
-import { getAllEvents, changeEventStatus } from "../redux/event/eventThunk";
+import { getAllEvents, changeEventStatus, deleteEvent } from "../redux/event/eventThunk";
 import Swal from "sweetalert2";
 
 const columns = [
@@ -69,6 +69,7 @@ const Event = () => {
   const [openActionId, setOpenActionId] = useState(null);
   const [actionMenuPos, setActionMenuPos] = useState(null);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const {
     events,
@@ -212,6 +213,41 @@ const Event = () => {
         icon: "error",
         title: "Error",
         text: error || "Failed to update status.",
+      });
+    }
+  };
+
+  // delete event
+  const handleDeleteEvent = async (event) => {
+    closeActionMenu();
+
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "Are you sure?",
+      text: `Do you want to delete "${event.title}"? This action cannot be undone.`,
+      showCancelButton: true,
+      confirmButtonText: "Yes, Delete it!",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#dc3545",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await dispatch(deleteEvent(event._id)).unwrap();
+
+      Swal.fire({
+        icon: "success",
+        title: "Deleted",
+        text: "Event deleted successfully.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error || "Failed to delete event.",
       });
     }
   };
@@ -405,6 +441,30 @@ const Event = () => {
                                     Ticket Type
                                   </button>
                                 </Link>
+                                <button
+                                  type="button"
+                                  className="eventList__actionItem"
+                                  onClick={() => {
+                                    closeActionMenu();
+                                    // Reuse the Create Event page for editing —
+                                    // no /edit-event/:id or /create-event/:id
+                                    // route. CreateEvent.jsx reads
+                                    // location.state.eventId to switch into
+                                    // edit mode and fetch/populate the form.
+                                    navigate("/create-event", {
+                                      state: { eventId: event._id },
+                                    });
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="eventList__actionItem"
+                                  onClick={() => handleDeleteEvent(event)}
+                                >
+                                  Delete
+                                </button>
                               </div>,
                               document.body
                             )}

@@ -56,7 +56,6 @@ function App() {
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/user" element={<User />} />
             <Route path="/role" element={<Role />} />
             {/* <Route path="/permission" element={<Permission />} /> */}
@@ -68,6 +67,15 @@ function App() {
             <Route path="/view-booking/:id" element={<ViewBooking />} />
             <Route path="/register-users/:id" element={<RegisterUsers />} />
             <Route path="/profile" element={<Profile />} />
+          </Route>
+
+          {/* Dashboard is Admin-only. A Checker hitting /dashboard directly
+              (typed URL, bookmark, back-button, etc.) is redirected —
+              the Sidebar already hides the link, but that alone doesn't
+              stop direct navigation, so the route itself needs the same
+              gate. */}
+          <Route element={<ProtectedRoute adminOnly />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
           </Route>
 
           {/* Entry Report requires the "Entry Report" permission
