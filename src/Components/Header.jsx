@@ -31,8 +31,8 @@ export default function Header({ title = "Dashboard" }) {
   const userPermissions = Array.isArray(profile?.permissions)
     ? profile.permissions
     : Array.isArray(authUser?.permissions)
-    ? authUser.permissions
-    : [];
+      ? authUser.permissions
+      : [];
 
   // Admin can always scan.
   // Checker/User needs QR Pass permission.
@@ -45,9 +45,6 @@ export default function Header({ title = "Dashboard" }) {
   // every role, Checker included, since there's otherwise no way to end
   // the session.
   const isChecker = role === "checker";
-console.log("HEADER ROLE:", role);
-console.log("HEADER PERMISSIONS:", userPermissions);
-console.log("CAN SCAN QR:", canScanQr);
   // Open sidebar
   const handleMenuClick = () => {
     window.dispatchEvent(new Event("toggle-sidebar"));
@@ -130,7 +127,7 @@ console.log("CAN SCAN QR:", canScanQr);
 
           {/* Profile — display-only for Checker: no click, no /profile nav */}
           <div
-            onClick={isChecker ? undefined : () => navigate("/profile")}
+            onClick={() => navigate("/profile")}
             className="profileWrap"
             style={isChecker ? { cursor: "default" } : undefined}
             aria-disabled={isChecker || undefined}

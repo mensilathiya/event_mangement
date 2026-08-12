@@ -21,7 +21,7 @@ export default function EditProfileModal({ user, onClose }) {
 
   const [formData, setFormData] = useState({
     name: user.name || "",
-    email: user.email || "",
+    // email: user.email || "",
     mobile: user.mobile || "",
   });
   const [fieldErrors, setFieldErrors] = useState({});
@@ -54,17 +54,7 @@ export default function EditProfileModal({ user, onClose }) {
       errors.name = "Name is required";
     }
 
-    if (!formData.email.trim()) {
-      errors.email = "Email is required";
-    } else if (!EMAIL_REGEX.test(formData.email.trim())) {
-      errors.email = "Please enter a valid email address";
-    }
-
-    if (!formData.mobile.trim()) {
-      errors.mobile = "Mobile number is required";
-    } else if (!MOBILE_REGEX.test(formData.mobile.trim())) {
-      errors.mobile = "Mobile number must be exactly 10 digits";
-    }
+  
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -77,7 +67,7 @@ export default function EditProfileModal({ user, onClose }) {
     const result = await dispatch(
       updateProfile({
         name: formData.name.trim(),
-        email: formData.email.trim(),
+        // email: formData.email.trim(),
         mobile: formData.mobile.trim(),
       })
     );
@@ -93,7 +83,14 @@ export default function EditProfileModal({ user, onClose }) {
     <div className="modalOverlay" onClick={onClose}>
       <div className="modalCard" onClick={(e) => e.stopPropagation()}>
         <h2 className="modalTitle">Edit User</h2>
-
+        <button
+          type="button"
+          className="profilemodalCloseButton"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          X
+        </button>
         <div className="modalInnerCard">
           <h3 className="modalInnerTitle">Profile Details</h3>
 
@@ -154,10 +151,10 @@ export default function EditProfileModal({ user, onClose }) {
 
             <div className="modalFormRow">
               <label>
-                Email <span className="requiredStar">*</span>
+                Email
               </label>
               <div>
-                <input
+                {/* <input
                   type="email"
                   value={formData.email}
                   onChange={handleChange("email")}
@@ -166,28 +163,10 @@ export default function EditProfileModal({ user, onClose }) {
                 />
                 {fieldErrors.email && (
                   <p className="modalFieldError">{fieldErrors.email}</p>
-                )}
+                )} */}
               </div>
             </div>
 
-            <div className="modalFormRow">
-              <label>
-                Mobile <span className="requiredStar">*</span>
-              </label>
-              <div>
-                <input
-                  type="tel"
-                  value={formData.mobile}
-                  onChange={handleChange("mobile")}
-                  className="modalInput"
-                  maxLength={10}
-                  disabled={updateLoading}
-                />
-                {fieldErrors.mobile && (
-                  <p className="modalFieldError">{fieldErrors.mobile}</p>
-                )}
-              </div>
-            </div>
 
             <div className="modalFormRow">
               <label>

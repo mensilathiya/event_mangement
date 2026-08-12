@@ -200,7 +200,7 @@ export default function Profile() {
           </div>
           <div className="detailRow">
             <span className="detailLabel">Email</span>
-            <span className="detailValue">{profile.email}</span>
+            {/* <span className="detailValue">{profile.email}</span> */}
           </div>
           <div className="detailRow">
             <span className="detailLabel">
@@ -367,7 +367,7 @@ export default function Profile() {
         <EditProfileModal
           user={{
             name: profile.name,
-            email: profile.email,
+            // email: profile.email,
             mobile: profile.mobile,
             role: profile.role,
             avatar: avatarUrl,

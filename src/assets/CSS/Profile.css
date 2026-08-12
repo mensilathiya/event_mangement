@@ -459,6 +459,27 @@
   margin: 0;
   text-align: center;
 }
+/* create profile modal css */
+.modalCard {
+  position: relative;
+}
+
+.profilemodalCloseButton {
+  position: absolute;
+  top: 20px;
+  right:22px;
+  /* width: 36px;
+  height: 20px; */
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  border-radius: 6px;
+}
+
 
 /* ===== Responsive ===== */
 @media (max-width: 767px) {

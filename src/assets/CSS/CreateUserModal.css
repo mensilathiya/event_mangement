@@ -234,10 +234,10 @@
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
-
+/* 
 .modalCloseButton:hover {
   background-color: #dfe1e8;
-}
+} */
 
 .modalCreateButton {
   background-color: #e0331e;
