@@ -147,7 +147,7 @@ a{
 
 .eventList__tableWrap {
   position: relative;
- overflow-x: auto;
+ /* overflow-x: auto; */
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 80px; 
@@ -386,9 +386,7 @@ a{
 /* Tablet and below: table needs real width to stay legible,
    so it scrolls horizontally inside eventList__tableWrap only */
 @media (max-width: 1024px) {
-  .eventList__tableWrap {
-    overflow-x: auto;
-  }
+  
   .EventPage__mainArea{
     margin: 0;
   }

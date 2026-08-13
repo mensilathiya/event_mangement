@@ -1,11 +1,19 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-import { getAllEntryReport, exportEntryReport } from "./entryReportThunk";
+import {
+  getActiveEvents,
+  getAllEntryReport,
+  exportEntryReport,
+} from "./entryReportThunk";
 
 const initialState = {
   entryReports: [],
   pagination: null,
   event: null,
+
+  activeEvents: [],
+  activeEventsLoading: false,
+  activeEventsError: null,
 
   loading: false,
   exportLoading: false,
@@ -41,6 +49,25 @@ const entryReportSlice = createSlice({
   },
 
   extraReducers: (builder) => {
+    // ================= GET ACTIVE EVENTS =================
+    // Intentionally kept on its own loading/error flags (not `loading`/
+    // `error`), which drive the main table's loading/error state — a
+    // failure fetching the dropdown's event list shouldn't flip the table
+    // into its error view.
+    builder
+      .addCase(getActiveEvents.pending, (state) => {
+        state.activeEventsLoading = true;
+        state.activeEventsError = null;
+      })
+      .addCase(getActiveEvents.fulfilled, (state, action) => {
+        state.activeEventsLoading = false;
+        state.activeEvents = action.payload?.data ?? [];
+      })
+      .addCase(getActiveEvents.rejected, (state, action) => {
+        state.activeEventsLoading = false;
+        state.activeEventsError = action.payload;
+      });
+
     // ================= GET ENTRY REPORT =================
 
     builder

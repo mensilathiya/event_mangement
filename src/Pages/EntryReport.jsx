@@ -10,6 +10,7 @@ import Header from "../Components/Header";
 // Existing entryReport redux architecture — adjust path if your thunk file
 // lives elsewhere; it must resolve to the existing entryReportThunk.js.
 import {
+  getActiveEvents,
   getAllEntryReport,
   exportEntryReport,
 } from "../redux/entryReport/entryReportThunk";
@@ -19,10 +20,6 @@ import { clearEntryReportState } from "../redux/entryReport/entryReportSlice";
 // refetch; QRScannerModal's own scanning/verification logic is untouched.
 import { selectCheckInSuccess } from "../redux/qr/qrSlice";
 import { showSuccess, showError } from "../utilits/toast";
-// Reusing the existing dashboard thunk so this page can obtain the active
-// event on its own, instead of depending on <DashboardPage /> having
-// already dispatched it. Same thunk DashboardPage already uses.
-import { getDashboardSummary } from "../redux/dashboard/dashboardThunk";
 import useEventExpiryRefetch from "../hooks/useEventExpiryRefetch";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { Link } from "react-router-dom";
@@ -130,37 +127,55 @@ export default function EntryReport() {
   const [page, setPage] = useState(1);
 
   const dispatch = useDispatch();
-  const { dashboardData, loading: dashboardLoading } = useSelector(
-    (state) => state.dashboard
-  );
 
-  const eventId = dashboardData?.activeEvent?._id;
+  // The event the user has picked from the Event dropdown. Starts empty
+  // on purpose — the report is never auto-locked to the first/only event
+  // returned by the API; the user must actively select one.
+  const [selectedEventId, setSelectedEventId] = useState("");
+  const eventId = selectedEventId;
+
   // Existing entryReport slice state — no new/duplicate state is created here.
-  const { entryReports, pagination, event: entryReportEvent, loading, exportLoading, error } =
-    useSelector((state) => state.entryReport);
+  const {
+    entryReports,
+    pagination,
+    event: entryReportEvent,
+    activeEvents,
+    activeEventsLoading,
+    loading,
+    exportLoading,
+    error,
+  } = useSelector((state) => state.entryReport);
 
   const rows = entryReports ?? [];
   // console.log(rows);
 
+  // The dropdown option matching the currently selected event, used as a
+  // fallback for the date bounds below before the entry-report API's own
+  // response (entryReportEvent) has arrived for that event.
+  const selectedEventOption = activeEvents.find(
+    (evt) => evt?._id === selectedEventId
+  ) ?? null;
+
   // Event date bounds for the date-range picker. The backend's own
   // entry-report response (event.startDateTime / event.endDateTime) is the
-  // source of truth once available; before that first response arrives,
-  // fall back to dashboardData.activeEvent — the same source eventId itself
-  // is derived from above, so the picker is always scoped to the one active
-  // event this page actually queries for. No other event-selection state is
-  // consulted, so inactive/unrelated events can never supply these dates.
-  const activeEvent = dashboardData?.activeEvent ?? null;
-
-  const eventStartDate = entryReportEvent?.startDateTime
-    ? new Date(entryReportEvent.startDateTime)
-    : activeEvent?.startDate
-      ? new Date(activeEvent.startDate)
-      : null;
-  const eventEndDate = entryReportEvent?.endDateTime
-    ? new Date(entryReportEvent.endDateTime)
-    : activeEvent?.endDate
-      ? new Date(activeEvent.endDate)
-      : null;
+  // source of truth once available for the *currently selected* event;
+  // before that first response arrives for it, fall back to the matching
+  // entry in activeEvents (the same list the dropdown itself is built
+  // from), so the picker is always scoped to the one event the user
+  // actually selected. No other event-selection state is consulted, so
+  // inactive/unrelated events can never supply these dates.
+  const eventStartDate =
+    entryReportEvent?._id === selectedEventId && entryReportEvent?.startDateTime
+      ? new Date(entryReportEvent.startDateTime)
+      : selectedEventOption?.startDateTime
+        ? new Date(selectedEventOption.startDateTime)
+        : null;
+  const eventEndDate =
+    entryReportEvent?._id === selectedEventId && entryReportEvent?.endDateTime
+      ? new Date(entryReportEvent.endDateTime)
+      : selectedEventOption?.endDateTime
+        ? new Date(selectedEventOption.endDateTime)
+        : null;
 
   // Builds the API params from the current filter values, matching the
   // entry-report backend's query contract exactly.
@@ -196,22 +211,17 @@ export default function EntryReport() {
   const totalPages = pagination?.totalPages ?? 1;
   const totalRecords = pagination?.total ?? rows.length;
 
-  // Ensure the active event is available regardless of navigation path.
-  // Previously this page only ever *read* dashboardData — it never fetched
-  // it — so eventId stayed undefined forever on direct navigation/refresh
-  // (dashboardData is only populated by DashboardPage's own dispatch).
-  // Mirrors the exact same guard DashboardPage uses, so if the user arrived
-  // via Dashboard this is a no-op (no duplicate call).
+  // Populate the Event dropdown on load with every currently active/valid
+  // event the logged-in user is allowed to view. This is the only place
+  // the event list is fetched from — the dropdown always reflects exactly
+  // this list, never a single first/default event.
   useEffect(() => {
-    if (!dashboardData && !dashboardLoading) {
-      dispatch(getDashboardSummary());
-    }
-  }, [dashboardData, dashboardLoading, dispatch]);
+    dispatch(getActiveEvents());
+  }, [dispatch]);
 
-  // Fetch entry report data on first page load using the existing thunk/slice.
-  // eventId is a required query param, so wait until it's available. Once
-  // the effect above resolves getDashboardSummary(), eventId changes and
-  // this effect fires on its own.
+  // Fetch entry report data once the user has selected an event. Never
+  // fires on its own from the first item in activeEvents — only a real
+  // user selection (see handleEventChange) sets selectedEventId.
   useEffect(() => {
     if (!eventId) return;
 
@@ -219,29 +229,35 @@ export default function EntryReport() {
 
   }, [eventId, dispatch]);
 
-  // If the active event disappears (goes Inactive/Expired and the API no
-  // longer reports an eventId) while the user is already on this page, the
-  // fetch effect above simply stops firing — it never clears the old rows.
-  // Without this, the previous event's table/pagination would keep showing
-  // as if it were still valid. Clear it explicitly the moment eventId drops
-  // from a real value to none, so the page reflects "no active event"
-  // instead of stale data.
+  // If the selected event disappears from the dropdown's own list (goes
+  // Inactive/Expired) while the user is already on this page, deselect it
+  // and clear the old rows/pagination explicitly — otherwise they'd keep
+  // showing as if that event were still valid. Only acts once activeEvents
+  // has actually loaded at least once, so it can't fire on the very first
+  // render before the list has arrived.
   const prevEventIdRef = useRef(eventId);
   useEffect(() => {
-    if (prevEventIdRef.current && !eventId) {
+    if (activeEventsLoading) return;
+
+    const stillActive =
+      !eventId || activeEvents.some((evt) => evt?._id === eventId);
+
+    if (prevEventIdRef.current && !stillActive) {
+      setSelectedEventId("");
       dispatch(clearEntryReportState());
     }
     prevEventIdRef.current = eventId;
-  }, [eventId, dispatch]);
+  }, [eventId, activeEvents, activeEventsLoading, dispatch]);
 
-  // Auto-refetch when the active event's own end time is reached, so this
-  // page reflects Active -> Inactive/Expired automatically while the user
-  // stays on it — no manual browser refresh, no polling. Re-requests the
-  // dashboard summary (to pick up the new event/active-event state) and
-  // the entry report list for the current page/filters (not a reset),
-  // using the exact same thunks/params the rest of this page already uses.
+  // Auto-refetch when the selected event's own end time is reached, so
+  // this page reflects Active -> Inactive/Expired automatically while the
+  // user stays on it — no manual browser refresh, no polling. Re-requests
+  // the active-events list (so an expired event drops out of the
+  // dropdown) and the entry report list for the current page/filters (not
+  // a reset), using the exact same thunks/params the rest of this page
+  // already uses.
   useEventExpiryRefetch(eventEndDate ? eventEndDate.getTime() : null, () => {
-    dispatch(getDashboardSummary());
+    dispatch(getActiveEvents());
     if (eventId) {
       dispatch(getAllEntryReport(buildEntryReportParams(currentPage)));
     }
@@ -467,6 +483,38 @@ export default function EntryReport() {
     }
     setShowDatePicker(false);
   };
+  // event selection
+  const handleEventChange = (e) => {
+    const newEventId = e.target.value;
+
+    if (searchDebounceTimerRef.current) clearTimeout(searchDebounceTimerRef.current);
+    // Avoid a redundant fetch from the toolbar-search effect below firing
+    // on top of the event-selection effect's own fetch.
+    skipSearchEffectRef.current = true;
+
+    setSelectedEventId(newEventId);
+
+    // Reset the previously selected date range so a prior event's dates
+    // are never carried over and applied against the newly selected
+    // event — the date picker re-centers on the new event's own bounds
+    // once its start/end dates are known (see the eventStartDate/
+    // eventEndDate effect below).
+    setDateRange("");
+    setApiStartDate("");
+    setApiEndDate("");
+    setCommittedRange(null);
+    setShowDatePicker(false);
+
+    setPage(1);
+
+    if (!newEventId) {
+      // No event selected: clear whatever the previous event's table/
+      // pagination were showing instead of leaving stale rows on screen.
+      dispatch(clearEntryReportState());
+    }
+    // When newEventId is truthy, the eventId-driven fetch effect above
+    // picks this change up on its own — no need to dispatch here too.
+  };
   // search
   const handleSearch = () => {
     if (searchDebounceTimerRef.current) clearTimeout(searchDebounceTimerRef.current);
@@ -647,6 +695,29 @@ export default function EntryReport() {
 
           {/* Filters Card */}
           <div className="erPage__card erPage__filtersCard">
+            {/* Event dropdown — lists every currently active/valid event
+                the logged-in user is allowed to view (see getActiveEvents).
+                Never pre-selected: the report stays empty until the user
+                actively picks one, per spec. */}
+            <div className="erPage__filtersRow erPage__filtersRow--fields">
+              <select
+                className="erPage__pageSizeSelect erPage__eventSelect"
+                value={selectedEventId}
+                onChange={handleEventChange}
+                disabled={activeEventsLoading}
+              >
+                <option value="">
+                  {activeEventsLoading ? "Loading events..." : "Select Event"}
+                </option>
+                {activeEvents.map((evt) => (
+                  <option key={evt._id} value={evt._id}>
+                    {(evt.title || evt.name || "Event") +
+                      (evt.eventCode ? ` - ${evt.eventCode}` : "")}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="erPage__filtersRow erPage__filtersRow--fields">
               <input
                 type="text"
@@ -869,7 +940,9 @@ export default function EntryReport() {
                         <div className="erPage__emptyState">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 512" width="120" class="bookingPage-stateIcon"><path d="M220.6 130.3l-67.2 28.2V43.2L98.7 233.5l54.7-24.2v130.3l67.2-209.3zm-83.2-96.7l-1.3 4.7-15.2 52.9C80.6 106.7 52 145.8 52 191.5c0 52.3 34.3 95.9 83.4 105.5v53.6C57.5 340.1 0 272.4 0 191.6c0-80.5 59.8-147.2 137.4-158zm311.4 447.2c-11.2 11.2-23.1 12.3-28.6 10.5-5.4-1.8-27.1-19.9-60.4-44.4-33.3-24.6-33.6-35.7-43-56.7-9.4-20.9-30.4-42.6-57.5-52.4l-9.7-14.7c-24.7 16.9-53 26.9-81.3 28.7l2.1-6.6 15.9-49.5c46.5-11.9 80.9-54 80.9-104.2 0-54.5-38.4-102.1-96-107.1V32.3C254.4 37.4 320 106.8 320 191.6c0 33.6-11.2 64.7-29 90.4l14.6 9.6c9.8 27.1 31.5 48 52.4 57.4s32.2 9.7 56.8 43c24.6 33.2 42.7 54.9 44.5 60.3s.7 17.3-10.5 28.5zm-9.9-17.9c0-4.4-3.6-8-8-8s-8 3.6-8 8 3.6 8 8 8 8-3.6 8-8z"></path></svg>
                           <p className="erPage__emptyText">
-                            No Entry Reports Found.
+                            {selectedEventId
+                              ? "No Entry Reports Found."
+                              : "Select an event above to view its entry report."}
                           </p>
                         </div>
                       </td>
