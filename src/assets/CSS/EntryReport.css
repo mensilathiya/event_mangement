@@ -73,15 +73,18 @@
   margin-bottom: 0;
 }
 
-/* Desktop (default): Row 1 = 3 equal columns */
+/* Desktop (default): Row 1 & 2 = 3 equal columns of filter fields */
 .erPage__filtersRow--fields {
   grid-template-columns: repeat(3, 1fr);
 }
 
-/* Desktop (default): Row 2 = 2 flexible inputs + 2 auto-sized buttons */
+/* Row 3 = just Search + Reset, left-aligned, auto-sized — same pattern as
+   Booking.jsx's .bookingPage-filterActions (a flex row, not a grid; the
+   buttons no longer share a row with any input). */
 .erPage__filtersRow--actions {
-  grid-template-columns: 1fr 1fr auto auto;
+  display: flex;
   align-items: center;
+  gap: 12px;
 }
 
 .erPage__input {
@@ -103,6 +106,22 @@
 
 .erPage__input:focus {
   border-color: #4f7bff;
+}
+
+/* Event dropdown — deliberately just .erPage__input plus this. Removing
+   native select chrome (appearance) is required so every browser renders
+   the exact same box height/padding as the text-input filters instead of
+   its own OS-styled select sizing; the custom arrow keeps it reading as
+   a dropdown. No other filter styles are duplicated or overridden. */
+.erPage__eventSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a4f5c'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
 }
 
 .erPage__btn {
@@ -377,32 +396,33 @@
   width: 100%;
 }
 
-.erPage__dateRangePopup {
-  /* Positioned via inline top/left set in JS (viewport-clamped) on desktop.
-     Rendered through a portal into document.body so it's never clipped by
-     the filters card, table, or any other ancestor's overflow. */
+.erPage__dateRangeOverlay {
+  /* Full-viewport click-catcher — same approach as Booking.jsx's date
+     popup. Anywhere outside the popup itself is this overlay, so no
+     separate mousedown/ref-based outside-click handling is needed. */
   position: fixed;
-  z-index: 10000;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(20, 24, 40, 0.18);
-  padding: 16px;
-  max-width: calc(100vw - 50px);
-  max-height: 85vh;
-  overflow-x: auto;
-  overflow-y: auto;
-  /* Fallback position for the case where popupPos hasn't been computed
-     yet (e.g. the JS positioning is scoped to >992px widths only — see
-     EntryReport.jsx's DESKTOP_BREAKPOINT). Centers the popup properly;
-     the >992px inline style overrides this (and explicitly cancels this
-     transform) whenever popupPos is set, and the <=992px media queries
-     below override it again with their own explicit positioning. */
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  z-index: 999;
 }
-.rdrDefinedRangesWrapper{
-  display: none;
+
+.erPage__dateRangePopup {
+  /* Anchored to .erPage__dateRangeWrapper (position: relative, above)
+     instead of viewport-fixed pixel math — same as Booking.jsx's
+     .bookingPage-datePopup. Opens directly below the Date Range input by
+     construction, so it can never drift over the Event dropdown or the
+     filter rows above it, and never needs JS to measure/re-clamp itself. */
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 1000;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.erPage__dateRangePopup .rdrCalendarWrapper {
+  padding: 2px;
 }
 .erPage__dateRangeFooter {
   display: flex;
@@ -451,8 +471,7 @@
     font-size: 22px;
   }
 
-  .erPage__filtersRow--fields,
-  .erPage__filtersRow--actions {
+  .erPage__filtersRow--fields {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -460,9 +479,8 @@
     min-width: 0;
   }
 
-  .erPage__btn--search,
-  .erPage__btn--reset {
-    width: 100%;
+  .erPage__filtersRow--actions .erPage__btn {
+    flex: 1;
     padding: 12px 16px;
   }
 
@@ -505,13 +523,10 @@
   }
 
   .erPage__dateRangePopup {
-    position: fixed;
-    top: 90px;
     left: 50%;
     transform: translateX(-50%);
-    max-width: 95vw;
+    width: min(95vw, 720px);
     max-height: 80vh;
-    overflow-x: auto;
     overflow-y: auto;
   }
 }
@@ -535,9 +550,14 @@
     border-radius: 12px;
   }
 
-  .erPage__filtersRow--fields,
-  .erPage__filtersRow--actions {
+  .erPage__filtersRow--fields {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .erPage__filtersRow--actions {
+    flex-direction: column;
+    align-items: stretch;
     gap: 12px;
   }
 
@@ -547,8 +567,7 @@
     font-size: 13px;
   }
 
-  .erPage__btn--search,
-  .erPage__btn--reset {
+  .erPage__filtersRow--actions .erPage__btn {
     width: 100%;
     padding: 11px 16px;
     font-size: 13px;
@@ -621,14 +640,30 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    max-width: 92vw;
+    width: calc(100vw - 24px);
+    max-width: 360px;
     max-height: 85vh;
     overflow-y: auto;
-    overflow-x: auto;
+    border-radius: 18px;
+  }
+
+  .erPage__dateRangePopup .rdrMonths {
+    flex-direction: column !important;
   }
 
   .erPage__dateRangeFooter {
     flex-wrap: wrap;
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+  }
+
+  .erPage__dateRangeActions {
+    width: 100%;
+  }
+
+  .erPage__dateRangeActions .erPage__btn {
+    flex: 1;
   }
 
   .erPage__paginationBar {

@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { DateRangePicker } from "react-date-range";
+import { DateRange } from "react-date-range";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import "../assets/CSS/EntryReport.css";
@@ -335,76 +334,6 @@ export default function EntryReport() {
     },
   ]);
 
-  const dateInputRef = useRef(null);
-  const datePickerRef = useRef(null);
-  // Popup position, computed only for desktop widths (matches the existing
-  // 992px breakpoint already used for tablet/mobile overrides in
-  // EntryReport.css). Null means "let the CSS media rules handle it".
-  const [popupPos, setPopupPos] = useState(null);
-  const DESKTOP_BREAKPOINT = 992;
-
-  const updatePopupPosition = () => {
-    if (typeof window === "undefined") return;
-    if (window.innerWidth <= DESKTOP_BREAKPOINT) {
-      setPopupPos(null);
-      return;
-    }
-    const inputEl = dateInputRef.current;
-    const popupEl = datePickerRef.current;
-    if (!inputEl) return;
-
-    const rect = inputEl.getBoundingClientRect();
-    const margin = 12;
-    const popupWidth = popupEl?.offsetWidth || 700;
-    const popupHeight = popupEl?.offsetHeight || 420;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    // Keep the popup's right edge from running past the viewport.
-    let left = rect.left;
-    if (left + popupWidth + margin > viewportWidth) {
-      left = Math.max(margin, viewportWidth - popupWidth - margin);
-    }
-    // Symmetric guard on the left edge too — without this, a popup wider
-    // than the space to the right of a left-clamped `rect.left` (e.g. on
-    // a "desktop" width just above the tablet breakpoint) could still
-    // render partly off-screen to the left.
-    left = Math.max(margin, left);
-
-    // Prefer opening below the input; flip above it if there isn't enough
-    // room below, so the calendar is never clipped by the viewport edge.
-    let top = rect.bottom + 8;
-    if (top + popupHeight + margin > viewportHeight) {
-      const spaceAbove = rect.top - 8 - popupHeight;
-      top = spaceAbove >= margin ? spaceAbove : margin;
-    }
-    top = Math.max(margin, top);
-
-    setPopupPos({ top, left });
-  };
-
-  // Recompute whenever the popup opens, and keep it correctly placed on
-  // resize/scroll while it stays open.
-  useLayoutEffect(() => {
-    if (!showDatePicker) return;
-    updatePopupPosition();
-    // The very first call above can only guess the popup's real width/
-    // height (the 700x420 fallback) since it hasn't painted with actual
-    // content yet on the very first open. Re-measure on the next frame,
-    // once it has real dimensions, to correct any small initial
-    // misplacement — this is what "parts of the picker can get clipped"
-    // traced back to for edge-case viewport widths.
-    const raf = requestAnimationFrame(updatePopupPosition);
-    window.addEventListener("resize", updatePopupPosition);
-    window.addEventListener("scroll", updatePopupPosition, true);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", updatePopupPosition);
-      window.removeEventListener("scroll", updatePopupPosition, true);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showDatePicker]);
-
   // Once the entry-report API returns event.startDateTime/endDateTime,
   // re-center the calendar on the event's own date range (unless the user
   // has already committed a custom selection).
@@ -421,21 +350,6 @@ export default function EntryReport() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventStartDate?.getTime(), eventEndDate?.getTime()]);
 
-  // Close the date range popup when clicking outside of it
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (
-        datePickerRef.current &&
-        !datePickerRef.current.contains(e.target) &&
-        dateInputRef.current &&
-        !dateInputRef.current.contains(e.target)
-      ) {
-        setShowDatePicker(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
   // date picker
   const toggleDatePicker = () => {
     // Never open an unrestricted calendar: only allow opening once the
@@ -695,29 +609,6 @@ export default function EntryReport() {
 
           {/* Filters Card */}
           <div className="erPage__card erPage__filtersCard">
-            {/* Event dropdown — lists every currently active/valid event
-                the logged-in user is allowed to view (see getActiveEvents).
-                Never pre-selected: the report stays empty until the user
-                actively picks one, per spec. */}
-            <div className="erPage__filtersRow erPage__filtersRow--fields">
-              <select
-                className="erPage__pageSizeSelect erPage__eventSelect"
-                value={selectedEventId}
-                onChange={handleEventChange}
-                disabled={activeEventsLoading}
-              >
-                <option value="">
-                  {activeEventsLoading ? "Loading events..." : "Select Event"}
-                </option>
-                {activeEvents.map((evt) => (
-                  <option key={evt._id} value={evt._id}>
-                    {(evt.title || evt.name || "Event") +
-                      (evt.eventCode ? ` - ${evt.eventCode}` : "")}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <div className="erPage__filtersRow erPage__filtersRow--fields">
               <input
                 type="text"
@@ -736,21 +627,35 @@ export default function EntryReport() {
               <input
                 type="text"
                 className="erPage__input"
-                placeholder="Ticket Id"
-                value={ticketId}
-                onChange={(e) => setTicketId(e.target.value)}
-              />
-            </div>
-
-            <div className="erPage__filtersRow erPage__filtersRow--actions">
-              <input
-                type="text"
-                className="erPage__input"
                 placeholder="Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
-              <div className="erPage__dateRangeWrapper" ref={dateInputRef}>
+            </div>
+
+            <div className="erPage__filtersRow erPage__filtersRow--fields">
+              {/* Event dropdown — lists every currently active/valid event
+                  the logged-in user is allowed to view (see
+                  getActiveEvents). Never pre-selected: the report stays
+                  empty until the user actively picks one, per spec. */}
+              <select
+                className="erPage__input erPage__eventSelect"
+                value={selectedEventId}
+                onChange={handleEventChange}
+                disabled={activeEventsLoading}
+              >
+                <option value="">
+                  {activeEventsLoading ? "Loading events..." : "Select Event"}
+                </option>
+                {activeEvents.map((evt) => (
+                  <option key={evt._id} value={evt._id}>
+                    {(evt.title || evt.name || "Event") +
+                      (evt.eventCode ? ` - ${evt.eventCode}` : "")}
+                  </option>
+                ))}
+              </select>
+
+              <div className="erPage__dateRangeWrapper">
                 <input
                   type="text"
                   className="erPage__input"
@@ -760,56 +665,66 @@ export default function EntryReport() {
                   disabled={!eventStartDate || !eventEndDate}
                   onClick={toggleDatePicker}
                 />
-                {showDatePicker && createPortal(
-                  <div
-                    className="erPage__dateRangePopup"
-                    ref={datePickerRef}
-                    style={
-                      popupPos
-                        ? { top: popupPos.top, left: popupPos.left, transform: "none" }
-                        : undefined
-                    }
-                  >
-                    <DateRangePicker
-                      ranges={tempRange}
-                      onChange={handleDateRangeChange}
-                      months={2}
-                      direction="horizontal"
-                      showMonthAndYearPickers={true}
-                      showDateDisplay={false}
-                      moveRangeOnFirstSelection={false}
-                      minDate={eventStartDate || undefined}
-                      maxDate={eventEndDate || undefined}
-                      rangeColors={["#4f7bff"]}
-                      staticRanges={[]}
-                      inputRanges={[]}
+                {showDatePicker && (
+                  <>
+                    {/* Full-viewport click-catcher, same approach as
+                        Booking.jsx's date popup: closing on outside-click
+                        this way needs no ref/mousedown-listener bookkeeping
+                        — anywhere outside the popup itself is this overlay. */}
+                    <div
+                      className="erPage__dateRangeOverlay"
+                      onClick={handleCancelDateRange}
                     />
-                    <div className="erPage__dateRangeFooter">
-                      <div className="erPage__dateRangeDisplay">
-                        {formatDate(tempRange[0].startDate)} -{" "}
-                        {formatDate(tempRange[0].endDate)}
-                      </div>
-                      <div className="erPage__dateRangeActions">
-                        <button
-                          type="button"
-                          className="erPage__btn erPage__btn--reset"
-                          onClick={handleCancelDateRange}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          className="erPage__btn erPage__btn--apply"
-                          onClick={handleApplyDateRange}
-                        >
-                          Apply
-                        </button>
+                    <div className="erPage__dateRangePopup">
+                      <DateRange
+                        ranges={tempRange}
+                        onChange={handleDateRangeChange}
+                        months={2}
+                        direction="horizontal"
+                        showMonthAndYearPickers={true}
+                        showDateDisplay={false}
+                        moveRangeOnFirstSelection={false}
+                        minDate={eventStartDate || undefined}
+                        maxDate={eventEndDate || undefined}
+                        rangeColors={["#4f7bff"]}
+                      />
+                      <div className="erPage__dateRangeFooter">
+                        <div className="erPage__dateRangeDisplay">
+                          {formatDate(tempRange[0].startDate)} -{" "}
+                          {formatDate(tempRange[0].endDate)}
+                        </div>
+                        <div className="erPage__dateRangeActions">
+                          <button
+                            type="button"
+                            className="erPage__btn erPage__btn--reset"
+                            onClick={handleCancelDateRange}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="erPage__btn erPage__btn--apply"
+                            onClick={handleApplyDateRange}
+                          >
+                            Apply
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>,
-                  document.body
+                  </>
                 )}
               </div>
+
+              <input
+                type="text"
+                className="erPage__input"
+                placeholder="Ticket Id"
+                value={ticketId}
+                onChange={(e) => setTicketId(e.target.value)}
+              />
+            </div>
+
+            <div className="erPage__filtersRow erPage__filtersRow--actions">
               <button
                 className="erPage__btn erPage__btn--search"
                 onClick={handleSearch}
