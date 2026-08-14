@@ -245,7 +245,7 @@
   border-collapse: collapse;
 }
 
-/* .ticketType__colIndex {
+.ticketType__colIndex {
   width: 5%;
 }
 
@@ -275,7 +275,7 @@
 
 .ticketType__colAction {
   width: 8%;
-} */
+}
 
 .ticketType__th {
   text-align: left;

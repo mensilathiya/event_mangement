@@ -13,7 +13,7 @@ import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import { exportBookingReport, getAllBookings } from "../redux/booking/bookingThunk";
 import { getAllEvents } from "../redux/event/eventThunk";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaSort } from "react-icons/fa";
 
 // Formats a createdAt value as "DD-MM-YYYY, <local time>" for the "Created
 // By" column. Returns "-" for missing/invalid values so nothing renders as
@@ -654,7 +654,7 @@ const Booking = () => {
                       {columns.map((col) => (
                         <th key={col}>
                           <span className="bookingPage-thContent">
-                            <span className="bookingPage-sortIcon">&#8645;</span>
+                            <span className="bookingPage-sortIcon"><FaSort/></span>
                             {col}
                           </span>
                         </th>

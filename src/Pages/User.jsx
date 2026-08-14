@@ -229,8 +229,8 @@ export default function User() {
                     {columns.map((col) => (
                       <th key={col}>
                         <span className="userPage__thContent">
-                          {col}
                           {col !== "Action" && <FaSort className="userPage__sortIcon" />}
+                          {col}
                         </span>
                       </th>
                     ))}

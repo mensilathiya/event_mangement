@@ -102,9 +102,9 @@ export default function Role() {
                     {columns.map((col) => (
                       <th key={col}>
                         <span className="thContent">
+                          {col !== "Permissions" && <FaSort className="userPage__sortIcon" />}
                           {col}
-                          {col !== "Permissions" && <FaSort className="sortIcon" />}
-                        </span>
+                                                  </span>
                       </th>
                     ))}
                   </tr>

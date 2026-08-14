@@ -20,7 +20,7 @@ import { clearEntryReportState } from "../redux/entryReport/entryReportSlice";
 import { selectCheckInSuccess } from "../redux/qr/qrSlice";
 import { showSuccess, showError } from "../utilits/toast";
 import useEventExpiryRefetch from "../hooks/useEventExpiryRefetch";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaSort } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
 // Formats a Date object as "DD-MM-YYYY" — used for all frontend date
@@ -818,6 +818,7 @@ export default function EntryReport() {
                   <tr>
                     {COLUMNS.map((col) => (
                       <th key={col} className="erPage__th">
+                         <span className="eventList__sortIcon"><FaSort /></span>
                         {col}
                       </th>
                     ))}

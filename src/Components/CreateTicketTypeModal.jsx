@@ -5,6 +5,7 @@ import { createTicketType, updateTicketType, getAllTicketTypes } from "../redux/
 import { clearTicketTypeState } from "../redux/ticketType/ticketTypeSlice";
 import dayjs from "dayjs";
 import MultipleDatePicker from "../Components/MultipleDatePicker";
+import { showSuccess, showError } from "../utilits/toast";
 
 // Extracts a plain "YYYY-MM-DD" calendar date from either an ISO date
 // string from the API (e.g. "2026-08-11T00:00:00.000Z") or a Date instance
@@ -125,6 +126,7 @@ const CreateTicketTypeModal = ({
         description: "",
       });
     }
+    setFormErrors({});
   }, [isEditMode, selectedTicketType]);
 
   // ================= ALLOW DATES CHANGE (event-range enforced) =================
@@ -146,84 +148,115 @@ const CreateTicketTypeModal = ({
     const validAdded = added.filter(isDateWithinEventRange);
     const rejectedSome = validAdded.length !== added.length;
 
-    setFormData((prev) => ({ ...prev, allowDates: [...kept, ...validAdded] }));
+    const updated = { ...formData, allowDates: [...kept, ...validAdded] };
+    setFormData(updated);
 
-    setFormErrors((prev) => {
-      if (rejectedSome) {
-        return { ...prev, allowDates: eventRangeErrorMessage };
-      }
-      if (!prev.allowDates) return prev;
-      const next = { ...prev };
-      delete next.allowDates;
-      return next;
-    });
+    // Live-validate immediately: at least one date, Allow Day Count vs
+    // selected date count, no past dates, and within the Event's range.
+    // If the calendar just blocked an out-of-range click, that takes
+    // priority over the other checks (matches the previous behavior).
+    const liveError = rejectedSome
+      ? eventRangeErrorMessage
+      : getAllowDatesError(updated);
+
+    setFormErrors((prev) => ({ ...prev, allowDates: liveError }));
   };
 
-  // ================= HANDLE FIELD CHANGE =================
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  // ================= LIVE FIELD VALIDATION =================
+  // Same rules and same messages as the final-submit validate() below —
+  // these are the single source of truth for both, so live (on-change)
+  // validation and submit validation can never disagree. `data` is a full
+  // formData snapshot (not just the one changed field) because Allow
+  // Dates' rules depend on Allow Day Count, and vice versa.
+  const getAllowDatesError = (data) => {
+    let error = "";
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    if (data.allowDates.length === 0) {
+      error = "Please select at least one date";
+    }
 
-    setFormErrors((prev) => ({
-      ...prev,
-      [name]: "",
-    }));
-  };
-
-  // ================= VALIDATION =================
-  const validate = () => {
-    const errors = {};
-
-    if (!formData.ticketName.trim())
-      errors.ticketName = "Ticket name is required";
-
-    if (!formData.allowDayCount)
-      errors.allowDayCount = "Allow day count is required";
-
-    if (formData.allowDates.length === 0)
-      errors.allowDates = "Please select at least one date";
-
-    if (
-      Number(formData.allowDayCount) !== formData.allowDates.length
-    ) {
-      errors.allowDates =
-        "Allow Day Count must match selected dates";
+    if (Number(data.allowDayCount) !== data.allowDates.length) {
+      error = "Allow Day Count must match selected dates";
     }
 
     // Mirrors the backend's past-date rejection so the user gets
     // immediate feedback instead of a failed submit round-trip.
     const today = dayjs().startOf("day");
-    const hasPastDate = formData.allowDates.some((date) =>
+    const hasPastDate = data.allowDates.some((date) =>
       dayjs(date).isBefore(today)
     );
 
     if (hasPastDate) {
-      errors.allowDates =
-        "Allow Dates cannot include a date that has already passed";
+      error = "Allow Dates cannot include a date that has already passed";
     }
 
     // Every selected date must fall within the Event's own start/end range.
-    if (!errors.allowDates) {
-      const outOfRange = formData.allowDates.some(
+    if (!error) {
+      const outOfRange = data.allowDates.some(
         (date) => !isDateWithinEventRange(date)
       );
       if (outOfRange) {
-        errors.allowDates = eventRangeErrorMessage;
+        error = eventRangeErrorMessage;
       }
     }
 
-    if (!formData.amount)
-      errors.amount = "Amount is required";
+    return error;
+  };
 
-    if (!formData.availableCount)
-      errors.availableCount = "Available count is required";
+  const getFieldError = (name, data) => {
+    switch (name) {
+      case "ticketName":
+        return !data.ticketName.trim() ? "Ticket name is required" : "";
+      case "allowDayCount":
+        return !data.allowDayCount ? "Allow day count is required" : "";
+      case "allowDates":
+        return getAllowDatesError(data);
+      case "amount":
+        return !data.amount ? "Amount is required" : "";
+      case "availableCount":
+        return !data.availableCount ? "Available count is required" : "";
+      case "description":
+        return !data.description.trim() ? "Description is required" : "";
+      default:
+        return "";
+    }
+  };
 
-    if (!formData.description.trim())
-      errors.description = "Description is required";
+  // ================= HANDLE FIELD CHANGE (LIVE VALIDATION) =================
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    const updated = { ...formData, [name]: value };
+
+    setFormData(updated);
+
+    setFormErrors((prev) => {
+      const next = { ...prev, [name]: getFieldError(name, updated) };
+
+      // Allow Day Count and Allow Dates validate against each other, so
+      // changing Allow Day Count must immediately re-check Allow Dates'
+      // error too, not just Allow Day Count's own error.
+      if (name === "allowDayCount") {
+        next.allowDates = getAllowDatesError(updated);
+      }
+
+      return next;
+    });
+  };
+
+  // ================= VALIDATION (FINAL SUBMIT) =================
+  const validate = () => {
+    const errors = {
+      ticketName: getFieldError("ticketName", formData),
+      allowDayCount: getFieldError("allowDayCount", formData),
+      allowDates: getFieldError("allowDates", formData),
+      amount: getFieldError("amount", formData),
+      availableCount: getFieldError("availableCount", formData),
+      description: getFieldError("description", formData),
+    };
+
+    Object.keys(errors).forEach((key) => {
+      if (!errors[key]) delete errors[key];
+    });
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -257,6 +290,12 @@ const CreateTicketTypeModal = ({
   // ================= SUCCESS HANDLING =================
   useEffect(() => {
     if (success) {
+      showSuccess(
+        isEditMode
+          ? "Ticket type updated successfully"
+          : "Ticket type created successfully"
+      );
+
       // Refetch using the list's actual current page/limit/search instead
       // of hardcoded defaults, so create/edit no longer silently resets
       // the user's pagination and search.
@@ -273,7 +312,14 @@ const CreateTicketTypeModal = ({
 
       dispatch(clearTicketTypeState());
     }
-  }, [success, dispatch, eventId, currentPage, rowsPerPage, search, onClose]);
+  }, [success, dispatch, eventId, currentPage, rowsPerPage, search, onClose, isEditMode]);
+
+  // ================= ERROR HANDLING =================
+  useEffect(() => {
+    if (error) {
+      showError(error);
+    }
+  }, [error]);
 
   // ================= RESET STATE ON CLOSE =================
   const handleClose = () => {
