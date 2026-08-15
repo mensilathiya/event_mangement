@@ -199,7 +199,6 @@
   outline: none;
   transition: box-shadow 0.2s ease;
   width: 100%;
-  font-family: inherit;
 }
 
 .bookingUserInput::placeholder {

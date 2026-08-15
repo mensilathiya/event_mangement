@@ -1,5 +1,4 @@
 .viewEvent-wrapper {
-  font-family: "Segoe UI", Arial, sans-serif;
   background: #f4f6fa;
   padding: 28px 32px;
   min-height: 100vh;
@@ -49,7 +48,6 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-family: inherit;
 }
 
 .viewEvent-backLink:hover {

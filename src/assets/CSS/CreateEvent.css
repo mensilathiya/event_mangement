@@ -120,7 +120,6 @@
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
   width: 100%;
-  font-family: inherit;
   box-sizing: border-box;
   cursor: text;
 }
@@ -410,7 +409,6 @@ select.createEvent__editorFormatSelect {
   color: #1b2a4e;
   outline: none;
   resize: vertical;
-  font-family: inherit;
   box-sizing: border-box;
   cursor: text;
 }
@@ -423,7 +421,6 @@ select.createEvent__editorFormatSelect {
    matches the createEvent__editor card design instead of Quill's defaults. */
 .createEvent__quill .ql-container.ql-snow {
   border: none;
-  font-family: inherit;
   font-size: 14px;
 }
 

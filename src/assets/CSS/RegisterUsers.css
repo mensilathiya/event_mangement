@@ -1,7 +1,6 @@
 .bookingRegister-page {
   min-height: 100vh;
   background-color: #f4f4f7;
-  font-family: 'Segoe UI', Arial, sans-serif;
 }
 
 .bookingRegister-hero {
@@ -126,7 +125,6 @@
   background-color: #ffffff;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  font-family: inherit;
 }
 
 .bookingRegister-input::placeholder {

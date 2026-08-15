@@ -23,7 +23,6 @@
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   padding: 32px 40px 28px 40px;
-  font-family: 'Segoe UI', Arial, sans-serif;
   opacity: 0;
   transform: scale(0.94) translateY(10px);
   animation: bookingDeletePopIn 0.28s ease forwards;
@@ -87,7 +86,6 @@
   outline: none;
   transition: box-shadow 0.2s ease;
   width: 100%;
-  font-family: inherit;
   resize: vertical;
   min-height: 48px;
 }

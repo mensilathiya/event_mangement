@@ -135,7 +135,6 @@
   width: 100%;
   box-sizing: border-box;
   resize: vertical;
-  font-family: inherit;
 }
 
 .ticketTypeCreate-textarea::placeholder {
