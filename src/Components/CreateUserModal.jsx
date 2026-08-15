@@ -200,6 +200,10 @@ export default function CreateUserModal({
       payload.append("profileImage", imageFile);
     }
 
+    // TEMP DEBUG — remove after confirming upload works
+    console.log("[DEBUG] selected imageFile:", imageFile);
+    console.log("[DEBUG] FormData profileImage entry:", payload.get("profileImage"));
+
     try {
       if (isEditMode) {
         await dispatch(

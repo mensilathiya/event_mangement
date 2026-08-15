@@ -110,12 +110,14 @@ export default function Profile() {
     // rendered below — form stays open, entered values untouched.
   };
 
-  // Backend has no profile image field yet — keep the existing
-  // ui-avatars.com fallback, just driven by the real name instead of
-  // a hardcoded string.
-  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    profile?.name || "Admin"
-  )}&background=17a2b8&color=ffffff&bold=true`;
+  // Profile image — same field/fallback pattern already used in User.jsx's
+  // list view and Header.jsx (user.profileImage || LOGO_AVATAR). `profile`
+  // already comes from the existing getProfile() dispatch above; no
+  // additional API call needed.
+  const LOGO_AVATAR =
+    "https://ui-avatars.com/api/?name=SA&background=17a2b8&color=fff&bold=true";
+
+  const avatarUrl = profile?.profileImage || LOGO_AVATAR;
 
   // ===== Loading state =====
   if (!profile && profileLoading) {

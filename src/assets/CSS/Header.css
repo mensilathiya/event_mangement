@@ -109,7 +109,7 @@
   height: 42px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #17a2b8;
+  /* border: 2px solid #17a2b8; */
   cursor: pointer;
 }
 

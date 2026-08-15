@@ -11,7 +11,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { deleteUser, getUsers } from '../redux/user/userThunk';
 import { showError, showSuccess } from "../utilits/toast";
 import { clearUserState } from "../redux/user/userSlice";
-const LOGO_AVATAR = "https://ui-avatars.com/api/?name=SA&background=e0331e&color=fff&bold=true";
+const LOGO_AVATAR = "https://ui-avatars.com/api/?name=SA&background=17a2b8&color=fff&bold=true";
 
 
 const columns = ["Image", "Name", "Email", "Mobile No", "Role", "Created", "Action"];
@@ -205,8 +205,9 @@ export default function User() {
               >
                 <option value={5}>5</option>
                 <option value={10}>10</option>
-                <option value={25}>25</option>
+                <option value={20}>20</option>
                 <option value={50}>50</option>
+                <option value={100}>100</option>
               </select>
 
               <div className="userPage__searchBox">
@@ -267,7 +268,7 @@ export default function User() {
                         <img
                           src={
                             user.profileImage ||
-                            `https://ui-avatars.com/api/?name=${user.name}`
+                            `${LOGO_AVATAR}&name=${encodeURIComponent(user.name)}`
                           }
                           alt={user.name}
                           className="userPage__avatar"

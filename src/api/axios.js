@@ -1,11 +1,17 @@
 import axios from "axios";
 
+// NOTE: Do NOT hardcode "Content-Type": "application/json" here.
+// When a request body is a plain JS object, axios's own transformRequest
+// already sets Content-Type: application/json automatically. When the
+// body is a FormData instance (e.g. profileImage uploads), axios needs
+// to set Content-Type: multipart/form-data; boundary=... itself — but it
+// will only do that if no Content-Type was already explicitly set on the
+// instance/request. A hardcoded application/json default here overrides
+// that auto-detection, so FormData requests get sent with the wrong
+// Content-Type and the server can never parse req.file.
 const api = axios.create({
   baseURL:
     import.meta.env.VITE_API_URL || "http://localhost:5000/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 let activeRequests = 0;

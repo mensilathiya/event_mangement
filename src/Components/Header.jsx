@@ -2,10 +2,10 @@ import { HiOutlineMenu, HiOutlineLogout } from "react-icons/hi";
 import { LuScanQrCode } from "react-icons/lu";
 import "../assets/CSS/Header.css";
 import QRScannerModal from "./QRScanner/QRScannerModal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { clearAuth } from "../redux/auth/authSlice";
+import { clearAuth, getProfile } from "../redux/auth/authSlice";
 import Swal from "sweetalert2";
 
 export default function Header({ title = "Dashboard" }) {
@@ -21,6 +21,21 @@ export default function Header({ title = "Dashboard" }) {
   // Current logged-in user
   // Prefer profile API data, otherwise use login data
   const currentUser = profile || authUser;
+
+  // Previously nothing in the app dispatched getProfile() until the user
+  // navigated to /profile (Profile.jsx's own mount effect) — that's why
+  // the Header only ever showed the latest profileImage AFTER visiting
+  // the profile page once. Header now fetches the authoritative profile
+  // itself as soon as it mounts, so state.auth.profile (and therefore
+  // `currentUser`, and the avatar below) is fresh immediately. Guarded by
+  // `!profile` so this only fires once per session — once populated,
+  // `state.auth.profile` stays in the store across route changes and
+  // Header re-mounts, and is only cleared again on logout.
+  useEffect(() => {
+    if (token && !profile) {
+      dispatch(getProfile());
+    }
+  }, [dispatch, token, profile]);
 
   // Resolved per-field, not by picking `profile` OR `authUser` wholesale —
   // see the matching comment in Sidebar.jsx. If /auth/profile ever omits
@@ -55,12 +70,12 @@ export default function Header({ title = "Dashboard" }) {
     setOpenScanner(true);
   };
 
-  // Profile image
-  const PROFILE_IMAGE_URL =
-    currentUser?.profileImage ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      currentUser?.name || "User"
-    )}&background=17a2b8&color=ffffff&bold=true`;
+  // Profile image — same field/fallback pattern already used in User.jsx's
+  // list view (user.profileImage || LOGO_AVATAR).
+  const LOGO_AVATAR =
+    "https://ui-avatars.com/api/?name=SA&background=17a2b8&color=fff&bold=true";
+
+  const PROFILE_IMAGE_URL = currentUser?.profileImage || LOGO_AVATAR;
 
   // Logout
   const handleLogout = async () => {

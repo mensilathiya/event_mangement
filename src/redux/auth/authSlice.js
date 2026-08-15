@@ -130,6 +130,25 @@ const clearAuthState = (state) => {
   localStorage.removeItem("user");
 };
 
+// Keeps the login-derived `state.user` (and its localStorage cache) in
+// sync with the latest profileImage/profileImagePublicId whenever a
+// fresher copy comes back from getProfile/updateProfile. `currentUser`
+// throughout the app is resolved as `profile || authUser` (Header.jsx,
+// Sidebar.jsx) — without this, `authUser` (and the localStorage copy
+// used to seed it on refresh) could keep serving a stale image in the
+// moment before `profile` has loaded.
+const syncUserProfileImage = (state, latest) => {
+  if (!state.user || !latest) return;
+
+  state.user = {
+    ...state.user,
+    profileImage: latest.profileImage,
+    profileImagePublicId: latest.profileImagePublicId,
+  };
+
+  localStorage.setItem("user", JSON.stringify(state.user));
+};
+
 const authSlice = createSlice({
   name: "auth",
 
@@ -225,6 +244,8 @@ const authSlice = createSlice({
         // Backend response shape is { success, data }, not { user }.
         // data never includes password (backend excludes it).
         state.profile = action.payload.data;
+
+        syncUserProfileImage(state, action.payload.data);
       })
 
       .addCase(getProfile.rejected, (state, action) => {
@@ -242,6 +263,8 @@ const authSlice = createSlice({
         // Update API already returns the updated Admin in { data },
         // so we use it directly instead of firing another getProfile().
         state.profile = action.payload.data;
+
+        syncUserProfileImage(state, action.payload.data);
       })
 
       .addCase(updateProfile.rejected, (state, action) => {
