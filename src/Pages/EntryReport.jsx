@@ -223,7 +223,19 @@ export default function EntryReport() {
   // event the logged-in user is allowed to view. This is the only place
   // the event list is fetched from — the dropdown always reflects exactly
   // this list, never a single first/default event.
+  //
+  // clearEntryReportState() runs first and is the actual fix for stale
+  // Entry Report data surviving a deleted event: entryReports/pagination/
+  // event live in Redux, not component state, so they don't reset when
+  // this page unmounts (e.g. navigating to Event Management) and don't
+  // get cleared just because selectedEventId resets to "" on the next
+  // mount. Without this, a remount after deleting the currently-viewed
+  // event would still render its old rows, because the table only checks
+  // rows.length — never selectedEventId — before rendering (see the
+  // Empty state / Data rows blocks below). This is a plain synchronous
+  // reducer action (no API call), so it adds no extra network request.
   useEffect(() => {
+    dispatch(clearEntryReportState());
     dispatch(getActiveEvents());
   }, [dispatch]);
 
@@ -289,11 +301,15 @@ export default function EntryReport() {
     prevCheckInSuccessRef.current = checkInSuccess;
   }, [checkInSuccess, eventId, dispatch, currentPage]);
 
-  // Auto-refresh when an event is deleted from the Event Management page,
-  // so this page never keeps showing a deleted event's stale Entry Report
-  // data and never needs a manual browser refresh. deletedEventVersion (not
-  // just the id) is what's watched, so a second delete of a previously-seen
-  // id still triggers this. Two cases:
+  // Auto-refresh when an event is deleted from the Event Management page
+  // *while this component stays mounted* (e.g. a future in-page delete
+  // action that doesn't navigate away). The far more common path — delete
+  // on the Event page, then navigate back here — is handled by the
+  // clearEntryReportState() in the mount effect above instead, since this
+  // component (and this effect) doesn't exist yet at the moment that
+  // deletion happens. deletedEventVersion (not just the id) is what's
+  // watched, so a second delete of a previously-seen id still triggers
+  // this. Two cases:
   //  - The deleted event is the one currently selected here: the old
   //    rows/pagination are no longer valid for anything, so clear them the
   //    same way the "event went Inactive/Expired" effect above already
