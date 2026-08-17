@@ -21,6 +21,18 @@ const initialState = {
   error: null,
   success: false,
   message: "",
+
+  // Id of the most recently successfully-deleted event, plus a counter that
+  // increments on every delete. Other pages (e.g. Entry Report) that keep
+  // data scoped to a specific event but don't own the Event Management
+  // slice/thunks read this — via selectDeletedEventId/Version below — the
+  // same way
+  // EntryReport.jsx already reads qrSlice's checkInSuccess, so they can
+  // react to a deletion that happened elsewhere without polling or a
+  // browser reload. The counter (not just the id) is what's watched, so a
+  // second delete of an id that was already seen once is still detected.
+  deletedEventId: null,
+  deletedEventVersion: 0,
 };
 
 const eventSlice = createSlice({
@@ -127,6 +139,11 @@ const eventSlice = createSlice({
           (event) => event._id !== action.meta.arg
         );
         state.total = Math.max(0, state.total - 1);
+
+        // Broadcast the deletion to any other page watching this slice
+        // (see initialState comment above).
+        state.deletedEventId = action.meta.arg;
+        state.deletedEventVersion += 1;
       })
       .addCase(deleteEvent.rejected, (state, action) => {
         state.loading = false;
@@ -155,5 +172,13 @@ const eventSlice = createSlice({
 });
 
 export const { clearEventState } = eventSlice.actions;
+
+// Mirror qrSlice's selectCheckInSuccess: small primitive selectors other
+// pages can subscribe to without importing the whole event slice's shape.
+// Kept as two primitives (not one object-returning selector) so useSelector
+// only re-renders subscribers when the value itself actually changes.
+export const selectDeletedEventId = (state) => state.event.deletedEventId;
+export const selectDeletedEventVersion = (state) =>
+  state.event.deletedEventVersion;
 
 export default eventSlice.reducer;

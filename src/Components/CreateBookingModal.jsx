@@ -35,8 +35,23 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
 
     if (!formData.ticketType) errors.ticketType = "Please select a ticket.";
 
-    if (!formData.qty || Number(formData.qty) <= 0)
+    // Final 1–availableCount check, run right before create so an invalid
+    // qty (including one that only became invalid after a ticket-type
+    // switch) can never reach the API, independent of the live clamping
+    // already done in handleQtyChange/handleTicketChange below.
+    const selectedTicketForValidation = ticketTypes.find(
+      (ticket) => ticket._id === formData.ticketType
+    );
+    const availableCountForValidation = selectedTicketForValidation?.availableCount;
+
+    if (!formData.qty || Number(formData.qty) <= 0) {
       errors.qty = "Please enter a valid quantity.";
+    } else if (
+      typeof availableCountForValidation === "number" &&
+      Number(formData.qty) > availableCountForValidation
+    ) {
+      errors.qty = `Only ${availableCountForValidation} ticket(s) available.`;
+    }
 
     if (!formData.name.trim()) {
       errors.name = "Please enter name.";
@@ -132,15 +147,34 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
   };
   // handel qty changes
   const handleQtyChange = (e) => {
-    // Clamp to a non-negative value so a stray "-" can't produce a
-    // negative quantity/amount preview before validation even runs.
-    const qty = Math.max(0, Number(e.target.value) || 0);
+    const rawValue = e.target.value;
 
     const selectedTicket = ticketTypes.find(
       (ticket) => ticket._id === formData.ticketType
     );
 
     const ticketPrice = selectedTicket?.amount || 0;
+    const availableCount = selectedTicket?.availableCount;
+
+    // Let the user clear the field while editing — validateForm() already
+    // rejects an empty qty at submit time, so this isn't a validation gap.
+    if (rawValue === "") {
+      setFormData((prev) => ({ ...prev, qty: "", amount: 0 }));
+      setFieldErrors((prev) => (prev.qty ? { ...prev, qty: undefined } : prev));
+      return;
+    }
+
+    let qty = Number(rawValue);
+    if (Number.isNaN(qty)) return;
+
+    // Never below 1 — covers both manual typing and the native spinner's
+    // down-arrow, so qty can never reach 0.
+    qty = Math.max(1, qty);
+    // Never above the selected ticket's availableCount — covers both
+    // manual typing and the native spinner's up-arrow.
+    if (typeof availableCount === "number") {
+      qty = Math.min(qty, availableCount);
+    }
 
     setFormData((prev) => ({
       ...prev,
@@ -158,12 +192,24 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
     );
 
     const price = selectedTicket?.amount || 0;
+    const availableCount = selectedTicket?.availableCount;
 
-    setFormData((prev) => ({
-      ...prev,
-      ticketType: ticketId,
-      amount: (prev.qty || 0) * price,
-    }));
+    setFormData((prev) => {
+      // Re-clamp an already-entered qty to the newly selected ticket's
+      // availableCount — only ever brings it down if it's now out of
+      // range, never raises it, and leaves an empty qty untouched.
+      let qty = prev.qty;
+      if (qty !== "" && typeof availableCount === "number") {
+        qty = Math.min(Number(qty) || 0, availableCount);
+      }
+
+      return {
+        ...prev,
+        ticketType: ticketId,
+        qty,
+        amount: (Number(qty) || 0) * price,
+      };
+    });
     setFieldErrors((prev) => (prev.ticketType ? { ...prev, ticketType: undefined } : prev));
   };
   // handel change
@@ -238,6 +284,15 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
   const subtotal = Number(formData.amount || 0);
   const discount = Number(formData.discount || 0);
   const totalPay = Math.max(subtotal - discount, 0);
+
+  // Drives the Qty input's max attribute below, so the native
+  // increment/decrement spinner itself also respects the selected
+  // ticket's availableCount, on top of the clamping already done in
+  // handleQtyChange/handleTicketChange.
+  const selectedTicketForQty = ticketTypes.find(
+    (ticket) => ticket._id === formData.ticketType
+  );
+  const availableCountForQty = selectedTicketForQty?.availableCount;
   return (
     <div className="bookingCreateOverlay" onClick={onClose}>
       <div className="bookingCreateContainer" onClick={(e) => e.stopPropagation()}>
@@ -309,6 +364,11 @@ export default function CreateBookingModal({ onClose, onSuccess }) {
             <input
               type="number"
               min="1"
+              max={
+                typeof availableCountForQty === "number"
+                  ? availableCountForQty
+                  : undefined
+              }
               className="bookingCreateInput"
               placeholder="Qty"
               value={formData.qty}

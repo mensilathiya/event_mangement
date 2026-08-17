@@ -154,16 +154,13 @@ export default function EditProfileModal({ user, onClose }) {
                 Email
               </label>
               <div>
-                {/* <input
+                { <input
                   type="email"
-                  value={formData.email}
-                  onChange={handleChange("email")}
+                  value={user.email}
                   className="modalInput"
-                  disabled={updateLoading}
+                  disabled
                 />
-                {fieldErrors.email && (
-                  <p className="modalFieldError">{fieldErrors.email}</p>
-                )} */}
+}
               </div>
             </div>
 

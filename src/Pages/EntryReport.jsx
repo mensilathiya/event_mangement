@@ -18,6 +18,15 @@ import { clearEntryReportState } from "../redux/entryReport/entryReportSlice";
 // to know a check-in just succeeded. Reused here purely to trigger a
 // refetch; QRScannerModal's own scanning/verification logic is untouched.
 import { selectCheckInSuccess } from "../redux/qr/qrSlice";
+// Existing event redux slice — selectDeletedEventId/Version are the same
+// kind of "something changed elsewhere" signal as selectCheckInSuccess
+// above, fed by the Event Management page's existing deleteEvent thunk.
+// Reused here purely to trigger a refetch/clear; Event.jsx's own delete
+// flow is untouched.
+import {
+  selectDeletedEventId,
+  selectDeletedEventVersion,
+} from "../redux/event/eventSlice";
 import { showSuccess, showError } from "../utilits/toast";
 import useEventExpiryRefetch from "../hooks/useEventExpiryRefetch";
 import { FaChevronLeft, FaChevronRight, FaSort } from "react-icons/fa";
@@ -279,6 +288,33 @@ export default function EntryReport() {
     }
     prevCheckInSuccessRef.current = checkInSuccess;
   }, [checkInSuccess, eventId, dispatch, currentPage]);
+
+  // Auto-refresh when an event is deleted from the Event Management page,
+  // so this page never keeps showing a deleted event's stale Entry Report
+  // data and never needs a manual browser refresh. deletedEventVersion (not
+  // just the id) is what's watched, so a second delete of a previously-seen
+  // id still triggers this. Two cases:
+  //  - The deleted event is the one currently selected here: the old
+  //    rows/pagination are no longer valid for anything, so clear them the
+  //    same way the "event went Inactive/Expired" effect above already
+  //    does, and drop the dropdown selection.
+  //  - Some other event was deleted: this page's own rows are unaffected,
+  //    but the dropdown list itself is stale, so just refresh it — same
+  //    thunk the mount effect and the expiry refetch already use.
+  const deletedEventId = useSelector(selectDeletedEventId);
+  const deletedEventVersion = useSelector(selectDeletedEventVersion);
+  const prevDeletedEventVersionRef = useRef(deletedEventVersion);
+  useEffect(() => {
+    if (deletedEventVersion === prevDeletedEventVersionRef.current) return;
+    prevDeletedEventVersionRef.current = deletedEventVersion;
+
+    if (deletedEventId && deletedEventId === eventId) {
+      setSelectedEventId("");
+      dispatch(clearEntryReportState());
+    }
+    dispatch(getActiveEvents());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deletedEventVersion]);
 
   // Skips the very first run of the toolbar-search effect (mount) and any
   // run caused by handleReset/handleSearch programmatically clearing or
