@@ -13,8 +13,8 @@
   --crmQr-text-primary: #101418;
   --crmQr-text-muted: #6b7280;
 
-  --crmQr-accent-purple: #5f259f;
-  --crmQr-accent-purple-dark: #451873;
+  --crmQr-accent-purple: #c22a17;
+  --crmQr-accent-purple-dark: #c22a17;
   --crmQr-accent-blue: #1a73e8;
   --crmQr-accent-green: #00c853;
   --crmQr-accent-green-soft: rgba(0, 200, 83, 0.18);
@@ -43,8 +43,6 @@
   --crmQr-radius-md: 14px;
   --crmQr-radius-sm: 10px;
   --crmQr-shadow-modal: 0 24px 60px rgba(15, 15, 20, 0.35);
-  --crmQr-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ---------- Screen-reader-only utility ---------- */

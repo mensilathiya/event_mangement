@@ -142,6 +142,15 @@ export default function EntryReport() {
   const [selectedEventId, setSelectedEventId] = useState("");
   const eventId = selectedEventId;
 
+  // Tracks whether the user has ever actively made an event selection
+  // (including explicitly picking "All Events") via handleEventChange.
+  // This is what lets the fetch effect below tell the difference between
+  // "page just mounted, eventId happens to be empty" (no fetch — report
+  // stays empty until the user picks something, per the original spec)
+  // and "user just chose All Events" (eventId is empty, but a fetch for
+  // every active event should fire immediately, no Search click needed).
+  const [hasSelectedEvent, setHasSelectedEvent] = useState(false);
+
   // Existing entryReport slice state — no new/duplicate state is created here.
   const {
     entryReports,
@@ -239,15 +248,26 @@ export default function EntryReport() {
     dispatch(getActiveEvents());
   }, [dispatch]);
 
-  // Fetch entry report data once the user has selected an event. Never
-  // fires on its own from the first item in activeEvents — only a real
-  // user selection (see handleEventChange) sets selectedEventId.
+  // Fetch entry report data once the user has made an event selection.
+  // Never fires on its own from the first item in activeEvents — only a
+  // real user selection (see handleEventChange) sets selectedEventId /
+  // hasSelectedEvent. Two cases now trigger a fetch:
+  //  - eventId is truthy: fetch that specific event's report (unchanged).
+  //  - eventId is empty AND hasSelectedEvent is true: the user explicitly
+  //    chose "All Events", so fetch the report for all active events
+  //    immediately — buildEntryReportParams already omits eventId from
+  //    the params whenever it's falsy, which is the existing "all events"
+  //    contract getAllEntryReport/handleReset already rely on, so this
+  //    reuses that same thunk/params rather than adding a new one.
+  // On initial mount eventId is "" and hasSelectedEvent is still false,
+  // so this correctly does nothing until the user actually picks an
+  // option from the dropdown.
   useEffect(() => {
-    if (!eventId) return;
+    if (!eventId && !hasSelectedEvent) return;
 
     dispatch(getAllEntryReport(buildEntryReportParams(1)));
 
-  }, [eventId, dispatch]);
+  }, [eventId, hasSelectedEvent, dispatch]);
 
   // If the selected event disappears from the dropdown's own list (goes
   // Inactive/Expired) while the user is already on this page, deselect it
@@ -459,6 +479,11 @@ export default function EntryReport() {
     skipSearchEffectRef.current = true;
 
     setSelectedEventId(newEventId);
+    // Marks this as a real, explicit user selection (as opposed to the
+    // initial mount, where selectedEventId also happens to be ""). This
+    // is what allows the fetch effect above to auto-load all events'
+    // reports when newEventId is empty, without requiring a Search click.
+    setHasSelectedEvent(true);
 
     // Reset the previously selected date range so a prior event's dates
     // are never carried over and applied against the newly selected
@@ -474,12 +499,18 @@ export default function EntryReport() {
     setPage(1);
 
     if (!newEventId) {
-      // No event selected: clear whatever the previous event's table/
-      // pagination were showing instead of leaving stale rows on screen.
+      // All Events selected: clear whatever the previously selected
+      // single event's table/pagination were showing immediately, so no
+      // stale single-event rows flash on screen while the "All Events"
+      // request below is in flight. This is a plain synchronous reducer
+      // action (no API call), so it doesn't add an extra network request
+      // or race with the fetch that follows.
       dispatch(clearEntryReportState());
     }
-    // When newEventId is truthy, the eventId-driven fetch effect above
-    // picks this change up on its own — no need to dispatch here too.
+    // Either way (a specific event or All Events), the eventId/
+    // hasSelectedEvent-driven fetch effect above now picks this change up
+    // on its own and dispatches getAllEntryReport — no Search click, and
+    // no duplicate dispatch needed here.
   };
   // search
   const handleSearch = () => {
@@ -632,7 +663,7 @@ export default function EntryReport() {
   // If filtering/search shrinks the result set so the current page no
   // longer exists, automatically fall back to the last valid page.
   useEffect(() => {
-    if (!eventId || loading) return;
+    if ((!eventId && !hasSelectedEvent) || loading) return;
     if (totalRecords === 0) return;
     if (currentPage > totalPages) {
       const validPage = Math.max(1, totalPages);
@@ -697,7 +728,7 @@ export default function EntryReport() {
                 disabled={activeEventsLoading}
               >
                 <option value="">
-                  {activeEventsLoading ? "Loading events..." : "Select Event"}
+                  {activeEventsLoading ? "Loading events..." : "All Events"}
                 </option>
                 {activeEvents.map((evt) => (
                   <option key={evt._id} value={evt._id}>
@@ -908,7 +939,7 @@ export default function EntryReport() {
                         <div className="erPage__emptyState">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 512" width="120" class="bookingPage-stateIcon"><path d="M220.6 130.3l-67.2 28.2V43.2L98.7 233.5l54.7-24.2v130.3l67.2-209.3zm-83.2-96.7l-1.3 4.7-15.2 52.9C80.6 106.7 52 145.8 52 191.5c0 52.3 34.3 95.9 83.4 105.5v53.6C57.5 340.1 0 272.4 0 191.6c0-80.5 59.8-147.2 137.4-158zm311.4 447.2c-11.2 11.2-23.1 12.3-28.6 10.5-5.4-1.8-27.1-19.9-60.4-44.4-33.3-24.6-33.6-35.7-43-56.7-9.4-20.9-30.4-42.6-57.5-52.4l-9.7-14.7c-24.7 16.9-53 26.9-81.3 28.7l2.1-6.6 15.9-49.5c46.5-11.9 80.9-54 80.9-104.2 0-54.5-38.4-102.1-96-107.1V32.3C254.4 37.4 320 106.8 320 191.6c0 33.6-11.2 64.7-29 90.4l14.6 9.6c9.8 27.1 31.5 48 52.4 57.4s32.2 9.7 56.8 43c24.6 33.2 42.7 54.9 44.5 60.3s.7 17.3-10.5 28.5zm-9.9-17.9c0-4.4-3.6-8-8-8s-8 3.6-8 8 3.6 8 8 8 8-3.6 8-8z"></path></svg>
                           <p className="erPage__emptyText">
-                            {selectedEventId
+                            {selectedEventId || hasSelectedEvent
                               ? "No Entry Reports Found."
                               : "Select an event above to view its entry report."}
                           </p>
