@@ -142,14 +142,15 @@ export default function EntryReport() {
   const [selectedEventId, setSelectedEventId] = useState("");
   const eventId = selectedEventId;
 
-  // Tracks whether the user has ever actively made an event selection
-  // (including explicitly picking "All Events") via handleEventChange.
-  // This is what lets the fetch effect below tell the difference between
-  // "page just mounted, eventId happens to be empty" (no fetch — report
-  // stays empty until the user picks something, per the original spec)
-  // and "user just chose All Events" (eventId is empty, but a fetch for
-  // every active event should fire immediately, no Search click needed).
-  const [hasSelectedEvent, setHasSelectedEvent] = useState(false);
+  // Tracks whether an event selection is "in effect" — either the user
+  // explicitly changed the dropdown (see handleEventChange), or it's still
+  // sitting on the default "All Events" option, which itself counts as a
+  // selection now. Starts true (not false) specifically because the
+  // dropdown's default value is already "All Events": the report should
+  // show every active event's entries on first load, the same way it
+  // will after the user manually re-picks "All Events" later — no click
+  // or explicit change required just because it's the initial render.
+  const [hasSelectedEvent, setHasSelectedEvent] = useState(true);
 
   // Existing entryReport slice state — no new/duplicate state is created here.
   const {
@@ -248,20 +249,21 @@ export default function EntryReport() {
     dispatch(getActiveEvents());
   }, [dispatch]);
 
-  // Fetch entry report data once the user has made an event selection.
-  // Never fires on its own from the first item in activeEvents — only a
-  // real user selection (see handleEventChange) sets selectedEventId /
-  // hasSelectedEvent. Two cases now trigger a fetch:
+  // Fetch entry report data whenever there's an event selection "in
+  // effect" — a specific event, or the default/explicit "All Events".
+  // Two cases trigger a fetch:
   //  - eventId is truthy: fetch that specific event's report (unchanged).
-  //  - eventId is empty AND hasSelectedEvent is true: the user explicitly
-  //    chose "All Events", so fetch the report for all active events
-  //    immediately — buildEntryReportParams already omits eventId from
-  //    the params whenever it's falsy, which is the existing "all events"
-  //    contract getAllEntryReport/handleReset already rely on, so this
-  //    reuses that same thunk/params rather than adding a new one.
-  // On initial mount eventId is "" and hasSelectedEvent is still false,
-  // so this correctly does nothing until the user actually picks an
-  // option from the dropdown.
+  //  - eventId is empty AND hasSelectedEvent is true (true by default,
+  //    since the dropdown itself defaults to "All Events"): fetch the
+  //    report for all active events. buildEntryReportParams already
+  //    omits eventId from the params whenever it's falsy, which is the
+  //    existing "all events" contract getAllEntryReport/handleReset
+  //    already rely on, so this reuses that same thunk/params rather
+  //    than adding a new one.
+  // This now runs on initial mount too (eventId "" + hasSelectedEvent
+  // true), so the table shows every active event's entries immediately
+  // on page load, matching the dropdown's own default — not just after
+  // the user explicitly re-selects "All Events" later.
   useEffect(() => {
     if (!eventId && !hasSelectedEvent) return;
 
@@ -719,8 +721,10 @@ export default function EntryReport() {
             <div className="erPage__filtersRow erPage__filtersRow--fields">
               {/* Event dropdown — lists every currently active/valid event
                   the logged-in user is allowed to view (see
-                  getActiveEvents). Never pre-selected: the report stays
-                  empty until the user actively picks one, per spec. */}
+                  getActiveEvents). Defaults to "All Events" (empty value),
+                  and the report loads every active event's entries for
+                  that default automatically — the user isn't required to
+                  pick a specific event or click Search first. */}
               <select
                 className="erPage__input erPage__eventSelect"
                 value={selectedEventId}
