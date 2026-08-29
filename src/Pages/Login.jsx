@@ -29,7 +29,7 @@ const FEATURES = [
   { icon: <LuScanQrCode />, label: "QR Entry" },
   { icon: <FaUsers />, label: "Attendees" },
 ];
-
+// login
 const Login = () => {
   const [formData, setFormData] = useState({
     login: "",
@@ -80,7 +80,7 @@ const Login = () => {
       }
     }
   };
-
+  // validate
   const validate = () => {
     const nextErrors = { login: "", password: "" };
     let isValid = true;

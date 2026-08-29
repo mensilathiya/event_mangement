@@ -5,7 +5,6 @@ import { createUser, updateUser, getUsers } from "../redux/user/userThunk";
 import { clearUserState } from "../redux/user/userSlice";
 import "../assets/CSS/CreateUserModal.css";
 import { showError, showSuccess } from "../utilits/toast";
-
 export default function CreateUserModal({
   onClose,
   isEditMode = false,
@@ -15,7 +14,7 @@ export default function CreateUserModal({
   search = "",
 }) {
   const dispatch = useDispatch();
-
+  // fromdata 
   const [formData, setFormData] = useState({
     name: "",
     mobile: "",
@@ -26,19 +25,14 @@ export default function CreateUserModal({
   });
 
   const { loading, error } = useSelector((state) => state.user);
-
   const fileInputRef = useRef(null);
-
   const [profileImage, setProfileImage] = useState(
     isEditMode && editUserData
       ? editUserData.profileImage || null
       : null
   );
-
   const [imageFile, setImageFile] = useState(null);
-
   const [formErrors, setFormErrors] = useState({});
-
   useEffect(() => {
     document.body.style.overflow = "hidden";
 

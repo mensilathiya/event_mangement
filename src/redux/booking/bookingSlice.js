@@ -105,8 +105,6 @@ const bookingSlice = createSlice({
         state.listLoading = false;
         state.listError = action.payload;
       });
-      // ============= export booking -=============
-
     // ================= GET BY ID =================
     builder
       .addCase(getBookingById.pending, (state) => {

@@ -1,23 +1,23 @@
 import api from "../api/axios";
 
-// Create User
+// ===========  Create User ====================
 export const createUserApi = (data) => {
   return api.post("/users", data);
 };
 
-// Get Users
+// ============= Get Users ==================
 export const getUsersApi = (params) => {
   return api.get("/users", {
     params,
   });
 };
 
-// Update User
+// ====================== Update User ==================
 export const updateUserApi = (id, data) => {
   return api.put(`/users/${id}`, data);
 };
 
-// Delete User
+// ==================== Delete User =============================
 export const deleteUserApi = (id) => {
   return api.delete(`/users/${id}`);
 };

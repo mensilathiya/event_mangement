@@ -11,7 +11,6 @@ const loadingSlice = createSlice({
     startLoading: (state) => {
       state.isLoading = true;
     },
-
     stopLoading: (state) => {
       state.isLoading = false;
     },
@@ -19,5 +18,4 @@ const loadingSlice = createSlice({
 });
 
 export const { startLoading, stopLoading } = loadingSlice.actions;
-
 export default loadingSlice.reducer;

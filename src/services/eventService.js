@@ -1,6 +1,6 @@
 import api from "../api/axios";
 
-// Create Event
+// =================== Create Event api =================
 export const createEventApi = (data) => {
   return api.post("/events/create", data, {
     headers: {
@@ -9,12 +9,11 @@ export const createEventApi = (data) => {
   });
 };
 
-// View Event
+// =================== getEventByIdApi =================
 export const getEventByIdApi = (id) => {
   return api.get(`/events/${id}`);
 };
-// get all event
-// Get All Events
+// ====================== Get All Events ==================
 export const getAllEventsApi = async (params) => {
   const response = await api.get("/events/get-all-events", {
     params,
@@ -22,9 +21,7 @@ export const getAllEventsApi = async (params) => {
 
   return response.data;
 };
-// Update Event
-// Same response shape as createEventApi (raw axios response) since the
-// thunk needs response.data the same way createEvent's thunk does.
+// ======================= Update Event api ===============
 export const updateEventApi = (id, data) => {
   return api.put(`/events/${id}/update`, data, {
     headers: {
@@ -33,15 +30,13 @@ export const updateEventApi = (id, data) => {
   });
 };
 
-// Delete Event
-// Same response shape as changeEventStatusApi (already-unwrapped .data)
-// since there's no form data to re-populate from the result.
+// ================ Delete Event api ====================
 export const deleteEventApi = async (id) => {
   const response = await api.delete(`/events/${id}/delete`);
   return response.data;
 };
 
-// Change Event Status
+//  ================== Change Event Status api ==================
 export const changeEventStatusApi = async (id) => {
   const response = await api.patch(`/events/${id}/status`);
   return response.data;
