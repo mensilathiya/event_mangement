@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import '../assets/CSS/Booking.css';
 import CreateBookingModal from "../Components/CreateBookingModal";
 import ResendTicketModal from "../Components/ResendTicketModal";
-import Sidebar from "../Components/Sidebar";
-import Header from "../Components/Header";
 import DeleteBookingModal from "../Components/DeleteBookingModal";
 import { DateRange } from 'react-date-range';
 import { format } from 'date-fns';
@@ -13,7 +11,15 @@ import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import { exportBookingReport, getAllBookings } from "../redux/booking/bookingThunk";
 import { getAllEvents } from "../redux/event/eventThunk";
-import { FaChevronLeft, FaChevronRight, FaSort } from "react-icons/fa";
+import { FaSort } from "react-icons/fa";
+import CommonSearch from "../Components/CommonSearch";
+import CommonSelect from "../Components/CommonSelect";
+import CommonPagination from "../Components/CommonPagination";
+import CommonExportButton from "../Components/CommonExportButton";
+import CommonPageHeader from "../Components/CommonPageHeader";
+import CommonListLayout from "../Components/CommonListLayout";
+import CommonLoader from "../Components/CommonLoader";
+import CommonEmptyState from "../Components/CommonEmptyState";
 
 // Formats a createdAt value as "DD-MM-YYYY, <local time>" for the "Created
 // By" column. Returns "-" for missing/invalid values so nothing renders as
@@ -29,6 +35,20 @@ const formatCreatedAt = (value) => {
 };
 
 const columns = ["ID", "Name", "Mobile Number", "Event", "Ticket", "Qty", "Amount", "Created By"];
+
+// Options for the "rows per page" select. Lives in the page (not inside
+// CommonSelect) since CommonSelect must never hardcode page-specific options.
+const ROWS_PER_PAGE_OPTIONS = [5, 10, 20, 50, 100].map((n) => ({
+  value: n,
+  label: String(n),
+}));
+
+// Options for the booking "Status" filter select — same static list the
+// page rendered inline before.
+const BOOKING_STATUS_OPTIONS = [
+  { value: "Success", label: "Success" },
+  { value: "Deleted", label: "Deleted" },
+];
 
 const defaultFilters = {
   bookingId: "",
@@ -341,11 +361,6 @@ const Booking = () => {
     activePage * rowsPerPage,
     total
   );
-  const pageNumbers = [];
-
-  for (let i = 1; i <= totalPages; i++) {
-    pageNumbers.push(i);
-  }
   const goToPreviousPage = () => {
     if (activePage > 1) {
       setActivePage((prev) => prev - 1);
@@ -387,31 +402,35 @@ const Booking = () => {
     dispatch(exportBookingReport(params));
   };
   return (
-    <>
-
-      <div className="bookingPage-wrapper">
-        <Sidebar />
-        <div className="bookingPageMainArea">
-          <Header title="Booking" />
-          <div className="bookingPageContent">
-            <div className="bookingPage-header">
-              <div className="bookingPage-headerLeft">
-                <h1 className="bookingPage-title">Booking</h1>
-                <div className="bookingPage-breadcrumb">
-                  <Link to="/dashboard">Dashboard</Link>
-                  <span className="bookingPage-breadcrumbSep">-</span>
-                  <span className="bookingPage-breadcrumbActive">Booking</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="bookingPage-createBtn"
-                onClick={() => setIsCreateModalOpen(true)}
-              >
-                <span className="bookingPage-createBtnIcon">+</span> Create Booking
-              </button>
-            </div>
-            {/* booking filter */}
+    <CommonListLayout
+      pageClassName="bookingPage-wrapper"
+      mainAreaClassName="bookingPageMainArea"
+      contentClassName="bookingPageContent"
+      headerTitle="Booking"
+    >
+      <CommonPageHeader
+        containerClassName="bookingPage-header"
+        leftWrapperClassName="bookingPage-headerLeft"
+        title="Booking"
+        titleClassName="bookingPage-title"
+        breadcrumb={
+          <div className="bookingPage-breadcrumb">
+            <Link to="/dashboard">Dashboard</Link>
+            <span className="bookingPage-breadcrumbSep">-</span>
+            <span className="bookingPage-breadcrumbActive">Booking</span>
+          </div>
+        }
+        actions={
+          <button
+            type="button"
+            className="bookingPage-createBtn"
+            onClick={() => setIsCreateModalOpen(true)}
+          >
+            <span className="bookingPage-createBtnIcon">+</span> Create Booking
+          </button>
+        }
+      />
+      {/* booking filter */}
             <div className="bookingPage-filterCard">
               <div className="bookingPage-filterGrid">
 
@@ -443,21 +462,18 @@ const Booking = () => {
                 />
 
                 {/* Event */}
-                <select
+                <CommonSelect
                   className="bookingPage-filterSelect"
                   value={filters.eventId}
                   onChange={handleFilterChange("eventId")}
-                >
-                  <option value="">All Events</option>
-
-                  {events
+                  placeholder="All Events"
+                  options={events
                     ?.filter((event) => event.isActive === true)
-                    .map((event) => (
-                      <option key={event._id} value={event._id}>
-                        {event.title}
-                      </option>
-                    ))}
-                </select>
+                    .map((event) => ({
+                      value: event._id,
+                      label: event.title,
+                    }))}
+                />
 
                 {/* Date Range */}
                 <div className="bookingPage-dateWrap">
@@ -537,14 +553,12 @@ const Booking = () => {
                 </div>
 
                 {/* Status */}
-                <select
+                <CommonSelect
                   className="bookingPage-filterSelect bookingPage-statusSelect"
                   value={filters.status}
                   onChange={handleFilterChange("status")}
-                >
-                  <option value="Success">Success</option>
-                  <option value="Deleted">Deleted</option>
-                </select>
+                  options={BOOKING_STATUS_OPTIONS}
+                />
 
               </div>
 
@@ -572,77 +586,54 @@ const Booking = () => {
             <div className="bookingPage-card">
               <div className="erPage__tableToolbar">
                 <div className="erPage__toolbarLeft">
-                  <select
+                  <CommonSelect
                     value={rowsPerPage}
                     onChange={(e) => {
                       setRowsPerPage(Number(e.target.value));
                       setActivePage(1);
                     }}
                     className="erPage__pageSizeSelect"
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
+                    options={ROWS_PER_PAGE_OPTIONS}
+                  />
 
                   <div className="erPage__toolbarCenter">
-                    <div className="erPage__searchBox">
-                      <svg
-                        className="erPage__searchIcon"
-                        viewBox="0 0 24 24"
-                        width="16"
-                        height="16"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <circle cx="11" cy="11" r="7" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      </svg>
-                      <input
-                        type="search"
-                        className="eventList__searchInput"
-                        value={filters.search}
-                        onChange={handleSearchChange}
-                        placeholder="Search..."
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleSearch();
-                          }
-                        }}
-                      />
-                    </div>
-
+                    <CommonSearch
+                      containerClassName="erPage__searchBox"
+                      inputClassName="eventList__searchInput"
+                      icon={
+                        <svg
+                          className="erPage__searchIcon"
+                          viewBox="0 0 24 24"
+                          width="16"
+                          height="16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <circle cx="11" cy="11" r="7" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                      }
+                      type="search"
+                      value={filters.search}
+                      onChange={handleSearchChange}
+                      placeholder="Search..."
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSearch();
+                        }
+                      }}
+                    />
                   </div>
                 </div>
                 <div className="erPage__toolbarRight">
-                  <button
-                    className="erPage__btn erPage__btn--export"
+                  <CommonExportButton
                     onClick={handleExport}
-                    disabled={exportLoading}
-                    aria-busy={exportLoading}
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="16"
-                      height="16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className={
-                        exportLoading
-                          ? "erPage__exportIcon erPage__exportIcon--spinning"
-                          : "erPage__exportIcon"
-                      }
-                    >
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                    </svg>
-                    {exportLoading ? "Exporting..." : "Export Booking"}
-                  </button>
+                    loading={exportLoading}
+                    disabled={exportLoading || total === 0}
+                    label="Export Booking"
+                  />
                 </div>
               </div>
               {/* // tabal */}
@@ -666,11 +657,11 @@ const Booking = () => {
                     {listLoading ? (
                       <tr>
                         <td colSpan={10} className="bookingPage-stateCell">
-                          <div className="bookingPage-stateWrap">
-                            <p className="bookingPage-stateText">
-                              Loading bookings...
-                            </p>
-                          </div>
+                          <CommonLoader
+                            wrapperClassName="bookingPage-stateWrap"
+                            messageClassName="bookingPage-stateText"
+                            message="Loading bookings..."
+                          />
                         </td>
                       </tr>
                     ) : listErrorMessage ? (
@@ -801,19 +792,11 @@ const Booking = () => {
                     ) : (
                       <tr>
                         <td colSpan={10} className="bookingPage-stateCell">
-                          <div className="bookingPage-stateWrap">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 460 512"
-                              width="120"
-                              className="bookingPage-stateIcon"
-                            >
-                              <path d="M220.6 130.3l-67.2 28.2V43.2L98.7 233.5l54.7-24.2v130.3l67.2-209.3zm-83.2-96.7l-1.3 4.7-15.2 52.9C80.6 106.7 52 145.8 52 191.5c0 52.3 34.3 95.9 83.4 105.5v53.6C57.5 340.1 0 272.4 0 191.6c0-80.5 59.8-147.2 137.4-158zm311.4 447.2c-11.2 11.2-23.1 12.3-28.6 10.5-5.4-1.8-27.1-19.9-60.4-44.4-33.3-24.6-33.6-35.7-43-56.7-9.4-20.9-30.4-42.6-57.5-52.4l-9.7-14.7c-24.7 16.9-53 26.9-81.3 28.7l2.1-6.6 15.9-49.5c46.5-11.9 80.9-54 80.9-104.2 0-54.5-38.4-102.1-96-107.1V32.3C254.4 37.4 320 106.8 320 191.6c0 33.6-11.2 64.7-29 90.4l14.6 9.6c9.8 27.1 31.5 48 52.4 57.4s32.2 9.7 56.8 43c24.6 33.2 42.7 54.9 44.5 60.3s.7 17.3-10.5 28.5zm-9.9-17.9c0-4.4-3.6-8-8-8s-8 3.6-8 8 3.6 8 8 8 8-3.6 8-8z" />
-                            </svg>
-                            <p className="bookingPage-stateText">
-                              No Bookings Found.
-                            </p>
-                          </div>
+                          <CommonEmptyState
+                            wrapperClassName="bookingPage-stateWrap"
+                            textClassName="bookingPage-stateText"
+                            message="No Bookings Found."
+                          />
                         </td>
                       </tr>
                     )}
@@ -830,51 +813,19 @@ const Booking = () => {
                 </table>
               </div>
               {/* booking page pagination */}
-              <div className="permissionPagePagination">
-
-                <span className="permissionPagePaginationInfo">
-                  Show {total === 0 ? 0 : startIndex + 1} - {endIndex} of {total}
-                </span>
-
-                {totalPages > 1 && (
-                  <div className="permissionPagePaginationControls">
-
-                    <button
-                      type="button"
-                      className="permissionPagePaginationArrow"
-                      onClick={goToPreviousPage}
-                      disabled={activePage === 1}
-                    >
-                      <FaChevronLeft />
-                    </button>
-
-                    {pageNumbers.map((page) => (
-                      <button
-                        key={page}
-                        type="button"
-                        className={`permissionPagePaginationBtn ${activePage === page
-                          ? "permissionPagePaginationActive"
-                          : ""
-                          }`}
-                        onClick={() => setActivePage(page)}
-                      >
-                        {page}
-                      </button>
-                    ))}
-
-                    <button
-                      type="button"
-                      className="permissionPagePaginationArrow"
-                      onClick={goToNextPage}
-                      disabled={activePage === totalPages}
-                    >
-                      <FaChevronRight />
-                    </button>
-
-                  </div>
-                )}
-
-              </div>
+              <CommonPagination
+                currentPage={activePage}
+                totalPages={totalPages}
+                rangeStart={total === 0 ? 0 : startIndex + 1}
+                rangeEnd={endIndex}
+                totalItems={total}
+                showControls={totalPages > 1}
+                onPageSelect={(page) => setActivePage(page)}
+                onPrevious={goToPreviousPage}
+                onNext={goToNextPage}
+                prevDisabled={activePage === 1}
+                nextDisabled={activePage === totalPages}
+              />
             </div>
 
             {/* <div className="bookingPage-siteFooter">
@@ -936,10 +887,7 @@ const Booking = () => {
                 />
               </div>
             )}
-          </div>
-        </div>
-      </div>
-    </>
+    </CommonListLayout>
   );
 };
 

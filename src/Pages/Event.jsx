@@ -1,13 +1,18 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import "../assets/CSS/Event.css";
-import Sidebar from "../Components/Sidebar";
-import Header from "../Components/Header";
 import { Link, useNavigate } from "react-router-dom";
-import { FaSearch, FaSort, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaSearch, FaSort } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllEvents, changeEventStatus, deleteEvent } from "../redux/event/eventThunk";
 import Swal from "sweetalert2";
+import CommonSearch from "../Components/CommonSearch";
+import CommonSelect from "../Components/CommonSelect";
+import CommonPagination from "../Components/CommonPagination";
+import CommonPageHeader from "../Components/CommonPageHeader";
+import CommonListLayout from "../Components/CommonListLayout";
+import CommonLoader from "../Components/CommonLoader";
+import CommonEmptyState from "../Components/CommonEmptyState";
 
 const columns = [
   { key: "title", label: "Title" },
@@ -18,6 +23,13 @@ const columns = [
   { key: "isActive", label: "Is Active" },
   { key: "createdOn", label: "Created On" },
 ];
+
+// Options for the "rows per page" select. Lives in the page (not inside
+// CommonSelect) since CommonSelect must never hardcode page-specific options.
+const ROWS_PER_PAGE_OPTIONS = [5, 10, 20, 50, 100].map((n) => ({
+  value: String(n),
+  label: String(n),
+}));
 
 // DD-MM-YYYY — used for "Created On", and reused below by formatDateTime so
 // the date portion of Start/End Date & Time stays in the exact same format
@@ -129,11 +141,6 @@ const Event = () => {
     }
   };
   // pagination
-  const pageNumbers = [];
-
-  for (let i = 1; i <= totalPages; i++) {
-    pageNumbers.push(i);
-  }
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(currentPage * rowsPerPage, total);
   const handleRowsPerPageChange = (e) => {
@@ -254,29 +261,34 @@ const Event = () => {
 
   return (
 
-    <div className="Event__page">
-      <Sidebar />
-      <div className="EventPage__mainArea">
-        <Header title="Event" />
-        <div className="eventList__wrapper">
-
-          <div className="eventList__header">
-            <div className="eventList__headerLeft">
-              <h1 className="eventList__title">Event</h1>
-              <div className="eventList__breadcrumb">
-                <Link to="/dashboard">Dashboard</Link>
-                <span className="eventList__breadcrumbSep">-</span>
-                <span className="eventList__breadcrumbActive">Event</span>
-              </div>
-            </div>
-            <Link to={'/create-event'}>
-              <button type="button" className="eventList__createBtn">
-                <span className="eventList__createBtnIcon">+</span> Create Event
-              </button>
-            </Link>
+    <CommonListLayout
+      pageClassName="Event__page"
+      mainAreaClassName="EventPage__mainArea"
+      contentClassName="eventList__wrapper"
+      headerTitle="Event"
+    >
+      <CommonPageHeader
+        containerClassName="eventList__header"
+        leftWrapperClassName="eventList__headerLeft"
+        title="Event"
+        titleClassName="eventList__title"
+        breadcrumb={
+          <div className="eventList__breadcrumb">
+            <Link to="/dashboard">Dashboard</Link>
+            <span className="eventList__breadcrumbSep">-</span>
+            <span className="eventList__breadcrumbActive">Event</span>
           </div>
+        }
+        actions={
+          <Link to={'/create-event'}>
+            <button type="button" className="eventList__createBtn">
+              <span className="eventList__createBtnIcon">+</span> Create Event
+            </button>
+          </Link>
+        }
+      />
 
-          <div className="eventList__card">
+      <div className="eventList__card">
             {openActionId !== null && (
               <div
                 className="eventList__actionOverlay"
@@ -285,32 +297,26 @@ const Event = () => {
             )}
 
             <div className="eventList__toolbar">
-              <select
+              <CommonSelect
                 value={rowsPerPage}
                 onChange={handleRowsPerPageChange}
                 className="eventList__pageSizeSelect"
-              >
-                <option value="5">5</option>
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-              </select>
+                options={ROWS_PER_PAGE_OPTIONS}
+              />
 
-              <div className="eventList__searchBox">
-                <span className="eventList__searchIcon"><FaSearch /></span>
-                <input
-                  type="search"
-                  value={searchTerm}
-                  className="eventList__searchInput"
-                  onChange={handleSearchChange}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                    }
-                  }}
-                />
-              </div>
+              <CommonSearch
+                containerClassName="eventList__searchBox"
+                inputClassName="eventList__searchInput"
+                icon={<span className="eventList__searchIcon"><FaSearch /></span>}
+                type="search"
+                value={searchTerm}
+                onChange={handleSearchChange}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                  }
+                }}
+              />
             </div>
 
             <div className="eventList__tableWrap">
@@ -344,25 +350,17 @@ const Event = () => {
                   {loading ? (
                     <tr>
                       <td colSpan="9" style={{ textAlign: "center" }}>
-                        Loading events...
+                        <CommonLoader message="Loading events..." />
                       </td>
                     </tr>
                   ) : events.length === 0 ? (
                     <tr>
                       <td colSpan="9" style={{ textAlign: "center" }}>
-                         <div className="bookingPage-stateWrap">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 460 512"
-                              width="120"
-                              className="bookingPage-stateIcon"
-                            >
-                              <path d="M220.6 130.3l-67.2 28.2V43.2L98.7 233.5l54.7-24.2v130.3l67.2-209.3zm-83.2-96.7l-1.3 4.7-15.2 52.9C80.6 106.7 52 145.8 52 191.5c0 52.3 34.3 95.9 83.4 105.5v53.6C57.5 340.1 0 272.4 0 191.6c0-80.5 59.8-147.2 137.4-158zm311.4 447.2c-11.2 11.2-23.1 12.3-28.6 10.5-5.4-1.8-27.1-19.9-60.4-44.4-33.3-24.6-33.6-35.7-43-56.7-9.4-20.9-30.4-42.6-57.5-52.4l-9.7-14.7c-24.7 16.9-53 26.9-81.3 28.7l2.1-6.6 15.9-49.5c46.5-11.9 80.9-54 80.9-104.2 0-54.5-38.4-102.1-96-107.1V32.3C254.4 37.4 320 106.8 320 191.6c0 33.6-11.2 64.7-29 90.4l14.6 9.6c9.8 27.1 31.5 48 52.4 57.4s32.2 9.7 56.8 43c24.6 33.2 42.7 54.9 44.5 60.3s.7 17.3-10.5 28.5zm-9.9-17.9c0-4.4-3.6-8-8-8s-8 3.6-8 8 3.6 8 8 8 8-3.6 8-8z" />
-                            </svg>
-                            <p className="bookingPage-stateText">
-                              No Events Found.
-                            </p>
-                          </div>
+                        <CommonEmptyState
+                          wrapperClassName="bookingPage-stateWrap"
+                          textClassName="bookingPage-stateText"
+                          message="No Events Found."
+                        />
                       </td>
                     </tr>
                   ) : events.map((event, index) => (
@@ -477,49 +475,19 @@ const Event = () => {
               </table>
             </div>
 
-            <div className="permissionPagePagination">
-
-              <span className="permissionPagePaginationInfo">
-                Show {total === 0 ? 0 : startIndex + 1} - {endIndex} of {total}
-              </span>
-              {totalPages > 1 && (
-                <div className="permissionPagePaginationControls">
-
-                  <button
-                    type="button"
-                    className="permissionPagePaginationArrow"
-                    onClick={goToPreviousPage}
-                    disabled={currentPage === 1}
-                  >
-                    <FaChevronLeft />
-                  </button>
-
-                  {pageNumbers.map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      className={`permissionPagePaginationBtn ${currentPage === page
-                        ? "permissionPagePaginationActive"
-                        : ""
-                        }`}
-                      onClick={() => setCurrentPage(page)}
-                    >
-                      {page}
-                    </button>
-                  ))}
-
-                  <button
-                    type="button"
-                    className="permissionPagePaginationArrow"
-                    onClick={goToNextPage}
-                    disabled={currentPage === totalPages}
-                  >
-                    <FaChevronRight />
-                  </button>
-
-                </div>
-              )}
-            </div>
+            <CommonPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              rangeStart={total === 0 ? 0 : startIndex + 1}
+              rangeEnd={endIndex}
+              totalItems={total}
+              showControls={totalPages > 1}
+              onPageSelect={(page) => setCurrentPage(page)}
+              onPrevious={goToPreviousPage}
+              onNext={goToNextPage}
+              prevDisabled={currentPage === 1}
+              nextDisabled={currentPage === totalPages}
+            />
 
             {/* <div className="eventList__pagination">
               Show 1 - {filteredEvents.length} of {events.length}
@@ -534,9 +502,7 @@ const Event = () => {
               <span>Purchase</span>
             </div>
           </div> */}
-        </div>
-      </div>
-    </div>
+    </CommonListLayout>
   );
 };
 

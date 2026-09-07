@@ -74,8 +74,6 @@ const qrSlice = createSlice({
       })
 
       .addCase(verifyQr.fulfilled, (state, action) => {
-        console.log("VERIFY RESPONSE", action.payload.data);
-
         state.verify.loading = false;
         state.verify.success = true;
         state.ticket = action.payload.data;

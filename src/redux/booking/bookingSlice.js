@@ -88,6 +88,12 @@ const bookingSlice = createSlice({
       .addCase(getAllBookings.pending, (state) => {
         state.listLoading = true;
         state.listError = null;
+        // Reset the pagination summary so it doesn't keep showing the
+        // previous filter/search's stale "Show X - Y of Z" total while
+        // the table itself is showing "Loading bookings...". Both are
+        // now in sync until the new result arrives.
+        state.total = 0;
+        state.totalPages = 1;
       })
       .addCase(getAllBookings.fulfilled, (state, action) => {
         state.listLoading = false;
@@ -105,6 +111,8 @@ const bookingSlice = createSlice({
         state.listLoading = false;
         state.listError = action.payload;
       });
+      // ============= export booking -=============
+
     // ================= GET BY ID =================
     builder
       .addCase(getBookingById.pending, (state) => {

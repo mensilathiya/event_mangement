@@ -1,11 +1,15 @@
 import {
-  useState, useRef, useEffect
+  useState, useRef, useEffect, useCallback, useMemo
 } from "react";
-import { FaSort, FaSearch, FaChevronDown, FaPlus, FaPencilAlt, FaTrashAlt, FaChevronRight, FaChevronLeft } from "react-icons/fa";
-import Sidebar from "../Components/Sidebar";
-import Header from "../Components/Header";
+import { FaSearch, FaChevronDown, FaPlus } from "react-icons/fa";
 import CreateUserModal from "../Components/CreateUserModal";
 import DeleteUserModal from "../Components/DeleteUserModal";
+import CommonTable from "../Components/CommonTable";
+import CommonSearch from "../Components/CommonSearch";
+import CommonSelect from "../Components/CommonSelect";
+import CommonPagination from "../Components/CommonPagination";
+import CommonPageHeader from "../Components/CommonPageHeader";
+import CommonListLayout from "../Components/CommonListLayout";
 import "../assets/CSS/User.css";
 import { useDispatch, useSelector } from "react-redux";
 import { deleteUser, getUsers } from '../redux/user/userThunk';
@@ -13,8 +17,12 @@ import { showError, showSuccess } from "../utilits/toast";
 import { clearUserState } from "../redux/user/userSlice";
 const LOGO_AVATAR = "https://ui-avatars.com/api/?name=SA&background=17a2b8&color=fff&bold=true";
 
-
-const columns = ["Image", "Name", "Email", "Mobile No", "Role", "Created", "Action"];
+// Options for the "rows per page" select. Lives in the page (not inside
+// CommonSelect) since CommonSelect must never hardcode page-specific options.
+const ROWS_PER_PAGE_OPTIONS = [5, 10, 20, 50, 100].map((n) => ({
+  value: n,
+  label: String(n),
+}));
 
 export default function User() {
   const dispatch = useDispatch();
@@ -53,11 +61,6 @@ export default function User() {
   const startIndex = totalEntries === 0 ? 0 : (currentPage - 1) * limit;
   const endIndex = Math.min(currentPage * limit, totalEntries);
 
-  const pageNumbers = Array.from(
-    { length: totalPages },
-    (_, index) => index + 1
-  );
-
   // Debounce the search input before it affects the API call / page reset.
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -93,9 +96,12 @@ export default function User() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-  const handleToggleActionMenu = (userId) => {
+  // Wrapped in useCallback (stable identity, empty deps — this only calls
+  // the setState updater form, which never changes) so it doesn't force
+  // userTableColumns/CommonTable to recompute/re-render on every render.
+  const handleToggleActionMenu = useCallback((userId) => {
     setOpenActionMenuId((prev) => (prev === userId ? null : userId));
-  };
+  }, []);
   // pagination
   const goToPreviousPage = () => {
     if (currentPage > 1) {
@@ -108,19 +114,23 @@ export default function User() {
     }
   };
 
-  const handleEditClick = (user) => {
+  // Wrapped in useCallback for the same reason as handleToggleActionMenu
+  // above — only calls stable setState updaters, so an empty dep array is
+  // correct and keeps this handler's identity stable across renders.
+  const handleEditClick = useCallback((user) => {
     setSelectedUser(user);
     setModalMode("edit");
     setIsModalOpen(true);
     setOpenActionMenuId(null);
-  };
+  }, []);
 
-  const handleDeleteClick = (user) => {
+  // Same as above.
+  const handleDeleteClick = useCallback((user) => {
     setDeleteUserId(user._id);
     setDeleteUserName(user.name);
     setIsDeleteModalOpen(true);
     setOpenActionMenuId(null);
-  };
+  }, []);
 
   const handleCreateClick = () => {
     setSelectedUser(null);
@@ -163,263 +173,242 @@ export default function User() {
       showError(err.message || "Failed to delete user");
     }
   };
-  return (
-    <div className="userPage__page">
-      <Sidebar />
 
-      <div className="userPage__mainArea">
-        <Header title="User" />
+  // Column configuration passed to CommonTable. This mirrors exactly what
+  // the previous inline <table> markup rendered for each column — only the
+  // markup has moved, the cell content/handlers/refs are unchanged.
+  //
+  // Wrapped in useMemo (deps: only the values these render functions
+  // actually close over) so CommonTable — which can render up to a full
+  // page of rows — doesn't rebuild this array and re-render on every
+  // keystroke of the search box before the debounce fires. It still
+  // recomputes whenever openActionMenuId changes, since the Action
+  // column's render output depends on it.
+  const userTableColumns = useMemo(() => [
+    {
+      key: "image",
+      label: "Image",
+      sortable: false,
+      render: (user) => (
+        <img
+          src={
+            user.profileImage ||
+            `${LOGO_AVATAR}&name=${encodeURIComponent(user.name)}`
+          }
+          alt={user.name}
+          className="userPage__avatar"
+        />
+      ),
+    },
+    {
+      key: "name",
+      label: "Name",
+      cellClassName: "userPage__userName",
+      render: (user) => user.name,
+    },
+    {
+      key: "email",
+      label: "Email",
+      render: (user) => user.email || "-",
+    },
+    {
+      key: "mobile",
+      label: "Mobile No",
+      render: (user) => user.mobile,
+    },
+    {
+      key: "role",
+      label: "Role",
+      render: (user) => user.role,
+    },
+    {
+      key: "created",
+      label: "Created",
+      render: (user) =>
+        new Date(user.createdAt)
+          .toLocaleString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+          .replace(",", "")
+          .replace(/\//g, "-"),
+    },
+    {
+      key: "action",
+      label: "Action",
+      sortable: false,
+      cellStyle: { position: "relative" },
+      render: (user) => (
+        <div
+          className="userAction__wrapper"
+          ref={openActionMenuId === user._id ? actionMenuRef : null}
+        >
+          <button
+            type="button"
+            className="userAction__button"
+            onClick={() => handleToggleActionMenu(user._id)}
+          >
+            Action
+            <FaChevronDown className="userAction__icon" />
+          </button>
 
-        <div className="userPage__content">
-          <div className="userPage__topRow">
-            <div>
-              <h1 style={{ textAlign: "start", display: "block" }} className="userPage__pageTitle">
-                User
-              </h1>
-              <div className="userPage__breadcrumb">
-                <span>Dashboard</span>
-                <span>-</span>
-                <span className="userPage__breadcrumbActive">User</span>
-              </div>
-            </div>
+          <div
+            className={`userAction__menu ${openActionMenuId === user._id ? "userAction__menuOpen" : ""
+              }`}
+          >
+            <button
+              type="button"
+              className="userAction__item userAction__itemEdit"
+              onClick={() => handleEditClick(user)}
+            >
+              Edit
+            </button>
 
             <button
               type="button"
-              className="userPage__createButton"
-              onClick={handleCreateClick}
+              className="userAction__item userAction__itemDelete"
+              onClick={() => handleDeleteClick(user)}
             >
-              <FaPlus />
-              Create User
+              Delete
             </button>
           </div>
+        </div>
+      ),
+    },
+  ], [openActionMenuId, handleToggleActionMenu, handleEditClick, handleDeleteClick]);
 
-          <div className="userPage__tableCard">
-            <div className="userPage__tableControls">
-              <select
-                className="userPage__rowsSelect"
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setActivePage(1);
-                }}
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-
-              <div className="userPage__searchBox">
-                <FaSearch />
-                <input
-                  type="text"
-                  className="userPage__searchInput"
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                  }} />
-              </div>
+  return (
+    <CommonListLayout
+      pageClassName="userPage__page"
+      mainAreaClassName="userPage__mainArea"
+      contentClassName="userPage__content"
+      headerTitle="User"
+      outsideMainArea={
+        <>
+          {isModalOpen && (
+            <div
+              tabIndex={-1}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  handleCloseModal();
+                }
+              }}
+            >
+              <CreateUserModal
+                onClose={handleCloseModal}
+                isEditMode={modalMode === "edit"}
+                editUserData={selectedUser}
+                currentPage={activePage}
+                rowsPerPage={rowsPerPage}
+                search={search}
+              />
             </div>
+          )}
 
-            <div className="userPage__tableWrapper">
-              <table className="userPage__table">
-                <thead>
-                  <tr>
-                    {columns.map((col) => (
-                      <th key={col}>
-                        <span className="userPage__thContent">
-                          {col !== "Action" && <FaSort className="userPage__sortIcon" />}
-                          {col}
-                        </span>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading && (
-                    <tr>
-                      <td colSpan={columns.length} style={{ textAlign: "center" }}>
-                        Loading users...
-                      </td>
-                    </tr>
-                  )}
-
-                  {!loading && error && (
-                    <tr>
-                      <td colSpan={columns.length} style={{ textAlign: "center" }}>
-                        {typeof error === "string" ? error : "Failed to load users."}
-                      </td>
-                    </tr>
-                  )}
-
-                  {!loading && !error && users.length === 0 && (
-                    <tr>
-                      <td colSpan={columns.length} style={{ textAlign: "center" }}>
-                        No users found.
-                      </td>
-                    </tr>
-                  )}
-
-                  {!loading && !error && users.map((user) => (
-                    <tr key={user._id}>
-                      <td>
-                        <img
-                          src={
-                            user.profileImage ||
-                            `${LOGO_AVATAR}&name=${encodeURIComponent(user.name)}`
-                          }
-                          alt={user.name}
-                          className="userPage__avatar"
-                        />
-                      </td>
-                      <td className="userPage__userName">{user.name}</td>
-                      <td>{user.email || "-"}</td>
-                      <td>{user.mobile}</td>
-                      <td>{user.role}</td>
-                      <td>
-                        {new Date(user.createdAt)
-                          .toLocaleString("en-GB", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
-                          })
-                          .replace(",", "")
-                          .replace(/\//g, "-")}
-                      </td>
-                      <td style={{ position: "relative" }}>
-                        <div
-                          className="userAction__wrapper"
-                          ref={openActionMenuId === user._id ? actionMenuRef : null}
-                        >
-                          <button
-                            type="button"
-                            className="userAction__button"
-                            onClick={() => handleToggleActionMenu(user._id)}
-                          >
-                            Action
-                            <FaChevronDown className="userAction__icon" />
-                          </button>
-
-                          <div
-                            className={`userAction__menu ${openActionMenuId === user._id ? "userAction__menuOpen" : ""
-                              }`}
-                          >
-                            <button
-                              type="button"
-                              className="userAction__item userAction__itemEdit"
-                              onClick={() => handleEditClick(user)}
-                            >
-                              Edit
-                            </button>
-
-                            <button
-                              type="button"
-                              className="userAction__item userAction__itemDelete"
-                              onClick={() => handleDeleteClick(user)}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {isDeleteModalOpen && (
+            <div
+              tabIndex={-1}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  handleCloseDeleteModal();
+                }
+              }}
+            >
+              <DeleteUserModal
+                onClose={handleCloseDeleteModal}
+                userName={deleteUserName}
+                onDelete={handleDeleteConfirm}
+              />
             </div>
-            {/* pagination */}
-            <div className="permissionPagePagination">
-
-              <span className="permissionPagePaginationInfo">
-                Show {totalEntries === 0 ? 0 : startIndex + 1} - {endIndex} of {totalEntries}
-              </span>
-              {totalEntries > rowsPerPage && (
-
-                <div className="permissionPagePaginationControls">
-
-                  <button
-                    type="button"
-                    className="permissionPagePaginationArrow"
-                    onClick={goToPreviousPage}
-                    disabled={currentPage === 1}
-                  >
-                    <FaChevronLeft />
-                  </button>
-
-                  {pageNumbers.map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      className={`permissionPagePaginationBtn ${currentPage === page
-                        ? "permissionPagePaginationActive"
-                        : ""
-                        }`}
-                      onClick={() => setActivePage(page)}
-                    >
-                      {page}
-                    </button>
-                  ))}
-
-                  <button
-                    type="button"
-                    className="permissionPagePaginationArrow"
-                    onClick={goToNextPage}
-                    disabled={currentPage === totalPages}
-                  >
-                    <FaChevronRight />
-                  </button>
-
-                </div>
-              )}
-            </div>
+          )}
+        </>
+      }
+    >
+      <CommonPageHeader
+        containerClassName="userPage__topRow"
+        title="User"
+        titleClassName="userPage__pageTitle"
+        titleStyle={{ textAlign: "start", display: "block" }}
+        breadcrumb={
+          <div className="userPage__breadcrumb">
+            <span>Dashboard</span>
+            <span>-</span>
+            <span className="userPage__breadcrumbActive">User</span>
           </div>
+        }
+        actions={
+          <button
+            type="button"
+            className="userPage__createButton"
+            onClick={handleCreateClick}
+          >
+            <FaPlus />
+            Create User
+          </button>
+        }
+      />
 
+      <div className="userPage__tableCard">
+        <div className="userPage__tableControls">
+          <CommonSelect
+            className="userPage__rowsSelect"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(Number(e.target.value));
+              setActivePage(1);
+            }}
+            options={ROWS_PER_PAGE_OPTIONS}
+          />
+
+          <CommonSearch
+            containerClassName="userPage__searchBox"
+            inputClassName="userPage__searchInput"
+            icon={<FaSearch />}
+            type="text"
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+            }}
+          />
         </div>
+
+        <div className="userPage__tableWrapper">
+          <CommonTable
+            columns={userTableColumns}
+            data={users}
+            rowKey="_id"
+            loading={loading}
+            loadingMessage="Loading users..."
+            error={error}
+            errorMessage="Failed to load users."
+            emptyMessage="No users found."
+            tableClassName="userPage__table"
+            thContentClassName="userPage__thContent"
+            sortIconClassName="userPage__sortIcon"
+          />
+        </div>
+        {/* pagination */}
+        <CommonPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          rangeStart={totalEntries === 0 ? 0 : startIndex + 1}
+          rangeEnd={endIndex}
+          totalItems={totalEntries}
+          showControls={totalEntries > rowsPerPage}
+          onPageSelect={(page) => setActivePage(page)}
+          onPrevious={goToPreviousPage}
+          onNext={goToNextPage}
+          prevDisabled={currentPage === 1}
+          nextDisabled={currentPage === totalPages}
+        />
       </div>
-
-      {isModalOpen && (
-        <div
-          tabIndex={-1}
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              handleCloseModal();
-            }
-          }}
-        >
-          <CreateUserModal
-            onClose={handleCloseModal}
-            isEditMode={modalMode === "edit"}
-            editUserData={selectedUser}
-            currentPage={activePage}
-            rowsPerPage={rowsPerPage}
-            search={search}
-          />
-        </div>
-      )}
-
-      {isDeleteModalOpen && (
-        <div
-          tabIndex={-1}
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              handleCloseDeleteModal();
-            }
-          }}
-        >
-          <DeleteUserModal
-            onClose={handleCloseDeleteModal}
-            userName={deleteUserName}
-            onDelete={handleDeleteConfirm}
-          />
-        </div>
-      )}
-    </div>
+    </CommonListLayout>
   );
 }

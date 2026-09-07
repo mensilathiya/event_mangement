@@ -6,6 +6,7 @@ import Header from "../Components/Header";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getEventById } from "../redux/event/eventThunk";
+import DOMPurify from "dompurify";
 
 // DD-MM-YYYY — matches Event.jsx's formatDate exactly, so "Created On"
 // here renders identically to the same field on the Event list page.
@@ -87,7 +88,6 @@ const ViewEvent = () => {
   const { event, loading } = useSelector(
     (state) => state.event
   );
-  console.log(event);
   //view api call
   useEffect(() => {
     if (id) {
@@ -225,7 +225,7 @@ const ViewEvent = () => {
                     <span
                       className="viewEvent-detailValue"
                       dangerouslySetInnerHTML={{
-                        __html: event?.description || "-",
+                        __html: DOMPurify.sanitize(event?.description || "-"),
                       }}
                     />
                   </div>
@@ -237,7 +237,7 @@ const ViewEvent = () => {
                     <span
                       className="viewEvent-detailValue"
                       dangerouslySetInnerHTML={{
-                        __html: event?.termsConditions || "-",
+                        __html: DOMPurify.sanitize(event?.termsConditions || "-"),
                       }}
                     />
                   </div>

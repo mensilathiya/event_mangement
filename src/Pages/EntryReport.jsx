@@ -4,8 +4,14 @@ import { DateRange } from "react-date-range";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import "../assets/CSS/EntryReport.css";
-import Sidebar from "../Components/Sidebar";
-import Header from "../Components/Header";
+import CommonSearch from "../Components/CommonSearch";
+import CommonSelect from "../Components/CommonSelect";
+import CommonPagination from "../Components/CommonPagination";
+import CommonExportButton from "../Components/CommonExportButton";
+import CommonPageHeader from "../Components/CommonPageHeader";
+import CommonListLayout from "../Components/CommonListLayout";
+import CommonLoader from "../Components/CommonLoader";
+import CommonEmptyState from "../Components/CommonEmptyState";
 // Existing entryReport redux architecture — adjust path if your thunk file
 // lives elsewhere; it must resolve to the existing entryReportThunk.js.
 import {
@@ -29,8 +35,15 @@ import {
 } from "../redux/event/eventSlice";
 import { showSuccess, showError } from "../utilits/toast";
 import useEventExpiryRefetch from "../hooks/useEventExpiryRefetch";
-import { FaChevronLeft, FaChevronRight, FaSort } from "react-icons/fa";
+import { FaSort } from "react-icons/fa";
 import { Link } from "react-router-dom";
+
+// Options for the "rows per page" select. Lives in the page (not inside
+// CommonSelect) since CommonSelect must never hardcode page-specific options.
+const ROWS_PER_PAGE_OPTIONS = [5, 10, 20, 50, 100].map((n) => ({
+  value: n,
+  label: String(n),
+}));
 
 // Formats a Date object as "DD-MM-YYYY" — used for all frontend date
 // display (date-range filter input, popup footer, export filename). Does
@@ -165,7 +178,6 @@ export default function EntryReport() {
   } = useSelector((state) => state.entryReport);
 
   const rows = entryReports ?? [];
-  // console.log(rows);
 
   // The dropdown option matching the currently selected event, used as a
   // fallback for the date bounds below before the entry-report API's own
@@ -633,12 +645,6 @@ export default function EntryReport() {
     totalRecords
   );
 
-  const pageNumbers = [];
-
-  for (let i = 1; i <= totalPages; i++) {
-    pageNumbers.push(i);
-  }
-
   // Single source of truth for page navigation: updates local page state
   // (used as the fallback for currentPage before the API responds) and
   // requests that page with the currently applied filters intact.
@@ -675,24 +681,29 @@ export default function EntryReport() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalPages, totalRecords]);
   return (
-    <div className="erPage_wrapper">
-      <Sidebar />
-      <div className="erPageMainArea">
-        <Header title="Entry Report" />
-        <div className="erPage__container">
-          {/* Title + Breadcrumb */}
-          <div className="erPage__titleBlock">
-            <h1 className="erPage__title">Entry Report</h1>
-            <div className="erPage__breadcrumb">
-              <Link to="/dashboard">Dashboard</Link>
-              <span className="erPage__breadcrumbSep">-</span>
-              <span className="erPage__breadcrumbItem erPage__breadcrumbItem--active">
-                Entry Report
-              </span>
-            </div>
+    <CommonListLayout
+      pageClassName="erPage_wrapper"
+      mainAreaClassName="erPageMainArea"
+      contentClassName="erPage__container"
+      headerTitle="Entry Report"
+    >
+      {/* Title + Breadcrumb */}
+      <CommonPageHeader
+        containerClassName="erPage__titleBlock"
+        title="Entry Report"
+        titleClassName="erPage__title"
+        breadcrumb={
+          <div className="erPage__breadcrumb">
+            <Link to="/dashboard">Dashboard</Link>
+            <span className="erPage__breadcrumbSep">-</span>
+            <span className="erPage__breadcrumbItem erPage__breadcrumbItem--active">
+              Entry Report
+            </span>
           </div>
+        }
+      />
 
-          {/* Filters Card */}
+      {/* Filters Card */}
           <div className="erPage__card erPage__filtersCard">
             <div className="erPage__filtersRow erPage__filtersRow--fields">
               <input
@@ -725,22 +736,19 @@ export default function EntryReport() {
                   and the report loads every active event's entries for
                   that default automatically — the user isn't required to
                   pick a specific event or click Search first. */}
-              <select
+              <CommonSelect
                 className="erPage__input erPage__eventSelect"
                 value={selectedEventId}
                 onChange={handleEventChange}
                 disabled={activeEventsLoading}
-              >
-                <option value="">
-                  {activeEventsLoading ? "Loading events..." : "All Events"}
-                </option>
-                {activeEvents.map((evt) => (
-                  <option key={evt._id} value={evt._id}>
-                    {(evt.title || evt.name || "Event") +
-                      (evt.eventCode ? ` - ${evt.eventCode}` : "")}
-                  </option>
-                ))}
-              </select>
+                placeholder={activeEventsLoading ? "Loading events..." : "All Events"}
+                options={activeEvents.map((evt) => ({
+                  value: evt._id,
+                  label:
+                    (evt.title || evt.name || "Event") +
+                    (evt.eventCode ? ` - ${evt.eventCode}` : ""),
+                }))}
+              />
 
               <div className="erPage__dateRangeWrapper">
                 <input
@@ -833,69 +841,47 @@ export default function EntryReport() {
           <div className="erPage__card erPage__tableCard">
             <div className="erPage__tableToolbar">
               <div className="erPage__toolbarLeft">
-                <select
+                <CommonSelect
                   className="erPage__pageSizeSelect"
                   value={pageSize}
                   onChange={handlePageSizeChange}
                   disabled={loading}
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
+                  options={ROWS_PER_PAGE_OPTIONS}
+                />
               </div>
 
               <div className="erPage__toolbarCenter">
-                <div className="erPage__searchBox">
-                  <svg
-                    className="erPage__searchIcon"
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <circle cx="11" cy="11" r="7" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                  <input
-                    type="text"
-                    className="erPage__searchInput"
-                    placeholder="Search..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
+                <CommonSearch
+                  containerClassName="erPage__searchBox"
+                  inputClassName="erPage__searchInput"
+                  icon={
+                    <svg
+                      className="erPage__searchIcon"
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <circle cx="11" cy="11" r="7" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                  }
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
 
               <div className="erPage__toolbarRight">
-                <button
-                  className="erPage__btn erPage__btn--export"
+                <CommonExportButton
                   onClick={handleExport}
+                  loading={exportLoading}
                   disabled={exportLoading || !eventId}
-                  aria-busy={exportLoading}
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className={
-                      exportLoading
-                        ? "erPage__exportIcon erPage__exportIcon--spinning"
-                        : "erPage__exportIcon"
-                    }
-                  >
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                  </svg>
-                  {exportLoading ? "Exporting..." : "Export Booking"}
-                </button>
+                  label="Export Booking"
+                />
               </div>
             </div>
 
@@ -916,11 +902,11 @@ export default function EntryReport() {
                   {loading && (
                     <tr className="erPage__emptyRow">
                       <td colSpan={COLUMNS.length} className="erPage__emptyCell">
-                        <div className="erPage__emptyState">
-                          <p className="erPage__emptyText">
-                            Loading entry reports...
-                          </p>
-                        </div>
+                        <CommonLoader
+                          wrapperClassName="erPage__emptyState"
+                          messageClassName="erPage__emptyText"
+                          message="Loading entry reports..."
+                        />
                       </td>
                     </tr>
                   )}
@@ -940,14 +926,15 @@ export default function EntryReport() {
                   {!loading && !errorMessage && rows.length === 0 && (
                     <tr className="erPage__emptyRow">
                       <td colSpan={COLUMNS.length} className="erPage__emptyCell">
-                        <div className="erPage__emptyState">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 512" width="120" class="bookingPage-stateIcon"><path d="M220.6 130.3l-67.2 28.2V43.2L98.7 233.5l54.7-24.2v130.3l67.2-209.3zm-83.2-96.7l-1.3 4.7-15.2 52.9C80.6 106.7 52 145.8 52 191.5c0 52.3 34.3 95.9 83.4 105.5v53.6C57.5 340.1 0 272.4 0 191.6c0-80.5 59.8-147.2 137.4-158zm311.4 447.2c-11.2 11.2-23.1 12.3-28.6 10.5-5.4-1.8-27.1-19.9-60.4-44.4-33.3-24.6-33.6-35.7-43-56.7-9.4-20.9-30.4-42.6-57.5-52.4l-9.7-14.7c-24.7 16.9-53 26.9-81.3 28.7l2.1-6.6 15.9-49.5c46.5-11.9 80.9-54 80.9-104.2 0-54.5-38.4-102.1-96-107.1V32.3C254.4 37.4 320 106.8 320 191.6c0 33.6-11.2 64.7-29 90.4l14.6 9.6c9.8 27.1 31.5 48 52.4 57.4s32.2 9.7 56.8 43c24.6 33.2 42.7 54.9 44.5 60.3s.7 17.3-10.5 28.5zm-9.9-17.9c0-4.4-3.6-8-8-8s-8 3.6-8 8 3.6 8 8 8 8-3.6 8-8z"></path></svg>
-                          <p className="erPage__emptyText">
-                            {selectedEventId || hasSelectedEvent
+                        <CommonEmptyState
+                          wrapperClassName="erPage__emptyState"
+                          textClassName="erPage__emptyText"
+                          message={
+                            selectedEventId || hasSelectedEvent
                               ? "No Entry Reports Found."
-                              : "Select an event above to view its entry report."}
-                          </p>
-                        </div>
+                              : "Select an event above to view its entry report."
+                          }
+                        />
                       </td>
                     </tr>
                   )}
@@ -1023,53 +1010,23 @@ export default function EntryReport() {
               </table>
             </div>
             {/* paginations */}
-            <div className="permissionPagePagination">
-              <span className="permissionPagePaginationInfo">
-                Show {totalRecords === 0 ? 0 : startIndex + 1} - {endIndex} of {totalRecords}
-              </span>
-
-              {totalPages > 1 && (
-                <div className="permissionPagePaginationControls">
-
-                  <button
-                    type="button"
-                    className="permissionPagePaginationArrow"
-                    onClick={goToPreviousPage}
-                    disabled={loading || currentPage === 1}
-                  >
-                    <FaChevronLeft />
-                  </button>
-
-                  {pageNumbers.map((pageNum) => (
-                    <button
-                      key={pageNum}
-                      type="button"
-                      className={`permissionPagePaginationBtn ${currentPage === pageNum
-                        ? "permissionPagePaginationBtn--active"
-                        : "permissionPagePaginationBtn--reset"
-                        }`}
-                      onClick={() => handlePageChange(pageNum)}
-                      disabled={loading}
-                    >
-                      {pageNum}
-                    </button>
-                  ))}
-
-                  <button
-                    type="button"
-                    className="permissionPagePaginationArrow"
-                    onClick={goToNextPage}
-                    disabled={loading || currentPage === totalPages}
-                  >
-                    <FaChevronRight />
-                  </button>
-
-                </div>
-              )}
-            </div>
+            <CommonPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              rangeStart={totalRecords === 0 ? 0 : startIndex + 1}
+              rangeEnd={endIndex}
+              totalItems={totalRecords}
+              showControls={totalPages > 1}
+              onPageSelect={(pageNum) => handlePageChange(pageNum)}
+              onPrevious={goToPreviousPage}
+              onNext={goToNextPage}
+              prevDisabled={loading || currentPage === 1}
+              nextDisabled={loading || currentPage === totalPages}
+              pageButtonDisabled={loading}
+              activeButtonClassName="permissionPagePaginationBtn--active"
+              inactiveButtonClassName="permissionPagePaginationBtn--reset"
+            />
           </div>
-        </div>
-      </div>
-    </div>
+    </CommonListLayout>
   );
 }

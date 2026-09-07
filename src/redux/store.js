@@ -8,7 +8,6 @@ import bookingTicketReducer from "../redux/bookingTicket/bookingTicketSlice";
 import qrReducer from "../redux/qr/qrSlice";
 import entryReportReducer from "../redux/entryReport/entryReportSlice";
 import dashboardReducer from "./dashboard/dashboardSlice";
-import loadingReducer from "./loading/loadingSlice";
 export const store = configureStore({
     reducer: {
         auth: authReducer,
@@ -20,7 +19,6 @@ export const store = configureStore({
         qr: qrReducer,  
         entryReport: entryReportReducer,
          dashboard: dashboardReducer, 
-         loading: loadingReducer,
     }
 
 })

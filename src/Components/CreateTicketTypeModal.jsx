@@ -208,11 +208,13 @@ const CreateTicketTypeModal = ({
       case "ticketName":
         return !data.ticketName.trim() ? "Ticket name is required" : "";
       case "allowDayCount":
-        return !data.allowDayCount ? "Allow day count is required" : "";
+        if (!data.allowDayCount) return "Allow day count is required";
+        return Number(data.allowDayCount) < 0 ? "Allow day count cannot be negative" : "";
       case "allowDates":
         return getAllowDatesError(data);
       case "amount":
-        return !data.amount ? "Amount is required" : "";
+        if (!data.amount) return "Amount is required";
+        return Number(data.amount) < 0 ? "Amount cannot be negative" : "";
       case "availableCount":
         return !data.availableCount ? "Available count is required" : "";
       case "description":
@@ -385,6 +387,7 @@ const CreateTicketTypeModal = ({
                 onChange={handleChange}
                 className="ticketTypeCreate-input"
                 placeholder="Allow Day Count"
+                min="0"
               />
               {formErrors.allowDayCount && (
                 <span className="ticketTypeCreate-fieldError">{formErrors.allowDayCount}</span>
@@ -402,6 +405,7 @@ const CreateTicketTypeModal = ({
                 onChange={handleChange}
                 className="ticketTypeCreate-input"
                 placeholder="Amount"
+                min="0"
               />
               {formErrors.amount && (
                 <span className="ticketTypeCreate-fieldError">{formErrors.amount}</span>
