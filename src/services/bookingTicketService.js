@@ -26,3 +26,12 @@ export const updateRegisterUserApi = async (
 
   return response.data;
 };
+
+// ================= RESEND TICKET (WHATSAPP) =================
+export const resendTicketApi = async (ticketId) => {
+  const response = await api.post(
+    `/booking-ticket/resend/${ticketId}`
+  );
+
+  return response.data;
+};

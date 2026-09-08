@@ -762,7 +762,7 @@ const Booking = () => {
                                     className="bookingPage-actionMenuItem"
                                     onClick={() => {
                                       closeActionMenu();
-                                      setResendTarget(row.mobileNumber);
+                                      setResendTarget(row._id);
                                     }}
                                   >
                                     Resend Ticket
@@ -862,7 +862,7 @@ const Booking = () => {
                 }}
               >
                 <ResendTicketModal
-                  mobileNumber={resendTarget}
+                  bookingId={resendTarget}
                   onClose={() => setResendTarget(null)}
                 />
               </div>

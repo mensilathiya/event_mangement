@@ -44,7 +44,7 @@ const ViewBooking = () => {
   const { registerUser } = useSelector((state)=>state.bookingTicket)
   const [openMenuId, setOpenMenuId] = useState(null);
   const [isBookingUserModalOpen, setIsBookingUserModalOpen] = useState(false);
-  const [resendMobile, setResendMobile] = useState(null);
+  const [resendTarget, setResendTarget] = useState(null);
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const toggleMenu = (rowId) => {
     setOpenMenuId((prev) => (prev === rowId ? null : rowId));
@@ -345,7 +345,10 @@ const ViewBooking = () => {
                                     border: "none",
                                   }}
                                   onClick={() => {
-                                    setResendMobile(booking.mobileNumber);
+                                    setResendTarget({
+                                      ticketId: ticket._id,
+                                      mobileNumber: booking.mobileNumber,
+                                    });
                                     setOpenMenuId(null);
                                   }}
                                 >
@@ -384,19 +387,20 @@ const ViewBooking = () => {
         </div>
       )}
 
-      {resendMobile && (
+      {resendTarget && (
         <div
           tabIndex={-1}
           autoFocus
           onKeyDown={(e) => {
             if (e.key === "Escape") {
-              setResendMobile(null);
+              setResendTarget(null);
             }
           }}
         >
           <BookingResendModal
-            mobileNumber={resendMobile}
-            onClose={() => setResendMobile(null)}
+            ticketId={resendTarget.ticketId}
+            mobileNumber={resendTarget.mobileNumber}
+            onClose={() => setResendTarget(null)}
           />
         </div>
       )}

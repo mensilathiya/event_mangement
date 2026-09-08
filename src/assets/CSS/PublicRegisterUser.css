@@ -1,0 +1,292 @@
+/* Mobile-first: this page is opened from a WhatsApp link, so the base
+   (unqueried) styles below target small screens, and layout only widens
+   for larger viewports via the min-width query at the bottom. */
+
+.publicRegister-page {
+  min-height: 100vh;
+  background-color: #f4f4f7;
+}
+
+.publicRegister-hero {
+  background-color: #2b2b38;
+  padding: 36px 20px 70px 20px;
+}
+
+.publicRegister-title {
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.publicRegister-wave {
+  display: inline-block;
+}
+
+.publicRegister-content {
+  padding: 0 16px 40px 16px;
+  margin-top: -46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.publicRegister-card {
+  width: 100%;
+  max-width: 420px;
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 28px 22px 24px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.publicRegister-photoWrap {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  margin-bottom: 12px;
+}
+
+.publicRegister-photoCircle {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background-color: #d7d9e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.publicRegister-avatarIcon {
+  width: 44px;
+  height: 44px;
+}
+
+.publicRegister-editBtn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.publicRegister-editIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.publicRegister-photoPreviewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.publicRegister-uploadText {
+  color: #9a9ca8;
+  font-size: 13px;
+  margin-bottom: 22px;
+}
+
+.publicRegister-fieldGroup {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+/* 16px input font size (not 13.5px like the desktop-oriented
+   RegisterUsers.css) avoids the automatic zoom-on-focus that iOS Safari
+   triggers on inputs below 16px — important since this page is opened
+   almost exclusively on phones. */
+.publicRegister-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #e3e4ea;
+  border-radius: 8px;
+  font-size: 16px;
+  color: #1b2a4e;
+  background-color: #ffffff;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.publicRegister-input::placeholder {
+  color: #a7abbd;
+}
+
+.publicRegister-input:focus {
+  border-color: #ff5b1f;
+  box-shadow: 0 0 0 4px rgba(255, 91, 31, 0.12);
+}
+
+.publicRegister-input:disabled {
+  background-color: #f4f4f7;
+  color: #9a9ca8;
+}
+
+.publicRegister-submitBtn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 8px;
+  background-color: #ff5b1f;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.publicRegister-submitBtn:disabled {
+  background-color: #c9cbd3;
+  cursor: not-allowed;
+}
+
+.publicRegister-successCard {
+  align-items: center;
+  text-align: center;
+  padding: 40px 24px;
+}
+
+.publicRegister-successIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: #22b07d;
+  color: #ffffff;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.publicRegister-successTitle {
+  color: #1b2a4e;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+}
+
+.publicRegister-successText {
+  color: #6b7085;
+  font-size: 14px;
+  margin: 0;
+}
+
+.publicRegister-statusText {
+  color: #ffffff;
+  font-size: 14px;
+  text-align: center;
+  margin: 0;
+}
+
+.publicRegister-summary {
+  width: 100%;
+  max-width: 420px;
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 18px 22px;
+  margin-bottom: 16px;
+}
+
+.publicRegister-summaryRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid #eef0f4;
+}
+
+.publicRegister-summaryRow:last-child {
+  border-bottom: none;
+}
+
+.publicRegister-summaryLabel {
+  color: #9a9ca8;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.publicRegister-summaryValue {
+  color: #1b2a4e;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.publicRegister-errorCard,
+.publicRegister-alreadyCard {
+  align-items: center;
+  text-align: center;
+  padding: 40px 24px;
+}
+
+.publicRegister-errorIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: #e5484d;
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.publicRegister-errorTitle {
+  color: #1b2a4e;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+}
+
+.publicRegister-errorText {
+  color: #6b7085;
+  font-size: 14px;
+  margin: 0;
+}
+
+.publicRegister-alreadyCard .publicRegister-successIcon {
+  background-color: #6b7085;
+}
+
+/* Wider screens: a little more breathing room, matching the visual
+   language of RegisterUsers.css's hero without changing that file. */
+@media (min-width: 480px) {
+  .publicRegister-hero {
+    padding: 48px 32px 90px 32px;
+  }
+
+  .publicRegister-title {
+    font-size: 34px;
+  }
+
+  .publicRegister-content {
+    padding: 0 24px 50px 24px;
+    margin-top: -56px;
+  }
+
+  .publicRegister-card {
+    padding: 32px 28px 28px 28px;
+  }
+}

@@ -16,6 +16,7 @@ import Event from "./Pages/Event";
 import Booking from "./Pages/Booking";
 import ViewBooking from "./Pages/ViewBooking";
 import RegisterUsers from "./Components/RegisterUsers";
+import PublicRegisterUser from "./Components/PublicRegisterUser";
 import EntryReport from "./Pages/EntryReport";
 import CreateEvent from "./Pages/CreateEvent";
 import ViewEvent from "./Pages/ViewEvent";
@@ -51,8 +52,16 @@ function App() {
 
         <Routes>
 
-          {/* Public Route */}
+          {/* Public Routes */}
           <Route path="/" element={<Login />} />
+
+          {/* Public customer registration for a single BookingTicket,
+              opened from a WhatsApp link with a registration token in the
+              URL. Intentionally NOT under <ProtectedRoute /> — customers
+              have no login. Kept separate from the authenticated
+              /register-users/:id route (RegisterUsers.jsx) above, which
+              stays protected and unchanged. */}
+          <Route path="/r/:token" element={<PublicRegisterUser />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>

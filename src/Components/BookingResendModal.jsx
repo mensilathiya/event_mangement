@@ -1,6 +1,40 @@
+import { useState } from "react";
+import { useDispatch } from "react-redux";
 import "../assets/CSS/BookingResendModal.css";
+import { resendTicket } from "../redux/bookingTicket/bookingTicketThunk";
+import { showError, showSuccess } from "../utilits/toast";
 
-export default function BookingResendModal({ mobileNumber, onClose }) {
+export default function BookingResendModal({
+  ticketId,
+  mobileNumber,
+  onClose,
+  onSuccess,
+}) {
+  const dispatch = useDispatch();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleResend = async () => {
+    if (!ticketId) {
+      showError("Ticket not found.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const result = await dispatch(resendTicket(ticketId));
+
+    setIsSubmitting(false);
+
+    if (resendTicket.fulfilled.match(result)) {
+      showSuccess(result.payload?.message || "Ticket sent successfully");
+      onClose();
+      onSuccess?.();
+    } else {
+      showError(result.payload || "Failed to resend ticket.");
+    }
+  };
+
   return (
     <div className="bookingResendOverlay" onClick={onClose}>
       <div className="bookingResendContainer" onClick={(e) => e.stopPropagation()}>
@@ -30,8 +64,13 @@ export default function BookingResendModal({ mobileNumber, onClose }) {
         </p>
         <span className="bookingResendMobile">{mobileNumber}</span>
 
-        <button type="button" className="bookingResendOkayBtn" onClick={onClose}>
-          Okay
+        <button
+          type="button"
+          className="bookingResendOkayBtn"
+          onClick={handleResend}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Sending..." : "Okay"}
         </button>
       </div>
     </div>

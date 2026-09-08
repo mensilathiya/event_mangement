@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import {
   getRegisterUser,
   updateRegisterUser,
+  resendTicket,
 } from "./bookingTicketThunk";
 
 const initialState = {
@@ -11,6 +12,13 @@ const initialState = {
   success: false,
   error: null,
   message: "",
+
+  // Kept separate from the register-user state above so a resend
+  // failure/loading state can never be picked up by a different UI
+  // surface (e.g. the register-user modal) that happens to read the
+  // shared loading/error/message fields.
+  resendLoading: false,
+  resendError: null,
 };
 
 const bookingTicketSlice = createSlice({
@@ -62,6 +70,19 @@ const bookingTicketSlice = createSlice({
       .addCase(updateRegisterUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      });
+    // ================= RESEND TICKET (WHATSAPP) =================
+    builder
+      .addCase(resendTicket.pending, (state) => {
+        state.resendLoading = true;
+        state.resendError = null;
+      })
+      .addCase(resendTicket.fulfilled, (state) => {
+        state.resendLoading = false;
+      })
+      .addCase(resendTicket.rejected, (state, action) => {
+        state.resendLoading = false;
+        state.resendError = action.payload;
       });
   },
 });
