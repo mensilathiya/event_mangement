@@ -296,19 +296,26 @@
   align-items: center;
 }
 
-/* Mobile-first, one column, matching this page's existing mobile-first
-   approach (unlike RegisterUsers.css's desktop-oriented multi-column
-   grid) since this page is opened almost exclusively on phones. */
+/* Mobile-first, one column by default; widens to 2 then 3 equal-width
+   columns via the media queries below. A proper CSS Grid (not flex) so
+   every row's cards share the exact same column width automatically —
+   "Registration 1/2/3" on one row, "Registration 4/5/6" on the next,
+   etc. `minmax(0, 1fr)` (not `1fr` alone) is what stops a long
+   name/email value or input from stretching its column past the grid
+   track and causing horizontal overflow. */
 .publicRegister-grid {
   width: 100%;
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
+  align-items: start;
 }
 
 .publicRegister-slot {
   width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -323,6 +330,20 @@
   letter-spacing: 0.6px;
   text-transform: uppercase;
   margin-bottom: 10px;
+}
+
+/* Tablet: 2 registration cards per row. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .publicRegister-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Desktop: 3 registration cards per row. */
+@media (min-width: 1200px) {
+  .publicRegister-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 /* Wider screens: a little more breathing room, matching the visual
