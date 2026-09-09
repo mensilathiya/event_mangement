@@ -55,8 +55,16 @@ export default function BookingUserModal({ onClose, ticketId, onSuccess }) {
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      showError("Image size should be less than 2MB.");
+    // ================= IMAGE SIZE LIMIT =================
+    // Private Registration attendee photo: images up to 100 MB are now
+    // allowed (raised from the previous 20 MB cap); only files over
+    // 100 MB are rejected. Matches the backend's registration-specific
+    // upload limit (middlewares/upload.middleware.js's
+    // `registrationPhotoUpload`, used by the PUT
+    // /booking-ticket/register-user/:ticketId endpoint this form
+    // submits to). Allowed image types/formats are unchanged.
+    if (file.size > 100 * 1024 * 1024) {
+      showError("Image size should be less than 100MB.");
       return;
     }
 
