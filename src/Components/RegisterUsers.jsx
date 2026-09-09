@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
 import "../assets/CSS/RegisterUsers.css";
-import { getBookingById } from "../redux/booking/bookingThunk";
-import { updateRegisterUser } from "../redux/bookingTicket/bookingTicketThunk";
+import {
+  getPublicRegistrationDetailsApi,
+  submitPublicRegistrationApi,
+} from "../services/publicRegistrationService";
 import { showError, showSuccess } from "../utilits/toast";
 
 function UploadPhotoPlaceholder() {
@@ -59,15 +60,10 @@ const emptyForm = {
   previewImage: "",
 };
 
-// Same validation rules used by BookingUserModal's single-ticket form, kept
-// in sync here since each pending slot below submits through the same
-// updateRegisterUser API.
-//
-// Returns a { fieldName: message } map instead of a single message so
-// each error can render directly below its own field, per the project's
-// field-level validation pattern (see CreateBookingModal /
-// PublicRegisterUser). Only the error-collection shape changed here —
-// the rules themselves are unchanged.
+// Same validation rules used elsewhere for this attendee form. Only the
+// error-collection shape (a { fieldName: message } map, one message per
+// field) is specific to this page, so each error can render directly
+// below its own input.
 const getFieldErrors = (form) => {
   const errors = {};
 
@@ -88,53 +84,81 @@ const getFieldErrors = (form) => {
   return errors;
 };
 
-const RegisterUsers = () => {
-  const { id } = useParams();
-  const dispatch = useDispatch();
-  const { booking, detailsLoading, error } = useSelector(
-    (state) => state.booking
-  );
+// The GET/PUT public registration endpoints may come back either as the
+// raw { quantity, tickets } shape or wrapped as { data: { quantity,
+// tickets } } depending on how the controller finishes the response.
+// Normalizing here means the rest of the component doesn't need to care.
+const unwrap = (response) => response?.data ?? response;
 
-  // Pending-form input state per ticket slot, keyed by ticket _id. Only
-  // slots that are currently unregistered ever have an entry here.
+const RegisterUsers = () => {
+  // The public registration link is /r/:token — this page is reached with
+  // NO login, and the token is the only thing that identifies which
+  // booking/tickets this is for (see publicRegistration.routes.js). It is
+  // never a booking id or ticket id, and it is never sent anywhere except
+  // back to this same public API.
+  const { token } = useParams();
+
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [quantity, setQuantity] = useState(0);
+  // Tickets as last read from the backend — the single source of truth
+  // for which slots are registered. Never mutated locally except by
+  // replacing it wholesale with a fresh server response, so a page
+  // refresh (which re-runs the fetch below) always reflects reality.
+  const [tickets, setTickets] = useState([]);
+
+  // Pending-form input state for the one slot currently open for editing,
+  // keyed by that ticket's ticketNumber (the only stable identifier the
+  // public API exposes — see toPublicSafeTicket on the backend).
   const [formStates, setFormStates] = useState({});
-  // Per-ticket field-level validation messages, keyed the same way as
-  // formStates, rendered directly below each slot's own inputs instead
-  // of a common/top-level error toast.
   const [fieldErrorsByTicket, setFieldErrorsByTicket] = useState({});
-  // Optimistic per-ticket overrides applied the instant a registration
-  // succeeds, so that slot flips to the registered card immediately
-  // instead of waiting on the background refetch below.
-  const [registeredOverrides, setRegisteredOverrides] = useState({});
-  // Which ticket is currently submitting, so only that slot's Submit
-  // button shows a loading state — other pending forms stay usable.
-  const [submittingTicketId, setSubmittingTicketId] = useState(null);
+  const [submittingTicketNumber, setSubmittingTicketNumber] = useState(null);
+
+  const loadRegistrationDetails = useCallback(async () => {
+    if (!token) return;
+
+    setLoading(true);
+    setLoadError(null);
+
+    try {
+      const result = unwrap(await getPublicRegistrationDetailsApi(token));
+      setQuantity(Number(result?.quantity) || 0);
+      setTickets(Array.isArray(result?.tickets) ? result.tickets : []);
+    } catch (err) {
+      setLoadError(
+        err.response?.data?.message ||
+          "This registration link is invalid or has expired."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
 
   useEffect(() => {
-    if (id) {
-      dispatch(getBookingById(id));
-    }
-  }, [dispatch, id]);
+    loadRegistrationDetails();
+  }, [loadRegistrationDetails]);
 
-  const getFormState = (ticketId) => formStates[ticketId] || emptyForm;
-  const getFieldErrorsState = (ticketId) => fieldErrorsByTicket[ticketId] || {};
+  const getFormState = (ticketNumber) => formStates[ticketNumber] || emptyForm;
+  const getFieldErrorsState = (ticketNumber) =>
+    fieldErrorsByTicket[ticketNumber] || {};
 
-  const updateFormField = (ticketId, field, value) => {
+  const updateFormField = (ticketNumber, field, value) => {
     setFormStates((prev) => ({
       ...prev,
-      [ticketId]: { ...getFormState(ticketId), [field]: value },
+      [ticketNumber]: { ...getFormState(ticketNumber), [field]: value },
     }));
 
-    // Clear this field's visible error the instant it's edited, so a
-    // corrected value doesn't keep showing a stale message.
     setFieldErrorsByTicket((prev) => {
-      const ticketErrors = prev[ticketId];
+      const ticketErrors = prev[ticketNumber];
       if (!ticketErrors || !ticketErrors[field]) return prev;
-      return { ...prev, [ticketId]: { ...ticketErrors, [field]: undefined } };
+      return {
+        ...prev,
+        [ticketNumber]: { ...ticketErrors, [field]: undefined },
+      };
     });
   };
 
-  const handleImageChange = (ticketId, e) => {
+  const handleImageChange = (ticketNumber, e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -143,14 +167,10 @@ const RegisterUsers = () => {
       return;
     }
 
-    // ================= IMAGE SIZE LIMIT =================
-    // Private Registration attendee photo: images up to 100 MB are now
-    // allowed (raised from the previous 20 MB cap); only files over
-    // 100 MB are rejected. Matches the backend's registration-specific
-    // upload limit (middlewares/upload.middleware.js's
-    // `registrationPhotoUpload`, used by the PUT
-    // /booking-ticket/register-user/:ticketId endpoint this form
-    // submits to). Allowed image types/formats are unchanged.
+    // Matches the backend's registration-specific upload limit
+    // (middlewares/upload.middleware.js's `registrationPhotoUpload`, used
+    // by PUT /api/public/registration/:token). Allowed image types are
+    // unchanged.
     if (file.size > 100 * 1024 * 1024) {
       showError("Image size should be less than 100MB.");
       return;
@@ -158,22 +178,20 @@ const RegisterUsers = () => {
 
     setFormStates((prev) => ({
       ...prev,
-      [ticketId]: {
-        ...getFormState(ticketId),
+      [ticketNumber]: {
+        ...getFormState(ticketNumber),
         profileImage: file,
         previewImage: URL.createObjectURL(file),
       },
     }));
   };
 
-  const handleSubmit = async (ticketId) => {
-    const form = getFormState(ticketId);
+  const handleSubmit = async (ticketNumber) => {
+    const form = getFormState(ticketNumber);
     const errors = getFieldErrors(form);
 
     if (Object.keys(errors).length > 0) {
-      // Field-specific messages render below their own inputs (see JSX
-      // below) — no common/top-level toast for validation.
-      setFieldErrorsByTicket((prev) => ({ ...prev, [ticketId]: errors }));
+      setFieldErrorsByTicket((prev) => ({ ...prev, [ticketNumber]: errors }));
       return;
     }
 
@@ -184,43 +202,44 @@ const RegisterUsers = () => {
     if (form.profileImage) {
       payload.append("profileImage", form.profileImage);
     }
+    // Deliberately no ticket identifier is appended here. The token in
+    // the URL is the only thing that identifies the booking, and the
+    // backend always fills the earliest still-unregistered slot for it —
+    // this page never tells the server which slot to write to.
 
-    setSubmittingTicketId(ticketId);
-    const response = await dispatch(
-      updateRegisterUser({ ticketId, formData: payload })
-    );
-    setSubmittingTicketId(null);
+    setSubmittingTicketNumber(ticketNumber);
+    try {
+      const result = unwrap(await submitPublicRegistrationApi(token, payload));
+      showSuccess(result?.message || "User registered successfully.");
 
-    if (updateRegisterUser.fulfilled.match(response)) {
-      showSuccess(
-        response.payload.message || "User registered successfully."
-      );
+      // Repaint every slot from the server's own post-submit record
+      // rather than guessing locally which one just got filled.
+      if (Array.isArray(result?.tickets)) {
+        setTickets(result.tickets);
+      } else {
+        await loadRegistrationDetails();
+      }
 
-      // Flip this slot straight to the registered card — no new box is
-      // created, the same position just changes state.
-      setRegisteredOverrides((prev) => ({
-        ...prev,
-        [ticketId]: response.payload.data,
-      }));
-
-      // This slot no longer needs its pending-form state.
       setFormStates((prev) => {
         const next = { ...prev };
-        delete next[ticketId];
+        delete next[ticketNumber];
         return next;
       });
-
       setFieldErrorsByTicket((prev) => {
         const next = { ...prev };
-        delete next[ticketId];
+        delete next[ticketNumber];
         return next;
       });
-
-      // Resync the canonical booking/tickets list in the background so a
-      // later refresh of this page reflects the server's own record.
-      if (id) dispatch(getBookingById(id));
-    } else {
-      showError(response.payload || "Failed to register user.");
+    } catch (err) {
+      showError(
+        err.response?.data?.message || "Failed to register user."
+      );
+      // Someone may have just filled the last open slot from another
+      // tab/device; resync so this page doesn't keep offering a slot
+      // that no longer exists.
+      await loadRegistrationDetails();
+    } finally {
+      setSubmittingTicketNumber(null);
     }
   };
 
@@ -234,7 +253,7 @@ const RegisterUsers = () => {
     </div>
   );
 
-  if (detailsLoading) {
+  if (loading) {
     return (
       <div className="bookingRegister-page">
         {heroTitle}
@@ -243,200 +262,209 @@ const RegisterUsers = () => {
     );
   }
 
-  if (!booking || error) {
+  if (loadError || tickets.length === 0) {
     return (
       <div className="bookingRegister-page">
         {heroTitle}
-        <p className="bookingRegister-statusText">No Booking Found</p>
+        <p className="bookingRegister-statusText">
+          {loadError || "No Booking Found"}
+        </p>
       </div>
     );
   }
 
-  const quantity = Math.max(0, Number(booking.quantity) || 0);
-  const bookingTickets = booking.tickets || [];
-  // One slot per booking quantity. The ticket doc already sitting in that
-  // slot (if any) decides whether it renders as a registered card or a
-  // pending registration form — nothing here invents extra slots or drops
-  // existing registered ones.
-  const slots = Array.from({ length: quantity }, (_, i) => bookingTickets[i] || null);
+  // One slot per booking quantity, in the exact order the backend
+  // persists them. Registration is always sequential — this page opens an
+  // editable form on the FIRST unregistered slot only; any slot after
+  // that is shown locked until the ones before it are filled. This keeps
+  // the UI's idea of "which slot is next" in sync with the backend's
+  // "fill the earliest unregistered ticket" rule, so a submit here can
+  // never land on the wrong card.
+  let nextOpenAssigned = false;
 
   return (
     <div className="bookingRegister-page">
       {heroTitle}
 
-      {quantity === 0 ? (
-        <p className="bookingRegister-statusText">
-          This booking has no ticket quantity to register.
-        </p>
-      ) : (
-        <div className="bookingRegister-grid">
-          {slots.map((slotTicket, index) => {
-            const memberNumber = index + 1;
+      <div className="bookingRegister-grid">
+        {tickets.map((ticket, index) => {
+          const memberNumber = index + 1;
 
-            if (!slotTicket) {
-              return (
-                <div className="bookingRegister-card" key={`empty-${memberNumber}`}>
-                  <span className="bookingRegister-memberLabel">
-                    MEMBER {memberNumber}
-                  </span>
-                  <div className="bookingRegister-cardBody">
-                    <p className="bookingRegister-unavailableText">
-                      Ticket data not available.
-                    </p>
-                  </div>
-                </div>
-              );
-            }
-
-            const ticket = registeredOverrides[slotTicket._id] || slotTicket;
-
-            if (ticket.isRegistered) {
-              const attendee = ticket.attendee || {};
-              return (
-                <div className="bookingRegister-card" key={ticket._id}>
-                  <span className="bookingRegister-memberLabel">
-                    MEMBER {memberNumber}
-                  </span>
-
-                  <div className="bookingRegister-registeredCard">
-                    <span className="bookingRegister-registeredAvatar">
-                      {attendee.profileImage ? (
-                        <img
-                          src={attendee.profileImage}
-                          alt={attendee.name}
-                          className="bookingRegister-registeredAvatarImage"
-                        />
-                      ) : (
-                        <RegisteredAvatarPlaceholder />
-                      )}
-                    </span>
-
-                    <div className="bookingRegister-registeredInfo">
-                      <span className="bookingRegister-registeredName">
-                        {attendee.name || "-"}
-                      </span>
-                      <span className="bookingRegister-registeredMobile">
-                        {attendee.mobileNumber || "-"}
-                      </span>
-                    </div>
-
-                    {ticket.qrImage && (
-                      <img
-                        src={ticket.qrImage}
-                        alt={ticket.ticketNumber || "QR code"}
-                        className="bookingRegister-registeredQr"
-                      />
-                    )}
-                  </div>
-                </div>
-              );
-            }
-
-            const form = getFormState(ticket._id);
-            const fieldErrors = getFieldErrorsState(ticket._id);
-            const isFormValid = Object.keys(getFieldErrors(form)).length === 0;
-            const isSubmitting = submittingTicketId === ticket._id;
-            const photoInputId = `bookingRegister-photo-${ticket._id}`;
-
+          if (ticket.isRegistered) {
+            const attendee = ticket.attendee || {};
             return (
-              <div className="bookingRegister-card" key={ticket._id}>
+              <div
+                className="bookingRegister-card"
+                key={ticket.ticketNumber || memberNumber}
+              >
                 <span className="bookingRegister-memberLabel">
                   MEMBER {memberNumber}
                 </span>
 
-                <div className="bookingRegister-cardBody">
-                  <div className="bookingRegister-photoWrap">
-                    <span className="bookingRegister-photoCircle">
-                      {form.previewImage ? (
-                        <img
-                          src={form.previewImage}
-                          alt="Preview"
-                          className="bookingRegister-photoPreviewImage"
-                        />
-                      ) : (
-                        <UploadPhotoPlaceholder />
-                      )}
+                <div className="bookingRegister-registeredCard">
+                  <span className="bookingRegister-registeredAvatar">
+                    {attendee.profileImage ? (
+                      <img
+                        src={attendee.profileImage}
+                        alt={attendee.name}
+                        className="bookingRegister-registeredAvatarImage"
+                      />
+                    ) : (
+                      <RegisteredAvatarPlaceholder />
+                    )}
+                  </span>
+
+                  <div className="bookingRegister-registeredInfo">
+                    <span className="bookingRegister-registeredName">
+                      {attendee.name || "-"}
                     </span>
-                    <input
-                      id={photoInputId}
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(e) => handleImageChange(ticket._id, e)}
-                    />
-                    <label htmlFor={photoInputId} className="bookingRegister-editBtn">
-                      <EditIcon />
-                    </label>
+                    <span className="bookingRegister-registeredMobile">
+                      {attendee.mobileNumber || "-"}
+                    </span>
                   </div>
-
-                  <span className="bookingRegister-uploadText">upload photo</span>
-
-                  <div className="bookingRegister-fieldGroup">
-                    <div className="bookingRegister-fieldWrap">
-                      <input
-                        type="text"
-                        className="bookingRegister-input"
-                        placeholder="Name"
-                        value={form.name}
-                        onChange={(e) =>
-                          updateFormField(ticket._id, "name", e.target.value)
-                        }
-                      />
-                      {fieldErrors.name && (
-                        <p className="bookingRegister-fieldError">{fieldErrors.name}</p>
-                      )}
-                    </div>
-
-                    <div className="bookingRegister-fieldWrap">
-                      <input
-                        type="tel"
-                        className="bookingRegister-input"
-                        placeholder="Mobile No."
-                        value={form.mobileNumber}
-                        maxLength={10}
-                        onChange={(e) =>
-                          updateFormField(
-                            ticket._id,
-                            "mobileNumber",
-                            e.target.value.replace(/\D/g, "").slice(0, 10)
-                          )
-                        }
-                      />
-                      {fieldErrors.mobileNumber && (
-                        <p className="bookingRegister-fieldError">{fieldErrors.mobileNumber}</p>
-                      )}
-                    </div>
-
-                    <div className="bookingRegister-fieldWrap">
-                      <input
-                        type="email"
-                        className="bookingRegister-input"
-                        placeholder="Email"
-                        value={form.email}
-                        onChange={(e) =>
-                          updateFormField(ticket._id, "email", e.target.value)
-                        }
-                      />
-                      {fieldErrors.email && (
-                        <p className="bookingRegister-fieldError">{fieldErrors.email}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    className={`bookingRegister-submitBtn${isFormValid ? " bookingRegister-submitBtn--active" : ""
-                      }`}
-                    onClick={() => handleSubmit(ticket._id)}
-                    disabled={isSubmitting || !isFormValid}
-                  >
-                    {isSubmitting ? "Submitting..." : "Submit"}
-                  </button>
                 </div>
               </div>
             );
-          })}
-        </div>
+          }
+
+          const isNextOpen = !nextOpenAssigned;
+          if (isNextOpen) {
+            nextOpenAssigned = true;
+          }
+
+          if (!isNextOpen) {
+            return (
+              <div
+                className="bookingRegister-card"
+                key={ticket.ticketNumber || memberNumber}
+              >
+                <span className="bookingRegister-memberLabel">
+                  MEMBER {memberNumber}
+                </span>
+                <div className="bookingRegister-cardBody">
+                  <p className="bookingRegister-unavailableText">
+                    Complete Member {memberNumber - 1}&apos;s registration
+                    first.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+
+          const ticketNumber = ticket.ticketNumber || `slot-${memberNumber}`;
+          const form = getFormState(ticketNumber);
+          const fieldErrors = getFieldErrorsState(ticketNumber);
+          const isFormValid = Object.keys(getFieldErrors(form)).length === 0;
+          const isSubmitting = submittingTicketNumber === ticketNumber;
+          const photoInputId = `bookingRegister-photo-${ticketNumber}`;
+
+          return (
+            <div className="bookingRegister-card" key={ticketNumber}>
+              <span className="bookingRegister-memberLabel">
+                MEMBER {memberNumber}
+              </span>
+
+              <div className="bookingRegister-cardBody">
+                <div className="bookingRegister-photoWrap">
+                  <span className="bookingRegister-photoCircle">
+                    {form.previewImage ? (
+                      <img
+                        src={form.previewImage}
+                        alt="Preview"
+                        className="bookingRegister-photoPreviewImage"
+                      />
+                    ) : (
+                      <UploadPhotoPlaceholder />
+                    )}
+                  </span>
+                  <input
+                    id={photoInputId}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => handleImageChange(ticketNumber, e)}
+                  />
+                  <label htmlFor={photoInputId} className="bookingRegister-editBtn">
+                    <EditIcon />
+                  </label>
+                </div>
+
+                <span className="bookingRegister-uploadText">upload photo</span>
+
+                <div className="bookingRegister-fieldGroup">
+                  <div className="bookingRegister-fieldWrap">
+                    <input
+                      type="text"
+                      className="bookingRegister-input"
+                      placeholder="Name"
+                      value={form.name}
+                      onChange={(e) =>
+                        updateFormField(ticketNumber, "name", e.target.value)
+                      }
+                    />
+                    {fieldErrors.name && (
+                      <p className="bookingRegister-fieldError">{fieldErrors.name}</p>
+                    )}
+                  </div>
+
+                  <div className="bookingRegister-fieldWrap">
+                    <input
+                      type="tel"
+                      className="bookingRegister-input"
+                      placeholder="Mobile No."
+                      value={form.mobileNumber}
+                      maxLength={10}
+                      onChange={(e) =>
+                        updateFormField(
+                          ticketNumber,
+                          "mobileNumber",
+                          e.target.value.replace(/\D/g, "").slice(0, 10)
+                        )
+                      }
+                    />
+                    {fieldErrors.mobileNumber && (
+                      <p className="bookingRegister-fieldError">
+                        {fieldErrors.mobileNumber}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="bookingRegister-fieldWrap">
+                    <input
+                      type="email"
+                      className="bookingRegister-input"
+                      placeholder="Email"
+                      value={form.email}
+                      onChange={(e) =>
+                        updateFormField(ticketNumber, "email", e.target.value)
+                      }
+                    />
+                    {fieldErrors.email && (
+                      <p className="bookingRegister-fieldError">{fieldErrors.email}</p>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className={`bookingRegister-submitBtn${
+                    isFormValid ? " bookingRegister-submitBtn--active" : ""
+                  }`}
+                  onClick={() => handleSubmit(ticketNumber)}
+                  disabled={isSubmitting || !isFormValid}
+                >
+                  {isSubmitting ? "Submitting..." : "Submit"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {quantity > 0 && tickets.every((t) => t.isRegistered) && (
+        <p className="bookingRegister-statusText">
+          All registrations for this booking are complete.
+        </p>
       )}
     </div>
   );

@@ -321,6 +321,23 @@
   align-items: center;
 }
 
+/* Locked slot (a later registration whose earlier slot isn't filled
+   yet) — same card shell as an active/registered slot so grid rows stay
+   aligned, just quieter since there's nothing to interact with here. */
+.publicRegister-lockedCard {
+  align-items: center;
+  text-align: center;
+  padding: 40px 24px;
+  min-height: 220px;
+  justify-content: center;
+}
+
+.publicRegister-lockedText {
+  color: #9a9ca8;
+  font-size: 14px;
+  margin: 0;
+}
+
 .publicRegister-slotLabel {
   align-self: flex-start;
   display: block;
