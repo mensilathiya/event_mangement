@@ -286,6 +286,45 @@
   background-color: #6b7085;
 }
 
+/* ================= MULTI-SLOT REGISTRATION (quantity > 1) ================= */
+/* Single-slot (quantity = 1) wrapper: identical visual result to before
+   this card had no wrapper at all. */
+.publicRegister-singleWrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Mobile-first, one column, matching this page's existing mobile-first
+   approach (unlike RegisterUsers.css's desktop-oriented multi-column
+   grid) since this page is opened almost exclusively on phones. */
+.publicRegister-grid {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.publicRegister-slot {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.publicRegister-slotLabel {
+  align-self: flex-start;
+  display: block;
+  color: #6b7085;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
 /* Wider screens: a little more breathing room, matching the visual
    language of RegisterUsers.css's hero without changing that file. */
 @media (min-width: 480px) {
