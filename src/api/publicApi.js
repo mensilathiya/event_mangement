@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL
 
 // Dedicated axios instance for the public (no-login) registration flow.
 // Deliberately NOT the same `api` instance exported from `./axios.js`,

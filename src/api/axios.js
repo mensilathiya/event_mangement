@@ -9,7 +9,7 @@ import axios from "axios";
 // instance/request. A hardcoded application/json default here overrides
 // that auto-detection, so FormData requests get sent with the wrong
 // Content-Type and the server can never parse req.file.
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL ;
 
 // The localhost fallback above is intentionally kept as-is (existing local
 // dev workflows may rely on it working with no .env file present at all).

@@ -554,9 +554,7 @@
 
 .crmQrBtnPrimary {
   color: #ffffff;
-  background: linear-gradient(135deg,
-      var(--crmQr-accent-purple) 0%,
-      var(--crmQr-accent-blue) 100%);
+  background: linear-gradient(135deg, #17a2b8, #0d7f91);
   box-shadow: 0 8px 18px rgba(95, 37, 159, 0.28);
 }
 
