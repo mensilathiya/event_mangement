@@ -115,6 +115,22 @@
   margin-bottom: 20px;
 }
 
+/* One field (input + its own inline error) per wrap, so the error text
+   sits directly below its input instead of being spaced out by the
+   fieldGroup's inter-field gap above. */
+.bookingRegister-fieldWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bookingRegister-fieldError {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #e0331e;
+}
+
 .bookingRegister-input {
   width: 100%;
   padding: 13px 16px;
@@ -146,6 +162,17 @@
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.bookingRegister-submitBtn:disabled {
+  cursor: not-allowed;
+}
+
+/* Enabled/valid state: all required fields for this slot pass validation.
+   Uses the same accent color as PublicRegisterUser's submit button and
+   the rest of the project's primary actions. */
+.bookingRegister-submitBtn--active {
+  background-color: #e0331e;
 }
 
 @media (max-width: 1100px) {

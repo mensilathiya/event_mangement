@@ -108,6 +108,22 @@
   margin-bottom: 20px;
 }
 
+/* One field (input + its own inline error) per wrap, so the error text
+   sits directly below its input instead of being spaced out by the
+   fieldGroup's inter-field gap above. */
+.publicRegister-fieldWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.publicRegister-fieldError {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #e0331e;
+}
+
 /* 16px input font size (not 13.5px like the desktop-oriented
    RegisterUsers.css) avoids the automatic zoom-on-focus that iOS Safari
    triggers on inputs below 16px — important since this page is opened
@@ -143,7 +159,7 @@
   padding: 15px;
   border: none;
   border-radius: 8px;
-  background-color: #ff5b1f;
+  background-color: #e0331e;
   color: #ffffff;
   font-size: 16px;
   font-weight: 600;

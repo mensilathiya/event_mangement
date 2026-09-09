@@ -62,14 +62,30 @@ const emptyForm = {
 // Same validation rules used by BookingUserModal's single-ticket form, kept
 // in sync here since each pending slot below submits through the same
 // updateRegisterUser API.
-const validateForm = (form) => {
-  if (!form.name.trim()) return "Please enter name.";
-  if (!/^[A-Za-z ]+$/.test(form.name)) return "Name is invalid.";
-  if (!/^[6-9]\d{9}$/.test(form.mobileNumber))
-    return "Please enter valid mobile number.";
-  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-    return "Please enter valid email.";
-  return null;
+//
+// Returns a { fieldName: message } map instead of a single message so
+// each error can render directly below its own field, per the project's
+// field-level validation pattern (see CreateBookingModal /
+// PublicRegisterUser). Only the error-collection shape changed here —
+// the rules themselves are unchanged.
+const getFieldErrors = (form) => {
+  const errors = {};
+
+  if (!form.name.trim()) {
+    errors.name = "Please enter name.";
+  } else if (!/^[A-Za-z ]+$/.test(form.name)) {
+    errors.name = "Name is invalid.";
+  }
+
+  if (!/^[6-9]\d{9}$/.test(form.mobileNumber)) {
+    errors.mobileNumber = "Please enter valid mobile number.";
+  }
+
+  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    errors.email = "Please enter valid email.";
+  }
+
+  return errors;
 };
 
 const RegisterUsers = () => {
@@ -82,6 +98,10 @@ const RegisterUsers = () => {
   // Pending-form input state per ticket slot, keyed by ticket _id. Only
   // slots that are currently unregistered ever have an entry here.
   const [formStates, setFormStates] = useState({});
+  // Per-ticket field-level validation messages, keyed the same way as
+  // formStates, rendered directly below each slot's own inputs instead
+  // of a common/top-level error toast.
+  const [fieldErrorsByTicket, setFieldErrorsByTicket] = useState({});
   // Optimistic per-ticket overrides applied the instant a registration
   // succeeds, so that slot flips to the registered card immediately
   // instead of waiting on the background refetch below.
@@ -97,12 +117,21 @@ const RegisterUsers = () => {
   }, [dispatch, id]);
 
   const getFormState = (ticketId) => formStates[ticketId] || emptyForm;
+  const getFieldErrorsState = (ticketId) => fieldErrorsByTicket[ticketId] || {};
 
   const updateFormField = (ticketId, field, value) => {
     setFormStates((prev) => ({
       ...prev,
       [ticketId]: { ...getFormState(ticketId), [field]: value },
     }));
+
+    // Clear this field's visible error the instant it's edited, so a
+    // corrected value doesn't keep showing a stale message.
+    setFieldErrorsByTicket((prev) => {
+      const ticketErrors = prev[ticketId];
+      if (!ticketErrors || !ticketErrors[field]) return prev;
+      return { ...prev, [ticketId]: { ...ticketErrors, [field]: undefined } };
+    });
   };
 
   const handleImageChange = (ticketId, e) => {
@@ -131,10 +160,12 @@ const RegisterUsers = () => {
 
   const handleSubmit = async (ticketId) => {
     const form = getFormState(ticketId);
-    const validationError = validateForm(form);
+    const errors = getFieldErrors(form);
 
-    if (validationError) {
-      showError(validationError);
+    if (Object.keys(errors).length > 0) {
+      // Field-specific messages render below their own inputs (see JSX
+      // below) — no common/top-level toast for validation.
+      setFieldErrorsByTicket((prev) => ({ ...prev, [ticketId]: errors }));
       return;
     }
 
@@ -166,6 +197,12 @@ const RegisterUsers = () => {
 
       // This slot no longer needs its pending-form state.
       setFormStates((prev) => {
+        const next = { ...prev };
+        delete next[ticketId];
+        return next;
+      });
+
+      setFieldErrorsByTicket((prev) => {
         const next = { ...prev };
         delete next[ticketId];
         return next;
@@ -288,6 +325,8 @@ const RegisterUsers = () => {
             }
 
             const form = getFormState(ticket._id);
+            const fieldErrors = getFieldErrorsState(ticket._id);
+            const isFormValid = Object.keys(getFieldErrors(form)).length === 0;
             const isSubmitting = submittingTicketId === ticket._id;
             const photoInputId = `bookingRegister-photo-${ticket._id}`;
 
@@ -325,40 +364,63 @@ const RegisterUsers = () => {
                   <span className="bookingRegister-uploadText">upload photo</span>
 
                   <div className="bookingRegister-fieldGroup">
-                    <input
-                      type="text"
-                      className="bookingRegister-input"
-                      placeholder="Name"
-                      value={form.name}
-                      onChange={(e) =>
-                        updateFormField(ticket._id, "name", e.target.value)
-                      }
-                    />
-                    <input
-                      type="text"
-                      className="bookingRegister-input"
-                      placeholder="Mobile No."
-                      value={form.mobileNumber}
-                      onChange={(e) =>
-                        updateFormField(ticket._id, "mobileNumber", e.target.value)
-                      }
-                    />
-                    <input
-                      type="email"
-                      className="bookingRegister-input"
-                      placeholder="Email"
-                      value={form.email}
-                      onChange={(e) =>
-                        updateFormField(ticket._id, "email", e.target.value)
-                      }
-                    />
+                    <div className="bookingRegister-fieldWrap">
+                      <input
+                        type="text"
+                        className="bookingRegister-input"
+                        placeholder="Name"
+                        value={form.name}
+                        onChange={(e) =>
+                          updateFormField(ticket._id, "name", e.target.value)
+                        }
+                      />
+                      {fieldErrors.name && (
+                        <p className="bookingRegister-fieldError">{fieldErrors.name}</p>
+                      )}
+                    </div>
+
+                    <div className="bookingRegister-fieldWrap">
+                      <input
+                        type="tel"
+                        className="bookingRegister-input"
+                        placeholder="Mobile No."
+                        value={form.mobileNumber}
+                        maxLength={10}
+                        onChange={(e) =>
+                          updateFormField(
+                            ticket._id,
+                            "mobileNumber",
+                            e.target.value.replace(/\D/g, "").slice(0, 10)
+                          )
+                        }
+                      />
+                      {fieldErrors.mobileNumber && (
+                        <p className="bookingRegister-fieldError">{fieldErrors.mobileNumber}</p>
+                      )}
+                    </div>
+
+                    <div className="bookingRegister-fieldWrap">
+                      <input
+                        type="email"
+                        className="bookingRegister-input"
+                        placeholder="Email"
+                        value={form.email}
+                        onChange={(e) =>
+                          updateFormField(ticket._id, "email", e.target.value)
+                        }
+                      />
+                      {fieldErrors.email && (
+                        <p className="bookingRegister-fieldError">{fieldErrors.email}</p>
+                      )}
+                    </div>
                   </div>
 
                   <button
                     type="button"
-                    className="bookingRegister-submitBtn"
+                    className={`bookingRegister-submitBtn${isFormValid ? " bookingRegister-submitBtn--active" : ""
+                      }`}
                     onClick={() => handleSubmit(ticket._id)}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !isFormValid}
                   >
                     {isSubmitting ? "Submitting..." : "Submit"}
                   </button>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import "../assets/CSS/PublicRegisterUser.css";
 import { showError, showSuccess } from "../utilits/toast";
@@ -57,14 +57,30 @@ const emptyForm = {
 // Same validation rules as RegisterUsers.jsx / BookingUserModal, kept in
 // sync here since this form submits through the equivalent public
 // endpoint (PUT /api/public/registration/:token).
-const validateForm = (form) => {
-  if (!form.name.trim()) return "Please enter name.";
-  if (!/^[A-Za-z ]+$/.test(form.name)) return "Name is invalid.";
-  if (!/^[6-9]\d{9}$/.test(form.mobileNumber))
-    return "Please enter valid mobile number.";
-  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-    return "Please enter valid email.";
-  return null;
+//
+// Returns a { fieldName: message } map instead of a single message so
+// each error can render directly below its own field, per the project's
+// field-level validation pattern (see CreateBookingModal). Only the
+// error-collection shape changed here — the rules themselves are
+// unchanged.
+const getFieldErrors = (form) => {
+  const errors = {};
+
+  if (!form.name.trim()) {
+    errors.name = "Please enter name.";
+  } else if (!/^[A-Za-z ]+$/.test(form.name)) {
+    errors.name = "Name is invalid.";
+  }
+
+  if (!/^[6-9]\d{9}$/.test(form.mobileNumber)) {
+    errors.mobileNumber = "Please enter valid mobile number.";
+  }
+
+  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    errors.email = "Please enter valid email.";
+  }
+
+  return errors;
 };
 
 // Maps a failed axios call to one clean, customer-facing message — never
@@ -109,6 +125,12 @@ const PublicRegisterUser = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  // Per-field validation messages, rendered directly below their own
+  // input (see JSX below) instead of a single common/top-level error —
+  // populated on a failed submit attempt, and cleared field-by-field as
+  // soon as that field is edited (see updateField).
+  const [fieldErrors, setFieldErrors] = useState({});
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -149,8 +171,21 @@ const PublicRegisterUser = () => {
     };
   }, [token]);
 
+  // Drives the submit button's disabled/enabled state live, independent
+  // of what's currently displayed in fieldErrors — so the button enables
+  // the moment every required field is valid, even before any submit
+  // attempt has populated visible error messages.
+  const isFormValid = useMemo(
+    () => Object.keys(getFieldErrors(form)).length === 0,
+    [form]
+  );
+
   const updateField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+
+    // Clear this field's visible error the instant it's edited, so a
+    // corrected value doesn't keep showing a stale message.
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
   };
 
   const handleImageChange = (e) => {
@@ -181,9 +216,11 @@ const PublicRegisterUser = () => {
     // in addition to the disabled submit button below.
     if (isSubmitting || isSubmitted) return;
 
-    const validationErr = validateForm(form);
-    if (validationErr) {
-      showError(validationErr);
+    const errors = getFieldErrors(form);
+    if (Object.keys(errors).length > 0) {
+      // Field-specific messages render below their own inputs (see JSX
+      // below) — no common/top-level toast for validation.
+      setFieldErrors(errors);
       return;
     }
 
@@ -338,37 +375,60 @@ const PublicRegisterUser = () => {
             <span className="publicRegister-uploadText">upload photo</span>
 
             <div className="publicRegister-fieldGroup">
-              <input
-                type="text"
-                className="publicRegister-input"
-                placeholder="Name"
-                value={form.name}
-                onChange={(e) => updateField("name", e.target.value)}
-                disabled={isSubmitting}
-              />
-              <input
-                type="tel"
-                inputMode="numeric"
-                className="publicRegister-input"
-                placeholder="Mobile No."
-                value={form.mobileNumber}
-                onChange={(e) => updateField("mobileNumber", e.target.value)}
-                disabled={isSubmitting}
-              />
-              <input
-                type="email"
-                className="publicRegister-input"
-                placeholder="Email"
-                value={form.email}
-                onChange={(e) => updateField("email", e.target.value)}
-                disabled={isSubmitting}
-              />
+              <div className="publicRegister-fieldWrap">
+                <input
+                  type="text"
+                  className="publicRegister-input"
+                  placeholder="Name"
+                  value={form.name}
+                  onChange={(e) => updateField("name", e.target.value)}
+                  disabled={isSubmitting}
+                />
+                {fieldErrors.name && (
+                  <p className="publicRegister-fieldError">{fieldErrors.name}</p>
+                )}
+              </div>
+
+              <div className="publicRegister-fieldWrap">
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  className="publicRegister-input"
+                  placeholder="Mobile No."
+                  value={form.mobileNumber}
+                  maxLength={10}
+                  onChange={(e) =>
+                    updateField(
+                      "mobileNumber",
+                      e.target.value.replace(/\D/g, "").slice(0, 10)
+                    )
+                  }
+                  disabled={isSubmitting}
+                />
+                {fieldErrors.mobileNumber && (
+                  <p className="publicRegister-fieldError">{fieldErrors.mobileNumber}</p>
+                )}
+              </div>
+
+              <div className="publicRegister-fieldWrap">
+                <input
+                  type="email"
+                  className="publicRegister-input"
+                  placeholder="Email"
+                  value={form.email}
+                  onChange={(e) => updateField("email", e.target.value)}
+                  disabled={isSubmitting}
+                />
+                {fieldErrors.email && (
+                  <p className="publicRegister-fieldError">{fieldErrors.email}</p>
+                )}
+              </div>
             </div>
 
             <button
               type="submit"
               className="publicRegister-submitBtn"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isFormValid}
             >
               {isSubmitting ? "Submitting..." : "Submit"}
             </button>

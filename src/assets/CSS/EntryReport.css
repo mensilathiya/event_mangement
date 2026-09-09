@@ -271,6 +271,7 @@
 
 .erPage__paginationControls {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -293,8 +294,17 @@
 
 .erPage__tableWrap {
   width: 100%;
-  overflow-x: visible;
+  max-width: 100%;
+  overflow-x: auto;
 }
+
+
+
+.erPage__tableWrap::-webkit-scrollbar-thumb {
+  background: #d7dbe6;
+  border-radius: 999px;
+}
+
 
 .erPage__table {
   width: 100%;
@@ -456,6 +466,24 @@
 }
 
 /* Responsive */
+/* Laptop: sidebar (230px) + container padding leaves noticeably less
+   content width at common 1200-1366px laptop resolutions, so the toolbar
+   and search box get a little more room to breathe before the tablet
+   breakpoint below reflows things more drastically. */
+@media (max-width: 1200px) {
+  .erPage__container {
+    padding: 24px 24px 40px;
+  }
+
+  .erPage__searchBox {
+    max-width: 220px;
+  }
+
+  .erPage__pageSizeSelect {
+    margin-right: 12px;
+  }
+}
+
 @media (max-width: 1023px) {
   .erPageMainArea {
     margin-left: 0;
@@ -485,23 +513,7 @@
   }
 
   .erPage__tableWrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     max-width: 100%;
-    scrollbar-width: thin;
-  }
-
-  .erPage__tableWrap::-webkit-scrollbar {
-    height: 6px;
-  }
-
-  .erPage__tableWrap::-webkit-scrollbar-thumb {
-    background: #d7dbe6;
-    border-radius: 999px;
-  }
-
-  .erPage__tableWrap::-webkit-scrollbar-track {
-    background: transparent;
   }
 
   .erPage__table {
@@ -528,6 +540,39 @@
     width: min(95vw, 720px);
     max-height: 80vh;
     overflow-y: auto;
+  }
+}
+
+/* Tablet-narrow: the 3-part table toolbar (rows-per-page / search / export)
+   gets cramped in one row well before the mobile breakpoint below, so it
+   stacks here already; the filter grid itself still works fine as 2
+   columns (set in the 992px block above) down to this width. */
+@media (max-width: 768px) {
+  .erPage__tableToolbar {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .erPage__toolbarLeft,
+  .erPage__toolbarCenter,
+  .erPage__toolbarRight {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .erPage__pageSizeSelect {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .erPage__searchBox {
+    width: 100%;
+    max-width: none;
+  }
+
+  .erPage__btn--export {
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -573,30 +618,7 @@
     font-size: 13px;
   }
 
-  .erPage__tableToolbar {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .erPage__toolbarLeft,
-  .erPage__toolbarCenter,
-  .erPage__toolbarRight {
-    justify-self: stretch;
-    width: 100%;
-  }
-
-  .erPage__pageSizeSelect {
-    width: 100%;
-  }
-
-  .erPage__searchBox {
-    width: 100%;
-    max-width: none;
-  }
-
   .erPage__btn--export {
-    width: 100%;
-    justify-content: center;
     padding: 11px 16px;
     font-size: 13px;
   }

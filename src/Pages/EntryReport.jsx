@@ -704,329 +704,329 @@ export default function EntryReport() {
       />
 
       {/* Filters Card */}
-          <div className="erPage__card erPage__filtersCard">
-            <div className="erPage__filtersRow erPage__filtersRow--fields">
-              <input
-                type="text"
-                className="erPage__input"
-                placeholder="Booking Id"
-                value={bookingId}
-                onChange={(e) => setBookingId(e.target.value)}
-              />
-              <input
-                type="text"
-                className="erPage__input"
-                placeholder="Mobile Number"
-                value={mobileNumber}
-                onChange={(e) => setMobileNumber(e.target.value)}
-              />
-              <input
-                type="text"
-                className="erPage__input"
-                placeholder="Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
+      <div className="erPage__card erPage__filtersCard">
+        <div className="erPage__filtersRow erPage__filtersRow--fields">
+          <input
+            type="text"
+            className="erPage__input"
+            placeholder="Booking Id"
+            value={bookingId}
+            onChange={(e) => setBookingId(e.target.value)}
+          />
+          <input
+            type="text"
+            className="erPage__input"
+            placeholder="Mobile Number"
+            value={mobileNumber}
+            onChange={(e) => setMobileNumber(e.target.value)}
+          />
+          <input
+            type="text"
+            className="erPage__input"
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
 
-            <div className="erPage__filtersRow erPage__filtersRow--fields">
-              {/* Event dropdown — lists every currently active/valid event
+        <div className="erPage__filtersRow erPage__filtersRow--fields">
+          {/* Event dropdown — lists every currently active/valid event
                   the logged-in user is allowed to view (see
                   getActiveEvents). Defaults to "All Events" (empty value),
                   and the report loads every active event's entries for
                   that default automatically — the user isn't required to
                   pick a specific event or click Search first. */}
-              <CommonSelect
-                className="erPage__input erPage__eventSelect"
-                value={selectedEventId}
-                onChange={handleEventChange}
-                disabled={activeEventsLoading}
-                placeholder={activeEventsLoading ? "Loading events..." : "All Events"}
-                options={activeEvents.map((evt) => ({
-                  value: evt._id,
-                  label:
-                    (evt.title || evt.name || "Event") +
-                    (evt.eventCode ? ` - ${evt.eventCode}` : ""),
-                }))}
-              />
+          <CommonSelect
+            className="erPage__input erPage__eventSelect"
+            value={selectedEventId}
+            onChange={handleEventChange}
+            disabled={activeEventsLoading}
+            placeholder={activeEventsLoading ? "Loading events..." : "All Events"}
+            options={activeEvents.map((evt) => ({
+              value: evt._id,
+              label:
+                (evt.title || evt.name || "Event") +
+                (evt.eventCode ? ` - ${evt.eventCode}` : ""),
+            }))}
+          />
 
-              <div className="erPage__dateRangeWrapper">
-                <input
-                  type="text"
-                  className="erPage__input"
-                  placeholder="Pick date rage"
-                  value={dateRange}
-                  readOnly
-                  disabled={!eventStartDate || !eventEndDate}
-                  onClick={toggleDatePicker}
-                />
-                {showDatePicker && (
-                  <>
-                    {/* Full-viewport click-catcher, same approach as
+          <div className="erPage__dateRangeWrapper">
+            <input
+              type="text"
+              className="erPage__input"
+              placeholder="Pick date rage"
+              value={dateRange}
+              readOnly
+              disabled={!eventStartDate || !eventEndDate}
+              onClick={toggleDatePicker}
+            />
+            {showDatePicker && (
+              <>
+                {/* Full-viewport click-catcher, same approach as
                         Booking.jsx's date popup: closing on outside-click
                         this way needs no ref/mousedown-listener bookkeeping
                         — anywhere outside the popup itself is this overlay. */}
-                    <div
-                      className="erPage__dateRangeOverlay"
-                      onClick={handleCancelDateRange}
-                    />
-                    <div className="erPage__dateRangePopup">
-                      <DateRange
-                        ranges={tempRange}
-                        onChange={handleDateRangeChange}
-                        months={2}
-                        direction="horizontal"
-                        showMonthAndYearPickers={true}
-                        showDateDisplay={false}
-                        moveRangeOnFirstSelection={false}
-                        minDate={eventStartDate || undefined}
-                        maxDate={eventEndDate || undefined}
-                        rangeColors={["#4f7bff"]}
-                      />
-                      <div className="erPage__dateRangeFooter">
-                        <div className="erPage__dateRangeDisplay">
-                          {formatDate(tempRange[0].startDate)} -{" "}
-                          {formatDate(tempRange[0].endDate)}
-                        </div>
-                        <div className="erPage__dateRangeActions">
-                          <button
-                            type="button"
-                            className="erPage__btn erPage__btn--reset"
-                            onClick={handleCancelDateRange}
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            className="erPage__btn erPage__btn--apply"
-                            onClick={handleApplyDateRange}
-                          >
-                            Apply
-                          </button>
-                        </div>
-                      </div>
+                <div
+                  className="erPage__dateRangeOverlay"
+                  onClick={handleCancelDateRange}
+                />
+                <div className="erPage__dateRangePopup">
+                  <DateRange
+                    ranges={tempRange}
+                    onChange={handleDateRangeChange}
+                    months={2}
+                    direction="horizontal"
+                    showMonthAndYearPickers={true}
+                    showDateDisplay={false}
+                    moveRangeOnFirstSelection={false}
+                    minDate={eventStartDate || undefined}
+                    maxDate={eventEndDate || undefined}
+                    rangeColors={["#4f7bff"]}
+                  />
+                  <div className="erPage__dateRangeFooter">
+                    <div className="erPage__dateRangeDisplay">
+                      {formatDate(tempRange[0].startDate)} -{" "}
+                      {formatDate(tempRange[0].endDate)}
                     </div>
-                  </>
-                )}
-              </div>
-
-              <input
-                type="text"
-                className="erPage__input"
-                placeholder="Ticket Id"
-                value={ticketId}
-                onChange={(e) => setTicketId(e.target.value)}
-              />
-            </div>
-
-            <div className="erPage__filtersRow erPage__filtersRow--actions">
-              <button
-                className="erPage__btn erPage__btn--search"
-                onClick={handleSearch}
-                disabled={loading}
-              >
-                Search
-              </button>
-              <button
-                className="erPage__btn erPage__btn--reset"
-                onClick={handleReset}
-                disabled={loading}
-              >
-                Reset
-              </button>
-            </div>
+                    <div className="erPage__dateRangeActions">
+                      <button
+                        type="button"
+                        className="erPage__btn erPage__btn--reset"
+                        onClick={handleCancelDateRange}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="erPage__btn erPage__btn--apply"
+                        onClick={handleApplyDateRange}
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Table Card */}
-          <div className="erPage__card erPage__tableCard">
-            <div className="erPage__tableToolbar">
-              <div className="erPage__toolbarLeft">
-                <CommonSelect
-                  className="erPage__pageSizeSelect"
-                  value={pageSize}
-                  onChange={handlePageSizeChange}
-                  disabled={loading}
-                  options={ROWS_PER_PAGE_OPTIONS}
-                />
-              </div>
+          <input
+            type="text"
+            className="erPage__input"
+            placeholder="Ticket Id"
+            value={ticketId}
+            onChange={(e) => setTicketId(e.target.value)}
+          />
+        </div>
 
-              <div className="erPage__toolbarCenter">
-                <CommonSearch
-                  containerClassName="erPage__searchBox"
-                  inputClassName="erPage__searchInput"
-                  icon={
-                    <svg
-                      className="erPage__searchIcon"
-                      viewBox="0 0 24 24"
-                      width="16"
-                      height="16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="11" cy="11" r="7" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                  }
-                  type="text"
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+        <div className="erPage__filtersRow erPage__filtersRow--actions">
+          <button
+            className="erPage__btn erPage__btn--search"
+            onClick={handleSearch}
+            disabled={loading}
+          >
+            Search
+          </button>
+          <button
+            className="erPage__btn erPage__btn--reset"
+            onClick={handleReset}
+            disabled={loading}
+          >
+            Reset
+          </button>
+        </div>
+      </div>
 
-              <div className="erPage__toolbarRight">
-                <CommonExportButton
-                  onClick={handleExport}
-                  loading={exportLoading}
-                  disabled={exportLoading || !eventId}
-                  label="Export Booking"
-                />
-              </div>
-            </div>
-
-            <div className="erPage__tableWrap">
-              <table className="erPage__table">
-                <thead>
-                  <tr>
-                    {COLUMNS.map((col) => (
-                      <th key={col} className="erPage__th">
-                         <span className="eventList__sortIcon"><FaSort /></span>
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Loading state */}
-                  {loading && (
-                    <tr className="erPage__emptyRow">
-                      <td colSpan={COLUMNS.length} className="erPage__emptyCell">
-                        <CommonLoader
-                          wrapperClassName="erPage__emptyState"
-                          messageClassName="erPage__emptyText"
-                          message="Loading entry reports..."
-                        />
-                      </td>
-                    </tr>
-                  )}
-
-                  {/* Error state */}
-                  {!loading && errorMessage && (
-                    <tr className="erPage__emptyRow">
-                      <td colSpan={COLUMNS.length} className="erPage__emptyCell">
-                        <div className="erPage__emptyState">
-                          <p className="erPage__emptyText">{errorMessage}</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-
-                  {/* Empty state */}
-                  {!loading && !errorMessage && rows.length === 0 && (
-                    <tr className="erPage__emptyRow">
-                      <td colSpan={COLUMNS.length} className="erPage__emptyCell">
-                        <CommonEmptyState
-                          wrapperClassName="erPage__emptyState"
-                          textClassName="erPage__emptyText"
-                          message={
-                            selectedEventId || hasSelectedEvent
-                              ? "No Entry Reports Found."
-                              : "Select an event above to view its entry report."
-                          }
-                        />
-                      </td>
-                    </tr>
-                  )}
-
-                  {/* Data rows */}
-                  {!loading &&
-                    !errorMessage &&
-                    rows.map((row, idx) => {
-                      const rowKey = row?._id ?? idx;
-                      const serial = (currentPage - 1) * limit + idx + 1;
-
-                      // Flat entry-report API row shape.
-                      const profileImage = row?.profileImage ?? null;
-                      const bookingIdVal = row?.bookingId ?? "-";
-                      const ticketIdVal = row?.ticketId ?? "-";
-                      const qrImage = row?.qrImage ?? null;
-                      const nameVal = row?.name ?? "-";
-                      const mobileNumberVal = row?.mobileNumber ?? "-";
-                      const passDate = row?.passDate
-                        ? formatDateOnly(row.passDate)
-                        : "-";
-                      const scannedAt = row?.scannedAt
-                        ? formatDateTime(row.scannedAt)
-                        : "-";
-
-                      return (
-                        <tr key={rowKey} className="erPage__tr">
-                          <td className="erPage__td">{serial}</td>
-                          <td className="erPage__td">
-                            <ProfileAvatar src={profileImage} name={nameVal} />
-                          </td>
-                          <td className="erPage__td">{bookingIdVal}</td>
-                          <td className="erPage__td">{ticketIdVal}</td>
-                          <td className="erPage__td">
-                            {qrImage ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  window.open(qrImage, "_blank", "noopener,noreferrer")
-                                }
-                                title="Click to preview QR code"
-                                style={{
-                                  padding: 0,
-                                  border: "none",
-                                  background: "transparent",
-                                  cursor: "pointer",
-                                  lineHeight: 0,
-                                }}
-                              >
-                                <img
-                                  src={qrImage}
-                                  alt="QR Code"
-                                  style={{
-                                    width: 32,
-                                    height: 32,
-                                    objectFit: "cover",
-                                    borderRadius: 4,
-                                  }}
-                                />
-                              </button>
-                            ) : (
-                              "-"
-                            )}
-                          </td>
-                          <td className="erPage__td">{nameVal}</td>
-                          <td className="erPage__td">{mobileNumberVal}</td>
-                          <td className="erPage__td">{passDate}</td>
-                          <td className="erPage__td">{scannedAt}</td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-            {/* paginations */}
-            <CommonPagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              rangeStart={totalRecords === 0 ? 0 : startIndex + 1}
-              rangeEnd={endIndex}
-              totalItems={totalRecords}
-              showControls={totalPages > 1}
-              onPageSelect={(pageNum) => handlePageChange(pageNum)}
-              onPrevious={goToPreviousPage}
-              onNext={goToNextPage}
-              prevDisabled={loading || currentPage === 1}
-              nextDisabled={loading || currentPage === totalPages}
-              pageButtonDisabled={loading}
-              activeButtonClassName="permissionPagePaginationBtn--active"
-              inactiveButtonClassName="permissionPagePaginationBtn--reset"
+      {/* Table Card */}
+      <div className="erPage__card erPage__tableCard">
+        <div className="erPage__tableToolbar">
+          <div className="erPage__toolbarLeft">
+            <CommonSelect
+              className="erPage__pageSizeSelect"
+              value={pageSize}
+              onChange={handlePageSizeChange}
+              disabled={loading}
+              options={ROWS_PER_PAGE_OPTIONS}
             />
           </div>
+
+          <div className="erPage__toolbarCenter">
+            <CommonSearch
+              containerClassName="erPage__searchBox"
+              inputClassName="erPage__searchInput"
+              icon={
+                <svg
+                  className="erPage__searchIcon"
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              }
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="erPage__toolbarRight">
+            <CommonExportButton
+              onClick={handleExport}
+              loading={exportLoading}
+              disabled={exportLoading}
+              label="Export Booking"
+            />
+          </div>
+        </div>
+
+        <div className="erPage__tableWrap">
+          <table className="erPage__table">
+            <thead>
+              <tr>
+                {COLUMNS.map((col) => (
+                  <th key={col} className="erPage__th">
+                    <span className="eventList__sortIcon"><FaSort /></span>
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {/* Loading state */}
+              {loading && (
+                <tr className="erPage__emptyRow">
+                  <td colSpan={COLUMNS.length} className="erPage__emptyCell">
+                    <CommonLoader
+                      wrapperClassName="erPage__emptyState"
+                      messageClassName="erPage__emptyText"
+                      message="Loading entry reports..."
+                    />
+                  </td>
+                </tr>
+              )}
+
+              {/* Error state */}
+              {!loading && errorMessage && (
+                <tr className="erPage__emptyRow">
+                  <td colSpan={COLUMNS.length} className="erPage__emptyCell">
+                    <div className="erPage__emptyState">
+                      <p className="erPage__emptyText">{errorMessage}</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+
+              {/* Empty state */}
+              {!loading && !errorMessage && rows.length === 0 && (
+                <tr className="erPage__emptyRow">
+                  <td colSpan={COLUMNS.length} className="erPage__emptyCell">
+                    <CommonEmptyState
+                      wrapperClassName="erPage__emptyState"
+                      textClassName="erPage__emptyText"
+                      message={
+                        selectedEventId || hasSelectedEvent
+                          ? "No Entry Reports Found."
+                          : "Select an event above to view its entry report."
+                      }
+                    />
+                  </td>
+                </tr>
+              )}
+
+              {/* Data rows */}
+              {!loading &&
+                !errorMessage &&
+                rows.map((row, idx) => {
+                  const rowKey = row?._id ?? idx;
+                  const serial = (currentPage - 1) * limit + idx + 1;
+
+                  // Flat entry-report API row shape.
+                  const profileImage = row?.profileImage ?? null;
+                  const bookingIdVal = row?.bookingId ?? "-";
+                  const ticketIdVal = row?.ticketId ?? "-";
+                  const qrImage = row?.qrImage ?? null;
+                  const nameVal = row?.name ?? "-";
+                  const mobileNumberVal = row?.mobileNumber ?? "-";
+                  const passDate = row?.passDate
+                    ? formatDateOnly(row.passDate)
+                    : "-";
+                  const scannedAt = row?.scannedAt
+                    ? formatDateTime(row.scannedAt)
+                    : "-";
+
+                  return (
+                    <tr key={rowKey} className="erPage__tr">
+                      <td className="erPage__td">{serial}</td>
+                      <td className="erPage__td">
+                        <ProfileAvatar src={profileImage} name={nameVal} />
+                      </td>
+                      <td className="erPage__td">{bookingIdVal}</td>
+                      <td className="erPage__td">{ticketIdVal}</td>
+                      <td className="erPage__td">
+                        {qrImage ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              window.open(qrImage, "_blank", "noopener,noreferrer")
+                            }
+                            title="Click to preview QR code"
+                            style={{
+                              padding: 0,
+                              border: "none",
+                              background: "transparent",
+                              cursor: "pointer",
+                              lineHeight: 0,
+                            }}
+                          >
+                            <img
+                              src={qrImage}
+                              alt="QR Code"
+                              style={{
+                                width: 32,
+                                height: 32,
+                                objectFit: "cover",
+                                borderRadius: 4,
+                              }}
+                            />
+                          </button>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td className="erPage__td">{nameVal}</td>
+                      <td className="erPage__td">{mobileNumberVal}</td>
+                      <td className="erPage__td">{passDate}</td>
+                      <td className="erPage__td">{scannedAt}</td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+        {/* paginations */}
+        <CommonPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          rangeStart={totalRecords === 0 ? 0 : startIndex + 1}
+          rangeEnd={endIndex}
+          totalItems={totalRecords}
+          showControls={totalPages > 1}
+          onPageSelect={(pageNum) => handlePageChange(pageNum)}
+          onPrevious={goToPreviousPage}
+          onNext={goToNextPage}
+          prevDisabled={loading || currentPage === 1}
+          nextDisabled={loading || currentPage === totalPages}
+          pageButtonDisabled={loading}
+          activeButtonClassName="permissionPagePaginationBtn--active"
+          inactiveButtonClassName="permissionPagePaginationBtn--reset"
+        />
+      </div>
     </CommonListLayout>
   );
 }
