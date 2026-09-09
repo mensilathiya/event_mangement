@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import "../assets/CSS/PublicRegisterUser.css";
 import { showError, showSuccess } from "../utilits/toast";
@@ -7,12 +7,20 @@ import {
   submitPublicRegistrationApi,
 } from "../services/publicRegistrationService";
 
-// Public, no-login registration page for a single BookingTicket, opened
-// from a WhatsApp link at /r/:token. Unlike RegisterUsers.jsx (which lists
-// every ticket slot on a booking behind an authenticated route), this page
-// only ever deals with the one ticket the token identifies — the token is
-// the ONLY ticket identity used anywhere below; a ticketId is never read,
-// stored, or sent from here.
+// Public, no-login registration page for a BOOKING, opened from a
+// WhatsApp link at /r/:token. The token is the ONLY ticket/booking
+// identity used anywhere below — a ticketId is never read, stored, or
+// sent from here.
+//
+// ================= SOURCE OF TRUTH =================
+// Exactly like the authenticated RegisterUsers.jsx page, `tickets` below
+// is never anything other than the backend's own record for this
+// booking (GET/PUT /api/public/registration/:token, which already
+// returns { quantity, tickets: [{ ticketNumber, isRegistered, attendee,
+// ... }] } — see services/publicRegistration.service.js on the
+// backend). No localStorage/sessionStorage is used to remember which
+// slots are registered: a slot shows as registered because the DB says
+// so, which is exactly what makes this correct after a page refresh.
 
 function UploadPhotoPlaceholder() {
   return (
@@ -46,6 +54,23 @@ function EditIcon() {
   );
 }
 
+// Same registered-avatar placeholder used by the authenticated
+// RegisterUsers.jsx page, reused here so a registered slot's UI matches
+// exactly (per the requirement to reuse the existing Private
+// Registration registered-user UI wherever possible).
+function RegisteredAvatarPlaceholder() {
+  return (
+    <svg
+      className="publicRegister-registeredAvatarIcon"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle cx="12" cy="8" r="4" fill="#ffffff" />
+      <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="#ffffff" />
+    </svg>
+  );
+}
+
 const emptyForm = {
   name: "",
   mobileNumber: "",
@@ -54,25 +79,9 @@ const emptyForm = {
   previewImage: "",
 };
 
-// Builds the array of independent, empty form slots to render — one per
-// unit of the booking's quantity (quantity = 1 -> exactly one slot, i.e.
-// the existing single-registration UI is unchanged). `quantity` always
-// comes from the existing Public Registration API response
-// (ticketDetails.quantity, itself just the existing Booking.quantity
-// value reflected back — see services/publicRegistration.service.js on
-// the backend); it is never hardcoded and never derived from the URL.
-const buildEmptyForms = (quantity) =>
-  Array.from({ length: quantity }, () => ({ ...emptyForm }));
-
-// Same validation rules as RegisterUsers.jsx / BookingUserModal, kept in
-// sync here since this form submits through the equivalent public
-// endpoint (PUT /api/public/registration/:token).
-//
-// Returns a { fieldName: message } map instead of a single message so
-// each error can render directly below its own field, per the project's
-// field-level validation pattern (see CreateBookingModal). Only the
-// error-collection shape changed here — the rules themselves are
-// unchanged.
+// Same validation rules as RegisterUsers.jsx / BookingUserModal.
+// Returns a { fieldName: message } map so each error can render
+// directly below its own field.
 const getFieldErrors = (form) => {
   const errors = {};
 
@@ -95,10 +104,7 @@ const getFieldErrors = (form) => {
 
 // Maps a failed axios call to one clean, customer-facing message — never
 // a raw server/stack-trace string. Falls back to the backend's own
-// `message` field first (it already returns customer-safe text — see
-// utils/verifyRegistrationToken.js / publicRegistration.service.js on the
-// backend), then to a friendly default per status code so the page never
-// shows something like a network error object.
+// `message` field first, then to a friendly default per status code.
 const getFriendlyErrorMessage = (error, fallback) => {
   const status = error?.response?.status;
   const serverMessage = error?.response?.data?.message;
@@ -121,108 +127,89 @@ const getFriendlyErrorMessage = (error, fallback) => {
   }
 };
 
+// The GET/PUT public registration endpoints come back as
+// { success, message, data: { quantity, tickets } } — `data` here is the
+// axios response BODY (services/publicRegistrationService.js returns
+// response.data), so unwrapping one more level gets to the actual
+// { quantity, tickets } / { tickets } payload. Mirrors the same helper
+// in RegisterUsers.jsx.
+const unwrap = (response) => response?.data ?? response;
+
 const PublicRegisterUser = () => {
-  // The registration token from the URL — the only ticket identity used
-  // anywhere in this component.
+  // The registration token from the URL — the only ticket/booking
+  // identity used anywhere in this component.
   const { token } = useParams();
 
-  // Page-load token validation state.
   const [isValidating, setIsValidating] = useState(true);
   const [validationError, setValidationError] = useState("");
-  const [ticketDetails, setTicketDetails] = useState(null);
 
-  // ================= MULTI-SLOT FORM STATE =================
-  // One independent form per unit of booking quantity, keyed by index
-  // (0-based). For quantity = 1 this is an array of exactly one form —
-  // same fields, same validation, same submit call as the previous
-  // single-form version, so that flow is unaffected.
-  const [forms, setForms] = useState([{ ...emptyForm }]);
-  // Per-slot validation messages, keyed the same way as `forms`.
-  const [fieldErrorsList, setFieldErrorsList] = useState([{}]);
-  // Which slot (index) is currently submitting, so only that slot's
-  // button shows a loading state — other pending slots stay usable.
-  const [submittingIndex, setSubmittingIndex] = useState(null);
-  // Slots that have been successfully submitted, keyed by index, holding
-  // the submitted name for the success message.
-  const [submittedByIndex, setSubmittedByIndex] = useState({});
+  // Tickets as last read from the backend — the single source of truth
+  // for which slots are registered. Never mutated locally except by
+  // replacing it wholesale with a fresh server response, so a page
+  // refresh (which re-runs the fetch below) always reflects reality.
+  const [tickets, setTickets] = useState([]);
 
-  useEffect(() => {
-    let isCancelled = false;
+  // Pending-form input state, keyed by each ticket's ticketNumber (the
+  // only stable identifier the public API exposes — see
+  // toPublicSafeTicket on the backend). Using ticketNumber instead of
+  // array index keeps a slot's in-progress typing tied to the same
+  // ticket even if the backend's fill order means a different slot ends
+  // up registering first.
+  const [formStates, setFormStates] = useState({});
+  const [fieldErrorsByKey, setFieldErrorsByKey] = useState({});
+  const [submittingKey, setSubmittingKey] = useState(null);
 
-    const validateToken = async () => {
-      setIsValidating(true);
-      setValidationError("");
+  const loadRegistrationDetails = useCallback(async () => {
+    if (!token) {
+      setValidationError("This registration link is invalid.");
+      setIsValidating(false);
+      return;
+    }
 
-      if (!token) {
-        setValidationError("This registration link is invalid.");
-        setIsValidating(false);
-        return;
-      }
+    setIsValidating(true);
+    setValidationError("");
 
-      try {
-        const response = await getPublicRegistrationDetailsApi(token);
-
-        if (isCancelled) return;
-
-        const details = response.data;
-        setTicketDetails(details);
-
-        // ================= BOOKING QUANTITY =================
-        // Comes only from the existing API response
-        // (ticketDetails.quantity — the existing Booking.quantity value,
-        // reflected back by the existing GET /api/public/registration/:token
-        // endpoint). Never hardcoded, never derived from the URL/token.
-        // Falls back to 1 (existing single-registration behavior) if a
-        // backend response doesn't include it, so this page keeps working
-        // exactly as before against that response shape.
-        const quantity = Math.max(1, Number(details?.quantity) || 1);
-
-        setForms(buildEmptyForms(quantity));
-        setFieldErrorsList(Array.from({ length: quantity }, () => ({})));
-        setSubmittedByIndex({});
-      } catch (error) {
-        if (isCancelled) return;
-
-        setValidationError(
-          getFriendlyErrorMessage(
-            error,
-            "This registration link could not be verified."
-          )
-        );
-      } finally {
-        if (!isCancelled) setIsValidating(false);
-      }
-    };
-
-    validateToken();
-
-    return () => {
-      isCancelled = true;
-    };
+    try {
+      const result = unwrap(await getPublicRegistrationDetailsApi(token));
+      setTickets(Array.isArray(result?.tickets) ? result.tickets : []);
+    } catch (error) {
+      setValidationError(
+        getFriendlyErrorMessage(
+          error,
+          "This registration link could not be verified."
+        )
+      );
+    } finally {
+      setIsValidating(false);
+    }
   }, [token]);
 
-  const getForm = (index) => forms[index] || emptyForm;
-  const getFieldErrorsForIndex = (index) => fieldErrorsList[index] || {};
+  useEffect(() => {
+    loadRegistrationDetails();
+  }, [loadRegistrationDetails]);
 
-  const updateField = (index, field, value) => {
-    setForms((prev) => {
-      const next = [...prev];
-      next[index] = { ...getForm(index), [field]: value };
-      return next;
-    });
+  const getTicketKey = (ticket, index) =>
+    ticket.ticketNumber || `slot-${index + 1}`;
+
+  const getForm = (key) => formStates[key] || emptyForm;
+  const getFieldErrorsForKey = (key) => fieldErrorsByKey[key] || {};
+
+  const updateField = (key, field, value) => {
+    setFormStates((prev) => ({
+      ...prev,
+      [key]: { ...getForm(key), [field]: value },
+    }));
 
     // Clear this field's visible error the instant it's edited, so a
     // corrected value doesn't keep showing a stale message.
-    setFieldErrorsList((prev) => {
-      const current = prev[index];
+    setFieldErrorsByKey((prev) => {
+      const current = prev[key];
       if (!current || !current[field]) return prev;
-      const next = [...prev];
-      next[index] = { ...current, [field]: undefined };
-      return next;
+      return { ...prev, [key]: { ...current, [field]: undefined } };
     });
   };
 
-  const handleImageChange = (index, e) => {
+  const handleImageChange = (key, e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -231,59 +218,45 @@ const PublicRegisterUser = () => {
       return;
     }
 
-    // ================= IMAGE SIZE LIMIT =================
-    // Public Registration attendee photo: images up to 100 MB are now
-    // allowed (raised from the previous 20 MB cap); only files over
-    // 100 MB are rejected. Matches the backend's registration-specific
-    // upload limit (middlewares/upload.middleware.js's
-    // `registrationPhotoUpload`, used by this route's PUT endpoint).
-    // Allowed image types/formats are unchanged (still validated above).
+    // Matches the backend's registration-specific upload limit
+    // (middlewares/upload.middleware.js's `registrationPhotoUpload`).
     if (file.size > 100 * 1024 * 1024) {
       showError("Image size should be less than 100MB.");
       return;
     }
 
-    setForms((prev) => {
-      const next = [...prev];
-      next[index] = {
-        ...getForm(index),
+    setFormStates((prev) => ({
+      ...prev,
+      [key]: {
+        ...getForm(key),
         profileImage: file,
         previewImage: URL.createObjectURL(file),
-      };
-      return next;
-    });
+      },
+    }));
   };
 
   // ================= SUBMIT =================
   // Uses the SAME existing endpoint/request shape as before
   // (submitPublicRegistrationApi(token, FormData) -> PUT
   // /api/public/registration/:token with name/mobileNumber/email/
-  // profileImage) for every slot — no new API, no new fields, no bulk/
-  // array payload invented. The token in the URL remains the sole ticket
-  // identity, exactly as before.
-  const handleSubmit = async (index, e) => {
+  // profileImage) — no new API, no new fields. The token in the URL
+  // remains the sole ticket/booking identity. After a successful
+  // submit, every slot is repainted from the server's own response
+  // (result.tickets) rather than guessing locally which slot just got
+  // filled — the backend always fills the earliest still-unregistered
+  // ticket under this booking.
+  const handleSubmit = async (key, e) => {
     e.preventDefault();
 
-    // Guards against duplicate submissions from a double-tap/double-click
-    // in addition to the disabled submit button below.
-    if (submittingIndex !== null || submittedByIndex[index]) return;
+    if (submittingKey !== null) return;
 
-    const form = getForm(index);
+    const form = getForm(key);
     const errors = getFieldErrors(form);
     if (Object.keys(errors).length > 0) {
-      // Field-specific messages render below their own inputs (see JSX
-      // below) — no common/top-level toast for validation.
-      setFieldErrorsList((prev) => {
-        const next = [...prev];
-        next[index] = errors;
-        return next;
-      });
+      setFieldErrorsByKey((prev) => ({ ...prev, [key]: errors }));
       return;
     }
 
-    // Only these four fields are ever sent — no ticketId. The token in
-    // the URL (already baked into the request URL by
-    // submitPublicRegistrationApi) is the sole ticket identity.
     const payload = new FormData();
     payload.append("name", form.name.trim());
     payload.append("mobileNumber", form.mobileNumber.trim());
@@ -292,26 +265,41 @@ const PublicRegisterUser = () => {
       payload.append("profileImage", form.profileImage);
     }
 
-    setSubmittingIndex(index);
+    setSubmittingKey(key);
 
     try {
-      const response = await submitPublicRegistrationApi(token, payload);
+      const result = unwrap(await submitPublicRegistrationApi(token, payload));
+      showSuccess(result?.message || "You have been registered successfully.");
 
-      showSuccess(response.message || "You have been registered successfully.");
-      setSubmittedByIndex((prev) => ({ ...prev, [index]: { name: form.name.trim() } }));
+      if (Array.isArray(result?.tickets)) {
+        setTickets(result.tickets);
+      } else {
+        await loadRegistrationDetails();
+      }
+
+      setFormStates((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setFieldErrorsByKey((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
     } catch (error) {
-      // Existing friendly-error mapping handles an already-registered
-      // ticket (409) the same way it always has — relevant here since
-      // only one of these slots can ever be the ticket this token
-      // actually points to; any others will surface that same message.
       showError(
         getFriendlyErrorMessage(
           error,
           "Failed to submit your registration. Please try again."
         )
       );
+      // Someone may have just filled the last open slot from another
+      // tab/device; resync so this page doesn't keep offering a slot
+      // that no longer exists.
+      await loadRegistrationDetails();
     } finally {
-      setSubmittingIndex(null);
+      setSubmittingKey(null);
     }
   };
 
@@ -351,195 +339,214 @@ const PublicRegisterUser = () => {
     );
   }
 
-  // A signed link whose ticket is already registered stops here for
-  // every slot — same as the original single-registration behavior, just
-  // also covering quantity > 1 (the token still only ever points at one
-  // real ticket).
-  const alreadyRegistered = ticketDetails?.isRegistered;
+  if (tickets.length === 0) {
+    return (
+      <div className="publicRegister-page">
+        {heroTitle}
+        <div className="publicRegister-content">
+          <p className="publicRegister-statusText">No Booking Found</p>
+        </div>
+      </div>
+    );
+  }
 
-  // quantity comes only from the API response fetched above — never
-  // hardcoded, never derived from the URL. `forms.length` already
-  // reflects it (see buildEmptyForms in the token-validation effect).
-  const quantity = forms.length;
+  const firstTicket = tickets[0] || {};
+  const quantity = tickets.length;
+  const allRegistered = tickets.every((t) => t.isRegistered);
 
   return (
     <div className="publicRegister-page">
       {heroTitle}
 
       <div className="publicRegister-content">
-        {ticketDetails && (
+        {(firstTicket.eventTitle || firstTicket.ticketTypeName) && (
           <div className="publicRegister-summary">
-            {ticketDetails.eventTitle && (
+            {firstTicket.eventTitle && (
               <p className="publicRegister-summaryRow">
                 <span className="publicRegister-summaryLabel">Event</span>
                 <span className="publicRegister-summaryValue">
-                  {ticketDetails.eventTitle}
+                  {firstTicket.eventTitle}
                 </span>
               </p>
             )}
-            {ticketDetails.ticketTypeName && (
+            {firstTicket.ticketTypeName && (
               <p className="publicRegister-summaryRow">
                 <span className="publicRegister-summaryLabel">Ticket Type</span>
                 <span className="publicRegister-summaryValue">
-                  {ticketDetails.ticketTypeName}
-                </span>
-              </p>
-            )}
-            {ticketDetails.ticketNumber && (
-              <p className="publicRegister-summaryRow">
-                <span className="publicRegister-summaryLabel">Ticket No.</span>
-                <span className="publicRegister-summaryValue">
-                  {ticketDetails.ticketNumber}
+                  {firstTicket.ticketTypeName}
                 </span>
               </p>
             )}
           </div>
         )}
 
-        {alreadyRegistered ? (
-          <div className="publicRegister-card publicRegister-alreadyCard">
-            <span className="publicRegister-successIcon">&#10003;</span>
-            <p className="publicRegister-successTitle">Already Registered</p>
-            <p className="publicRegister-successText">
-              {ticketDetails?.attendee?.name
-                ? `This ticket is already registered to ${ticketDetails.attendee.name}.`
-                : "This ticket has already been registered."}
-            </p>
-          </div>
-        ) : (
-          // ================= REGISTRATION SLOT(S) =================
-          // quantity = 1 renders exactly one card here, unlabeled, same as
-          // the original markup. quantity > 1 renders one independently
-          // submittable card per slot, labeled "Registration 1".."Registration N".
-          <div
-            className={
-              quantity > 1
-                ? "publicRegister-grid"
-                : "publicRegister-singleWrap"
-            }
-          >
-            {forms.map((form, index) => {
-              const fieldErrors = getFieldErrorsForIndex(index);
-              const isFormValid = Object.keys(getFieldErrors(form)).length === 0;
-              const isSubmitting = submittingIndex === index;
-              const submitted = submittedByIndex[index];
-              const photoInputId = `publicRegister-photo-${index}`;
+        {/* ================= REGISTRATION SLOT(S) =================
+            One card per ticket under this booking, in the exact order
+            the backend persists them (see getRegistrationDetails on the
+            backend). Each slot's registered/pending state comes only
+            from that ticket's own `isRegistered`/`attendee` fields —
+            never from any local "just submitted" flag — so every slot
+            renders identically on first load and after a refresh. */}
+        <div
+          className={
+            quantity > 1 ? "publicRegister-grid" : "publicRegister-singleWrap"
+          }
+        >
+          {tickets.map((ticket, index) => {
+            const key = getTicketKey(ticket, index);
+            const memberNumber = index + 1;
 
+            if (ticket.isRegistered) {
+              const attendee = ticket.attendee || {};
               return (
-                <div key={index} className="publicRegister-slot">
+                <div className="publicRegister-slot" key={key}>
                   {quantity > 1 && (
                     <span className="publicRegister-slotLabel">
-                      Registration {index + 1}
+                      Registration {memberNumber}
                     </span>
                   )}
 
-                  {submitted ? (
-                    <div className="publicRegister-card publicRegister-successCard">
-                      <span className="publicRegister-successIcon">&#10003;</span>
-                      <p className="publicRegister-successTitle">You're registered!</p>
-                      <p className="publicRegister-successText">
-                        Thanks {submitted.name}, your details have been saved
-                        for this ticket.
-                      </p>
-                    </div>
-                  ) : (
-                    <form
-                      className="publicRegister-card"
-                      onSubmit={(e) => handleSubmit(index, e)}
-                    >
-                      <div className="publicRegister-photoWrap">
-                        <span className="publicRegister-photoCircle">
-                          {form.previewImage ? (
-                            <img
-                              src={form.previewImage}
-                              alt="Preview"
-                              className="publicRegister-photoPreviewImage"
-                            />
-                          ) : (
-                            <UploadPhotoPlaceholder />
-                          )}
-                        </span>
-                        <input
-                          id={photoInputId}
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          onChange={(e) => handleImageChange(index, e)}
+                  <div className="publicRegister-registeredCard">
+                    <span className="publicRegister-registeredAvatar">
+                      {attendee.profileImage ? (
+                        <img
+                          src={attendee.profileImage}
+                          alt={attendee.name}
+                          className="publicRegister-registeredAvatarImage"
                         />
-                        <label htmlFor={photoInputId} className="publicRegister-editBtn">
-                          <EditIcon />
-                        </label>
-                      </div>
+                      ) : (
+                        <RegisteredAvatarPlaceholder />
+                      )}
+                    </span>
 
-                      <span className="publicRegister-uploadText">upload photo</span>
-
-                      <div className="publicRegister-fieldGroup">
-                        <div className="publicRegister-fieldWrap">
-                          <input
-                            type="text"
-                            className="publicRegister-input"
-                            placeholder="Name"
-                            value={form.name}
-                            onChange={(e) => updateField(index, "name", e.target.value)}
-                            disabled={isSubmitting}
-                          />
-                          {fieldErrors.name && (
-                            <p className="publicRegister-fieldError">{fieldErrors.name}</p>
-                          )}
-                        </div>
-
-                        <div className="publicRegister-fieldWrap">
-                          <input
-                            type="tel"
-                            inputMode="numeric"
-                            className="publicRegister-input"
-                            placeholder="Mobile No."
-                            value={form.mobileNumber}
-                            maxLength={10}
-                            onChange={(e) =>
-                              updateField(
-                                index,
-                                "mobileNumber",
-                                e.target.value.replace(/\D/g, "").slice(0, 10)
-                              )
-                            }
-                            disabled={isSubmitting}
-                          />
-                          {fieldErrors.mobileNumber && (
-                            <p className="publicRegister-fieldError">
-                              {fieldErrors.mobileNumber}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="publicRegister-fieldWrap">
-                          <input
-                            type="email"
-                            className="publicRegister-input"
-                            placeholder="Email"
-                            value={form.email}
-                            onChange={(e) => updateField(index, "email", e.target.value)}
-                            disabled={isSubmitting}
-                          />
-                          {fieldErrors.email && (
-                            <p className="publicRegister-fieldError">{fieldErrors.email}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="publicRegister-submitBtn"
-                        disabled={isSubmitting || !isFormValid}
-                      >
-                        {isSubmitting ? "Submitting..." : "Submit"}
-                      </button>
-                    </form>
-                  )}
+                    <div className="publicRegister-registeredInfo">
+                      <span className="publicRegister-registeredName">
+                        {attendee.name || "-"}
+                      </span>
+                      <span className="publicRegister-registeredMobile">
+                        {attendee.mobileNumber || "-"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               );
-            })}
-          </div>
+            }
+
+            const form = getForm(key);
+            const fieldErrors = getFieldErrorsForKey(key);
+            const isFormValid = Object.keys(getFieldErrors(form)).length === 0;
+            const isSubmitting = submittingKey === key;
+            const photoInputId = `publicRegister-photo-${key}`;
+
+            return (
+              <div className="publicRegister-slot" key={key}>
+                {quantity > 1 && (
+                  <span className="publicRegister-slotLabel">
+                    Registration {memberNumber}
+                  </span>
+                )}
+
+                <form
+                  className="publicRegister-card"
+                  onSubmit={(e) => handleSubmit(key, e)}
+                >
+                  <div className="publicRegister-photoWrap">
+                    <span className="publicRegister-photoCircle">
+                      {form.previewImage ? (
+                        <img
+                          src={form.previewImage}
+                          alt="Preview"
+                          className="publicRegister-photoPreviewImage"
+                        />
+                      ) : (
+                        <UploadPhotoPlaceholder />
+                      )}
+                    </span>
+                    <input
+                      id={photoInputId}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => handleImageChange(key, e)}
+                    />
+                    <label htmlFor={photoInputId} className="publicRegister-editBtn">
+                      <EditIcon />
+                    </label>
+                  </div>
+
+                  <span className="publicRegister-uploadText">upload photo</span>
+
+                  <div className="publicRegister-fieldGroup">
+                    <div className="publicRegister-fieldWrap">
+                      <input
+                        type="text"
+                        className="publicRegister-input"
+                        placeholder="Name"
+                        value={form.name}
+                        onChange={(e) => updateField(key, "name", e.target.value)}
+                        disabled={isSubmitting}
+                      />
+                      {fieldErrors.name && (
+                        <p className="publicRegister-fieldError">{fieldErrors.name}</p>
+                      )}
+                    </div>
+
+                    <div className="publicRegister-fieldWrap">
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        className="publicRegister-input"
+                        placeholder="Mobile No."
+                        value={form.mobileNumber}
+                        maxLength={10}
+                        onChange={(e) =>
+                          updateField(
+                            key,
+                            "mobileNumber",
+                            e.target.value.replace(/\D/g, "").slice(0, 10)
+                          )
+                        }
+                        disabled={isSubmitting}
+                      />
+                      {fieldErrors.mobileNumber && (
+                        <p className="publicRegister-fieldError">
+                          {fieldErrors.mobileNumber}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="publicRegister-fieldWrap">
+                      <input
+                        type="email"
+                        className="publicRegister-input"
+                        placeholder="Email"
+                        value={form.email}
+                        onChange={(e) => updateField(key, "email", e.target.value)}
+                        disabled={isSubmitting}
+                      />
+                      {fieldErrors.email && (
+                        <p className="publicRegister-fieldError">{fieldErrors.email}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="publicRegister-submitBtn"
+                    disabled={isSubmitting || !isFormValid}
+                  >
+                    {isSubmitting ? "Submitting..." : "Submit"}
+                  </button>
+                </form>
+              </div>
+            );
+          })}
+        </div>
+
+        {allRegistered && (
+          <p className="publicRegister-completeText">
+            All registrations for this booking are complete.
+          </p>
         )}
       </div>
     </div>

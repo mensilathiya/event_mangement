@@ -255,6 +255,79 @@
   padding: 40px 24px;
 }
 
+/* Registered-slot card — mirrors RegisterUsers.css's
+   .bookingRegister-registeredCard so an already-registered slot on the
+   public page looks the same as the authenticated Private Registration
+   page, per the requirement to reuse that UI wherever possible. */
+.publicRegister-registeredCard {
+  width: 100%;
+  max-width: 420px;
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 20px 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.publicRegister-registeredAvatar {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  border-radius: 50%;
+  background-color: #d7d9e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.publicRegister-registeredAvatarIcon {
+  width: 28px;
+  height: 28px;
+}
+
+.publicRegister-registeredAvatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.publicRegister-registeredInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.publicRegister-registeredName {
+  color: #1b2a4e;
+  font-weight: 700;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.publicRegister-registeredMobile {
+  color: #1976d2;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+/* Shown under the grid/slot once every ticket on this booking is
+   registered — same message as RegisterUsers.jsx, styled for this
+   page's light content area rather than the dark hero. */
+.publicRegister-completeText {
+  color: #1b2a4e;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  margin: 24px 0 0 0;
+}
+
 .publicRegister-errorIcon {
   width: 52px;
   height: 52px;
