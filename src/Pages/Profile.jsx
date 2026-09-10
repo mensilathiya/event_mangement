@@ -115,7 +115,7 @@ export default function Profile() {
   // already comes from the existing getProfile() dispatch above; no
   // additional API call needed.
   const LOGO_AVATAR =
-    "https://ui-avatars.com/api/?name=SA&background=17a2b8&color=fff&bold=true";
+    "https://ui-avatars.com/api/?name=CL&background=17a2b8&color=fff&bold=true";
 
   const avatarUrl = profile?.profileImage || LOGO_AVATAR;
 

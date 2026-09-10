@@ -162,8 +162,8 @@ export default function Sidebar() {
               className='logoIcon'
             />
             <div className='logoText'>
-              <span className='logoShubh'>Shubh</span>
-              <span className='logoHindi'>अवसर</span>
+              <span className='logoShubh'>City</span>
+              <span className='logoHindi'>LifeStyle</span>
             </div>
           </div>
 

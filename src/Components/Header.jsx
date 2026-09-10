@@ -73,7 +73,7 @@ export default function Header({ title = "Dashboard" }) {
   // Profile image — same field/fallback pattern already used in User.jsx's
   // list view (user.profileImage || LOGO_AVATAR).
   const LOGO_AVATAR =
-    "https://ui-avatars.com/api/?name=SA&background=17a2b8&color=fff&bold=true";
+    "https://ui-avatars.com/api/?name=cl&background=17a2b8&color=fff&bold=true";
 
   const PROFILE_IMAGE_URL = currentUser?.profileImage || LOGO_AVATAR;
 
