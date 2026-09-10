@@ -4,6 +4,7 @@ import Sidebar from "../Components/Sidebar";
 import Header from "../Components/Header";
 import BookingUserModal from "../Components/BookingUserModal";
 import BookingResendModal from "../Components/BookingResendModal";
+import TicketDetailsModal from "../Components/TicketDetailsModal";
 import { Link, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getBookingById } from "../redux/booking/bookingThunk";
@@ -46,6 +47,7 @@ const ViewBooking = () => {
   const [isBookingUserModalOpen, setIsBookingUserModalOpen] = useState(false);
   const [resendTarget, setResendTarget] = useState(null);
   const [selectedTicketId, setSelectedTicketId] = useState(null);
+  const [viewDetailsTicket, setViewDetailsTicket] = useState(null);
   const toggleMenu = (rowId) => {
     setOpenMenuId((prev) => (prev === rowId ? null : rowId));
   };
@@ -325,6 +327,25 @@ const ViewBooking = () => {
                                     border: "none",
                                   }}
                                   onClick={() => {
+                                    setViewDetailsTicket(ticket);
+                                    setOpenMenuId(null);
+                                  }}
+                                >
+                                  View Details
+                                </button>
+                                <button
+                                  type="button"
+                                  style={{
+                                    padding: "9px 12px",
+                                    borderRadius: "8px",
+                                    fontSize: "13.5px",
+                                    color: "#3a3d4d",
+                                    cursor: "pointer",
+                                    textAlign: "left",
+                                    background: "transparent",
+                                    border: "none",
+                                  }}
+                                  onClick={() => {
                                     setSelectedTicketId(ticket._id);
                                     setIsBookingUserModalOpen(true);
                                     setOpenMenuId(null);
@@ -367,6 +388,23 @@ const ViewBooking = () => {
           </div>
         </div>
       </div>
+
+      {viewDetailsTicket && (
+        <div
+          tabIndex={-1}
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setViewDetailsTicket(null);
+            }
+          }}
+        >
+          <TicketDetailsModal
+            ticket={viewDetailsTicket}
+            onClose={() => setViewDetailsTicket(null)}
+          />
+        </div>
+      )}
 
       {isBookingUserModalOpen && (
         <div

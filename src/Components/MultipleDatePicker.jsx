@@ -3,7 +3,7 @@ import { FaRegCalendarAlt } from "react-icons/fa";
 import "../assets/CSS/MultipleDatePicker.css";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 const MultipleDatePicker = ({
     value = [],
     onChange,
@@ -46,9 +46,26 @@ const MultipleDatePicker = ({
     // react-day-picker's own `disabled` matcher — dates before minDate or
     // after maxDate become genuinely unclickable in the grid, not just
     // rejected after the fact.
-    const disabledMatchers = [];
-    if (minDate) disabledMatchers.push({ before: minDate });
-    if (maxDate) disabledMatchers.push({ after: maxDate });
+    //
+    // BUT: a date already saved on this Ticket Type (passed in via `value`
+    // when the picker opened) must stay clickable even if it now falls
+    // outside the Event's current min/max range — e.g. the Event's dates
+    // were edited after this Ticket Type was created. Otherwise
+    // react-day-picker's disabled matcher blocks ALL interaction with that
+    // day, including deselecting it, and the user gets permanently stuck
+    // with a date they can see selected but can never remove or change.
+    // Only brand-new out-of-range picks should be blocked — existing ones
+    // must remain fully editable.
+    const isOriginallySelected = (date) =>
+        value.some((d) => isSameDay(d, date));
+
+    const isOutsideRange = (date) =>
+        (minDate && date < minDate) || (maxDate && date > maxDate);
+
+    const dateDisabledMatcher = (date) =>
+        isOutsideRange(date) && !isOriginallySelected(date);
+
+    const hasRangeBounds = Boolean(minDate || maxDate);
 
     return (
         <div
@@ -85,7 +102,7 @@ const MultipleDatePicker = ({
                         selected={tempDates}
                         onSelect={(dates) => setTempDates(dates || [])}
                         showOutsideDays
-                        disabled={disabledMatchers.length ? disabledMatchers : undefined}
+                        disabled={hasRangeBounds ? dateDisabledMatcher : undefined}
                     />
                     <div className="multipleDatePicker-footer">
                         <button

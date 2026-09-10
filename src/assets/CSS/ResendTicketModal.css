@@ -72,6 +72,29 @@
   color: #1b2a4e;
 }
 
+/* The multi-ticket picker (CommonSelect) previously rendered with no
+   className, so it fell back to the browser's bare, unstyled <select> —
+   looking out of place inside this styled modal. Matches the input style
+   already used for selects elsewhere (see Booking.css's
+   .bookingPage-filterSelect). */
+.bookingResendSelect {
+  width: 100%;
+  padding: 13px 16px;
+  border: 1px solid #e3e4ea;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: #1b2a4e;
+  background-color: #ffffff;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bookingResendSelect:focus {
+  border-color: #6f6bf0;
+  box-shadow: 0 0 0 4px rgba(111, 107, 240, 0.12);
+}
+
 .bookingResendOkayBtn {
   background-color: #6f6bf0;
   color: #ffffff;

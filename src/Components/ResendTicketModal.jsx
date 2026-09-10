@@ -124,6 +124,7 @@ export default function ResendTicketModal({ bookingId, onClose, onSuccess }) {
                   resend:
                 </label>
                 <CommonSelect
+                  className="bookingResendSelect"
                   value={selectedTicketId}
                   onChange={(e) => setSelectedTicketId(e.target.value)}
                   placeholder="Select a ticket"

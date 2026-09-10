@@ -109,12 +109,25 @@ const CreateTicketTypeModal = ({
   useEffect(() => {
     if (isEditMode && selectedTicketType) {
       setFormData({
-        ticketName: selectedTicketType.ticketName || "",
-        allowDayCount: selectedTicketType.allowDayCount || "",
-        amount: selectedTicketType.amount || "",
-        allowDates: selectedTicketType.allowDates || [],
-        availableCount: selectedTicketType.availableCount || "",
-        description: selectedTicketType.description || "",
+        ticketName: selectedTicketType.ticketName ?? "",
+        // `??` (not `||`) so a legitimate 0 value is prefilled as 0
+        // instead of being wiped to an empty string — `0 || ""` evaluates
+        // to "" since 0 is falsy, which is wrong here.
+        allowDayCount: selectedTicketType.allowDayCount ?? "",
+        amount: selectedTicketType.amount ?? "",
+        // API returns allowDates as ISO date strings, but the calendar
+        // (react-day-picker + date-fns `format`) needs real local-midnight
+        // Date instances to recognize them as "selected" and to format
+        // them — passing the raw strings through left the picker showing
+        // no selection and could throw inside date-fns' format(). Reuse
+        // the same string->local-Date conversion used everywhere else in
+        // this file so it matches exactly how newly-picked dates are
+        // represented.
+        allowDates: (selectedTicketType.allowDates || [])
+          .map((d) => parseDateOnlyToLocalDate(toDateOnlyString(d)))
+          .filter(Boolean),
+        availableCount: selectedTicketType.availableCount ?? "",
+        description: selectedTicketType.description ?? "",
       });
     } else {
       setFormData({
@@ -208,15 +221,22 @@ const CreateTicketTypeModal = ({
       case "ticketName":
         return !data.ticketName.trim() ? "Ticket name is required" : "";
       case "allowDayCount":
-        if (!data.allowDayCount) return "Allow day count is required";
+        // `data.allowDayCount === ""` (not `!data.allowDayCount`) so a
+        // valid 0 isn't flagged as missing — only an actually-empty field
+        // is "required".
+        if (data.allowDayCount === "" || data.allowDayCount === null || data.allowDayCount === undefined)
+          return "Allow day count is required";
         return Number(data.allowDayCount) < 0 ? "Allow day count cannot be negative" : "";
       case "allowDates":
         return getAllowDatesError(data);
       case "amount":
-        if (!data.amount) return "Amount is required";
+        if (data.amount === "" || data.amount === null || data.amount === undefined)
+          return "Amount is required";
         return Number(data.amount) < 0 ? "Amount cannot be negative" : "";
       case "availableCount":
-        return !data.availableCount ? "Available count is required" : "";
+        return (data.availableCount === "" || data.availableCount === null || data.availableCount === undefined)
+          ? "Available count is required"
+          : "";
       case "description":
         return !data.description.trim() ? "Description is required" : "";
       default:
@@ -273,11 +293,16 @@ const CreateTicketTypeModal = ({
       ticketName: formData.ticketName,
       allowDayCount: Number(formData.allowDayCount),
       amount: Number(formData.amount),
-      // allowDates are already normalized "YYYY-MM-DD" strings from
-      // MultipleDatePicker — previously this ran them through
-      // `new Date(date).toISOString()`, which risked shifting the date
-      // by a day for users in timezones ahead of UTC.
-      allowDates: formData.allowDates,
+      // formData.allowDates holds raw Date objects from MultipleDatePicker
+      // (react-day-picker), NOT strings. Sending Date objects straight
+      // into a JSON request body is the actual bug: JSON.stringify calls
+      // Date.prototype.toJSON(), which is UTC-based, so a local midnight
+      // Date in a timezone ahead of UTC (e.g. IST, UTC+5:30) silently
+      // shifts back to the *previous* day once it hits the backend —
+      // pick 10th, and 9th gets saved. Converting with toDateOnlyString
+      // (local getters, not toISOString) locks in the calendar day the
+      // user actually clicked before it ever reaches JSON.stringify.
+      allowDates: formData.allowDates.map(toDateOnlyString).filter(Boolean),
       availableCount: Number(formData.availableCount),
       description: formData.description,
     };

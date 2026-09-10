@@ -6,6 +6,17 @@ import { getBookingById } from "../redux/booking/bookingThunk";
 import { updateRegisterUser } from "../redux/bookingTicket/bookingTicketThunk";
 import { showError, showSuccess } from "../utilits/toast";
 
+// ================= LAYOUT PARITY WITH PublicRegisterUser.jsx =================
+// This component intentionally mirrors PublicRegisterUser.jsx's structure —
+// same hero, content wrapper, event/ticket-type summary card, slot-wrapped
+// (max-width 420px) cards, responsive grid breakpoints, and disabled-state
+// submit button — so Private and Public Registration share one visual
+// design/layout. Only genuinely Private-specific pieces are kept: the
+// "MEMBER N" label text (vs Public's "Registration N"), the registered
+// ticket's QR thumbnail (staff-only — the public/attendee flow deliberately
+// doesn't expose it), and this page's Redux-backed data source
+// (getBookingById / updateRegisterUser) instead of the public token API.
+
 function UploadPhotoPlaceholder() {
   return (
     <svg
@@ -62,26 +73,65 @@ const emptyForm = {
 // Same validation rules used by BookingUserModal's single-ticket form, kept
 // in sync here since each pending slot below submits through the same
 // updateRegisterUser API.
-const validateForm = (form) => {
-  if (!form.name.trim()) return "Please enter name.";
-  if (!/^[A-Za-z ]+$/.test(form.name)) return "Name is invalid.";
-  if (!/^[6-9]\d{9}$/.test(form.mobileNumber))
-    return "Please enter valid mobile number.";
-  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-    return "Please enter valid email.";
+//
+// Mirrors PublicRegisterUser.jsx's getFieldErrors: returns a
+// { fieldName: message } map (instead of a single string) so each error
+// can be rendered directly below its own field, exactly like the Public
+// Registration flow, rather than as a generic toast.
+const getFieldErrors = (form) => {
+  const errors = {};
+
+  if (!form.name.trim()) {
+    errors.name = "Please enter name.";
+  } else if (!/^[A-Za-z ]+$/.test(form.name)) {
+    errors.name = "Name is invalid.";
+  }
+
+  if (!/^[6-9]\d{9}$/.test(form.mobileNumber)) {
+    errors.mobileNumber = "Please enter valid mobile number.";
+  }
+
+  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    errors.email = "Please enter valid email.";
+  }
+
+  return errors;
+};
+
+// Maps a backend validation message to the field it's about, so it can be
+// shown inline under that field (like Public Registration) instead of a
+// generic toast. Backend responses here only carry a `message` string (see
+// bookingTicketThunk.js), so the mapping is done by keyword — if the
+// message doesn't clearly belong to one of these fields (e.g. "booking not
+// found", "already registered", server errors), it falls back to the
+// existing toast behavior below.
+const mapBackendMessageToField = (message) => {
+  if (!message) return null;
+  if (/mobile/i.test(message)) return "mobileNumber";
+  if (/email/i.test(message)) return "email";
+  if (/\bname\b/i.test(message)) return "name";
   return null;
 };
 
 const RegisterUsers = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
-  const { booking, detailsLoading, error } = useSelector(
+  // NOTE: the booking slice's failure field is `detailsError` (see
+  // redux/booking/bookingSlice.js) — a plain `error` field doesn't exist
+  // there, so reading it kept this always `undefined` and a real fetch
+  // failure was silently falling through to the generic "No Booking Found"
+  // text instead of showing the actual error.
+  const { booking, detailsLoading, detailsError } = useSelector(
     (state) => state.booking
   );
 
   // Pending-form input state per ticket slot, keyed by ticket _id. Only
   // slots that are currently unregistered ever have an entry here.
   const [formStates, setFormStates] = useState({});
+  // Field-level errors per ticket slot, keyed by ticket _id — mirrors
+  // PublicRegisterUser.jsx's fieldErrorsByKey so each slot's errors render
+  // directly below their own inputs instead of as a toast.
+  const [fieldErrorsByKey, setFieldErrorsByKey] = useState({});
   // Optimistic per-ticket overrides applied the instant a registration
   // succeeds, so that slot flips to the registered card immediately
   // instead of waiting on the background refetch below.
@@ -97,12 +147,23 @@ const RegisterUsers = () => {
   }, [dispatch, id]);
 
   const getFormState = (ticketId) => formStates[ticketId] || emptyForm;
+  const getFieldErrorsForTicket = (ticketId) =>
+    fieldErrorsByKey[ticketId] || {};
 
   const updateFormField = (ticketId, field, value) => {
     setFormStates((prev) => ({
       ...prev,
       [ticketId]: { ...getFormState(ticketId), [field]: value },
     }));
+
+    // Clear this field's visible error the instant it's edited, so a
+    // corrected value doesn't keep showing a stale message (same as
+    // PublicRegisterUser.jsx's updateField).
+    setFieldErrorsByKey((prev) => {
+      const current = prev[ticketId];
+      if (!current || !current[field]) return prev;
+      return { ...prev, [ticketId]: { ...current, [field]: undefined } };
+    });
   };
 
   const handleImageChange = (ticketId, e) => {
@@ -131,10 +192,12 @@ const RegisterUsers = () => {
 
   const handleSubmit = async (ticketId) => {
     const form = getFormState(ticketId);
-    const validationError = validateForm(form);
+    const errors = getFieldErrors(form);
 
-    if (validationError) {
-      showError(validationError);
+    // Client-side validation errors render directly below their own field
+    // (like Public Registration) instead of a generic toast.
+    if (Object.keys(errors).length > 0) {
+      setFieldErrorsByKey((prev) => ({ ...prev, [ticketId]: errors }));
       return;
     }
 
@@ -170,12 +233,32 @@ const RegisterUsers = () => {
         delete next[ticketId];
         return next;
       });
+      setFieldErrorsByKey((prev) => {
+        const next = { ...prev };
+        delete next[ticketId];
+        return next;
+      });
 
       // Resync the canonical booking/tickets list in the background so a
       // later refresh of this page reflects the server's own record.
       if (id) dispatch(getBookingById(id));
     } else {
-      showError(response.payload || "Failed to register user.");
+      const message = response.payload || "Failed to register user.";
+      const field = mapBackendMessageToField(message);
+
+      if (field) {
+        // Backend validation error for a specific field — show it inline
+        // under that field instead of a generic toast.
+        setFieldErrorsByKey((prev) => ({
+          ...prev,
+          [ticketId]: { ...getFieldErrorsForTicket(ticketId), [field]: message },
+        }));
+      } else {
+        // Not tied to a specific field (e.g. booking/ticket not found,
+        // already registered, server error) — same toast fallback as
+        // before.
+        showError(message);
+      }
     }
   };
 
@@ -193,16 +276,26 @@ const RegisterUsers = () => {
     return (
       <div className="bookingRegister-page">
         {heroTitle}
-        <p className="bookingRegister-statusText">Loading...</p>
+        <div className="bookingRegister-content">
+          <p className="bookingRegister-statusText">Loading...</p>
+        </div>
       </div>
     );
   }
 
-  if (!booking || error) {
+  if (!booking || detailsError) {
     return (
       <div className="bookingRegister-page">
         {heroTitle}
-        <p className="bookingRegister-statusText">No Booking Found</p>
+        <div className="bookingRegister-content">
+          <div className="bookingRegister-card bookingRegister-errorCard">
+            <span className="bookingRegister-errorIcon">&#33;</span>
+            <p className="bookingRegister-errorTitle">Booking not found</p>
+            <p className="bookingRegister-errorText">
+              {detailsError || "No Booking Found"}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -214,160 +307,243 @@ const RegisterUsers = () => {
   // pending registration form — nothing here invents extra slots or drops
   // existing registered ones.
   const slots = Array.from({ length: quantity }, (_, i) => bookingTickets[i] || null);
+  const allRegistered =
+    quantity > 0 && slots.every((slotTicket) => {
+      if (!slotTicket) return false;
+      const ticket = registeredOverrides[slotTicket._id] || slotTicket;
+      return ticket.isRegistered;
+    });
 
   return (
     <div className="bookingRegister-page">
       {heroTitle}
 
-      {quantity === 0 ? (
-        <p className="bookingRegister-statusText">
-          This booking has no ticket quantity to register.
-        </p>
-      ) : (
-        <div className="bookingRegister-grid">
-          {slots.map((slotTicket, index) => {
-            const memberNumber = index + 1;
+      <div className="bookingRegister-content">
+        {/* Event / Ticket Type summary — same card as
+            PublicRegisterUser.jsx's publicRegister-summary. The booking
+            record already carries these populated (see backend
+            getBookingById), so no extra fetch is needed here. */}
+        {(booking.eventId?.title || booking.ticketTypeId?.ticketName) && (
+          <div className="bookingRegister-summary">
+            {booking.eventId?.title && (
+              <p className="bookingRegister-summaryRow">
+                <span className="bookingRegister-summaryLabel">Event</span>
+                <span className="bookingRegister-summaryValue">
+                  {booking.eventId.title}
+                </span>
+              </p>
+            )}
+            {booking.ticketTypeId?.ticketName && (
+              <p className="bookingRegister-summaryRow">
+                <span className="bookingRegister-summaryLabel">Ticket Type</span>
+                <span className="bookingRegister-summaryValue">
+                  {booking.ticketTypeId.ticketName}
+                </span>
+              </p>
+            )}
+          </div>
+        )}
 
-            if (!slotTicket) {
-              return (
-                <div className="bookingRegister-card" key={`empty-${memberNumber}`}>
-                  <span className="bookingRegister-memberLabel">
-                    MEMBER {memberNumber}
-                  </span>
-                  <div className="bookingRegister-cardBody">
-                    <p className="bookingRegister-unavailableText">
-                      Ticket data not available.
-                    </p>
-                  </div>
-                </div>
-              );
+        {quantity === 0 ? (
+          <p className="bookingRegister-statusText">
+            This booking has no ticket quantity to register.
+          </p>
+        ) : (
+          <div
+            className={
+              quantity > 1 ? "bookingRegister-grid" : "bookingRegister-singleWrap"
             }
+          >
+            {slots.map((slotTicket, index) => {
+              const memberNumber = index + 1;
 
-            const ticket = registeredOverrides[slotTicket._id] || slotTicket;
+              if (!slotTicket) {
+                return (
+                  <div className="bookingRegister-slot" key={`empty-${memberNumber}`}>
+                    {quantity > 1 && (
+                      <span className="bookingRegister-memberLabel">
+                        MEMBER {memberNumber}
+                      </span>
+                    )}
+                    <div className="bookingRegister-card">
+                      <p className="bookingRegister-unavailableText">
+                        Ticket data not available.
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
 
-            if (ticket.isRegistered) {
-              const attendee = ticket.attendee || {};
-              return (
-                <div className="bookingRegister-card" key={ticket._id}>
-                  <span className="bookingRegister-memberLabel">
-                    MEMBER {memberNumber}
-                  </span>
+              const ticket = registeredOverrides[slotTicket._id] || slotTicket;
 
-                  <div className="bookingRegister-registeredCard">
-                    <span className="bookingRegister-registeredAvatar">
-                      {attendee.profileImage ? (
+              if (ticket.isRegistered) {
+                const attendee = ticket.attendee || {};
+                return (
+                  <div className="bookingRegister-slot" key={ticket._id}>
+                    {quantity > 1 && (
+                      <span className="bookingRegister-memberLabel">
+                        MEMBER {memberNumber}
+                      </span>
+                    )}
+
+                    <div className="bookingRegister-registeredCard">
+                      <span className="bookingRegister-registeredAvatar">
+                        {attendee.profileImage ? (
+                          <img
+                            src={attendee.profileImage}
+                            alt={attendee.name}
+                            className="bookingRegister-registeredAvatarImage"
+                          />
+                        ) : (
+                          <RegisteredAvatarPlaceholder />
+                        )}
+                      </span>
+
+                      <div className="bookingRegister-registeredInfo">
+                        <span className="bookingRegister-registeredName">
+                          {attendee.name || "-"}
+                        </span>
+                        <span className="bookingRegister-registeredMobile">
+                          {attendee.mobileNumber || "-"}
+                        </span>
+                      </div>
+
+                      {ticket.qrImage && (
                         <img
-                          src={attendee.profileImage}
-                          alt={attendee.name}
-                          className="bookingRegister-registeredAvatarImage"
+                          src={ticket.qrImage}
+                          alt={ticket.ticketNumber || "QR code"}
+                          className="bookingRegister-registeredQr"
                         />
-                      ) : (
-                        <RegisteredAvatarPlaceholder />
                       )}
-                    </span>
+                    </div>
+                  </div>
+                );
+              }
 
-                    <div className="bookingRegister-registeredInfo">
-                      <span className="bookingRegister-registeredName">
-                        {attendee.name || "-"}
+              const form = getFormState(ticket._id);
+              const fieldErrors = getFieldErrorsForTicket(ticket._id);
+              const isFormValid = Object.keys(getFieldErrors(form)).length === 0;
+              const isSubmitting = submittingTicketId === ticket._id;
+              const photoInputId = `bookingRegister-photo-${ticket._id}`;
+
+              return (
+                <div className="bookingRegister-slot" key={ticket._id}>
+                  {quantity > 1 && (
+                    <span className="bookingRegister-memberLabel">
+                      MEMBER {memberNumber}
+                    </span>
+                  )}
+
+                  <div className="bookingRegister-card">
+                    <div className="bookingRegister-photoWrap">
+                      <span className="bookingRegister-photoCircle">
+                        {form.previewImage ? (
+                          <img
+                            src={form.previewImage}
+                            alt="Preview"
+                            className="bookingRegister-photoPreviewImage"
+                          />
+                        ) : (
+                          <UploadPhotoPlaceholder />
+                        )}
                       </span>
-                      <span className="bookingRegister-registeredMobile">
-                        {attendee.mobileNumber || "-"}
-                      </span>
+                      <input
+                        id={photoInputId}
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(e) => handleImageChange(ticket._id, e)}
+                      />
+                      <label htmlFor={photoInputId} className="bookingRegister-editBtn">
+                        <EditIcon />
+                      </label>
                     </div>
 
-                    {ticket.qrImage && (
-                      <img
-                        src={ticket.qrImage}
-                        alt={ticket.ticketNumber || "QR code"}
-                        className="bookingRegister-registeredQr"
-                      />
-                    )}
+                    <span className="bookingRegister-uploadText">upload photo</span>
+
+                    <div className="bookingRegister-fieldGroup">
+                      <div className="bookingRegister-fieldWrap">
+                        <input
+                          type="text"
+                          className="bookingRegister-input"
+                          placeholder="Name"
+                          value={form.name}
+                          onChange={(e) =>
+                            updateFormField(ticket._id, "name", e.target.value)
+                          }
+                          disabled={isSubmitting}
+                        />
+                        {fieldErrors.name && (
+                          <p className="bookingRegister-fieldError">
+                            {fieldErrors.name}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="bookingRegister-fieldWrap">
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          className="bookingRegister-input"
+                          placeholder="Mobile No."
+                          value={form.mobileNumber}
+                          maxLength={10}
+                          onChange={(e) =>
+                            updateFormField(
+                              ticket._id,
+                              "mobileNumber",
+                              e.target.value.replace(/\D/g, "").slice(0, 10)
+                            )
+                          }
+                          disabled={isSubmitting}
+                        />
+                        {fieldErrors.mobileNumber && (
+                          <p className="bookingRegister-fieldError">
+                            {fieldErrors.mobileNumber}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="bookingRegister-fieldWrap">
+                        <input
+                          type="email"
+                          className="bookingRegister-input"
+                          placeholder="Email"
+                          value={form.email}
+                          onChange={(e) =>
+                            updateFormField(ticket._id, "email", e.target.value)
+                          }
+                          disabled={isSubmitting}
+                        />
+                        {fieldErrors.email && (
+                          <p className="bookingRegister-fieldError">
+                            {fieldErrors.email}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="bookingRegister-submitBtn"
+                      onClick={() => handleSubmit(ticket._id)}
+                      disabled={isSubmitting || !isFormValid}
+                    >
+                      {isSubmitting ? "Submitting..." : "Submit"}
+                    </button>
                   </div>
                 </div>
               );
-            }
+            })}
+          </div>
+        )}
 
-            const form = getFormState(ticket._id);
-            const isSubmitting = submittingTicketId === ticket._id;
-            const photoInputId = `bookingRegister-photo-${ticket._id}`;
-
-            return (
-              <div className="bookingRegister-card" key={ticket._id}>
-                <span className="bookingRegister-memberLabel">
-                  MEMBER {memberNumber}
-                </span>
-
-                <div className="bookingRegister-cardBody">
-                  <div className="bookingRegister-photoWrap">
-                    <span className="bookingRegister-photoCircle">
-                      {form.previewImage ? (
-                        <img
-                          src={form.previewImage}
-                          alt="Preview"
-                          className="bookingRegister-photoPreviewImage"
-                        />
-                      ) : (
-                        <UploadPhotoPlaceholder />
-                      )}
-                    </span>
-                    <input
-                      id={photoInputId}
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(e) => handleImageChange(ticket._id, e)}
-                    />
-                    <label htmlFor={photoInputId} className="bookingRegister-editBtn">
-                      <EditIcon />
-                    </label>
-                  </div>
-
-                  <span className="bookingRegister-uploadText">upload photo</span>
-
-                  <div className="bookingRegister-fieldGroup">
-                    <input
-                      type="text"
-                      className="bookingRegister-input"
-                      placeholder="Name"
-                      value={form.name}
-                      onChange={(e) =>
-                        updateFormField(ticket._id, "name", e.target.value)
-                      }
-                    />
-                    <input
-                      type="text"
-                      className="bookingRegister-input"
-                      placeholder="Mobile No."
-                      value={form.mobileNumber}
-                      onChange={(e) =>
-                        updateFormField(ticket._id, "mobileNumber", e.target.value)
-                      }
-                    />
-                    <input
-                      type="email"
-                      className="bookingRegister-input"
-                      placeholder="Email"
-                      value={form.email}
-                      onChange={(e) =>
-                        updateFormField(ticket._id, "email", e.target.value)
-                      }
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    className="bookingRegister-submitBtn"
-                    onClick={() => handleSubmit(ticket._id)}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Submitting..." : "Submit"}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+        {allRegistered && (
+          <p className="bookingRegister-completeText">
+            All registrations for this booking are complete.
+          </p>
+        )}
+      </div>
     </div>
   );
 };
