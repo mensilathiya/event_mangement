@@ -200,6 +200,29 @@
   }
 }
 
+/* Match the tiered scale used on Entry Report: title/card/table ease down
+   gradually instead of jumping straight from desktop to the mobile tier. */
+@media (max-width: 1200px) {
+  .userPage__content {
+    padding: 24px 24px 40px 24px;
+  }
+}
+
+@media (max-width: 992px) {
+  .userPage__pageTitle {
+    font-size: 22px;
+  }
+
+  .userPage__tableCard {
+    padding: 20px;
+  }
+
+  .userPage__table thead th,
+  .userPage__table tbody td {
+    padding: 12px 12px;
+  }
+}
+
 /* Tablet: 768px - 1024px */
 @media (max-width: 1024px) and (min-width: 768px) {
   .userPage__tableControls {
@@ -221,6 +244,29 @@
 @media (max-width: 767px) {
   .userPage__content {
     padding: 22px 18px 40px 18px;
+  }
+
+  .userPage__pageTitle {
+    font-size: 19px;
+  }
+
+  .userPage__breadcrumb {
+    font-size: 12px;
+  }
+
+  .userPage__tableCard {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .userPage__table thead th {
+    font-size: 11px;
+    padding: 10px 10px;
+  }
+
+  .userPage__table tbody td {
+    font-size: 13px;
+    padding: 11px 10px;
   }
 
   .userPage__topRow {
@@ -255,6 +301,16 @@
   .userPage__table td,
   .userPage__table th {
     overflow-wrap: break-word;
+  }
+}
+
+@media (max-width: 380px) {
+  .userPage__content {
+    padding: 18px 14px 32px 14px;
+  }
+
+  .userPage__tableCard {
+    padding: 14px;
   }
 }
 

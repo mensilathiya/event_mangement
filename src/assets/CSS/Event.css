@@ -397,10 +397,33 @@ a{
   }
 }
 
+@media (max-width: 992px) {
+  .eventList__title {
+    font-size: 22px;
+  }
+
+  .eventList__card {
+    padding: 20px;
+  }
+
+  .eventList__table thead th,
+  .eventList__table tbody td {
+    padding: 12px 12px;
+  }
+}
+
 @media (max-width: 640px) {
   .eventList__wrapper {
     padding: 22px 18px 0 18px;
     /* overflow-x: hidden; */
+  }
+
+  .eventList__title {
+    font-size: 19px;
+  }
+
+  .eventList__breadcrumb {
+    font-size: 12px;
   }
 
   /* Toolbar wrapping */

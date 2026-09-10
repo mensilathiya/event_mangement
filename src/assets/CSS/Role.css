@@ -282,9 +282,32 @@
   }
 }
 
+@media (max-width: 992px) {
+  .pageRoleTitle {
+    font-size: 22px;
+  }
+
+  .tableCard {
+    padding: 20px;
+  }
+
+  .roleTable thead th,
+  .roleTable tbody td {
+    padding: 12px 12px;
+  }
+}
+
 @media (max-width: 640px) {
   .content {
     padding: 22px 18px 40px 18px;
+  }
+
+  .pageRoleTitle {
+    font-size: 19px;
+  }
+
+  .breadcrumb {
+    font-size: 12px;
   }
 
   .searchRoleBox {

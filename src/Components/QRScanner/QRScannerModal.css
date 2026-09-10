@@ -457,6 +457,35 @@
   padding: 6px 4px;
 }
 
+.crmQrAvatarRow {
+  display: flex;
+  justify-content: center;
+  padding: 4px 4px 14px;
+}
+
+.crmQrAvatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--crmQr-accent-purple);
+  flex-shrink: 0;
+}
+
+.crmQrAvatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.crmQrAvatarIcon {
+  width: 34px;
+  height: 34px;
+}
+
 .crmQrCardRow {
   display: flex;
   align-items: center;

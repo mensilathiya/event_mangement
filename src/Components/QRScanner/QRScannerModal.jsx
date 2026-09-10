@@ -223,6 +223,24 @@ const getErrorDisplayMessage = (error) => {
   }
   return error.message;
 };
+/* Delay (ms) the "Entry Allowed Successfully" state stays on screen
+   before the scanner automatically clears the ticket and restarts the
+   camera for the next scan (requirements 3 & 7). */
+const AUTO_ADVANCE_DELAY_MS = 2500;
+
+const AvatarPlaceholder = ({ className }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <circle cx="12" cy="8" r="4" fill="#ffffff" />
+    <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="#ffffff" />
+  </svg>
+);
+
 /**
  * QRScannerModal
  *
@@ -235,7 +253,10 @@ const getErrorDisplayMessage = (error) => {
  *   Loading, Invalid QR, Used Ticket, Cancelled Ticket, Event Expired —
  *   each with its own icon, color, and message — or the verified
  *   ticket card (Name, Mobile, Booking No., Ticket, Event, Date, Status)
- *   with Allow Entry / Scan Next / Close actions.
+ *   with Scan Next / Close actions. A valid ticket is checked in
+ *   automatically (no "Allow Entry" click needed) and, after showing the
+ *   success tick briefly, the scanner clears the ticket and restarts on
+ *   its own so it's ready for the next QR code.
  * - Fully tears down the scanner (stop + clear) on close/unmount and
  *   resets all local camera state to avoid stale state and memory leaks.
  * - Traps focus while open, restores it on close, and closes on Escape.
@@ -438,7 +459,11 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
     await enqueueCameraOperation(() => startScanner(activeCameraId));
   }, [resetVerificationState, enqueueCameraOperation, startScanner, activeCameraId]);
 
-  // "Allow Entry": check the ticket in using the existing checkInQr thunk
+  // "Allow Entry" used to be a manual button click. Entry is now approved
+  // automatically as soon as a ticket verifies as valid — this dispatches
+  // the exact same existing checkInQr thunk, just without waiting for a
+  // click. Guarded by autoCheckInKeyRef below so it only fires once per
+  // verified ticket.
   const handleAllowEntry = useCallback(() => {
     if (!ticket) return;
 
@@ -453,6 +478,37 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
       })
       .catch(() => { });
   }, [dispatch, ticket, onCheckedIn]);
+
+  // Tracks which ticket (by qrToken) has already had check-in triggered,
+  // so the auto-check-in effect below never fires twice for the same
+  // verified ticket (e.g. on unrelated re-renders) and never creates a
+  // duplicate API call.
+  const autoCheckInKeyRef = useRef(null);
+
+  // ---------- auto check-in: no button click required ----------
+  useEffect(() => {
+    if (!isValidTicket || !ticket) return;
+    if (checkInLoading || checkInSuccess) return;
+
+    const ticketKey = ticket.qrToken || ticket.id;
+    if (!ticketKey || autoCheckInKeyRef.current === ticketKey) return;
+
+    autoCheckInKeyRef.current = ticketKey;
+    handleAllowEntry();
+  }, [isValidTicket, ticket, checkInLoading, checkInSuccess, handleAllowEntry]);
+
+  // ---------- auto-advance: clear success state and scan again ----------
+  useEffect(() => {
+    if (resultState !== "checkedIn") return undefined;
+
+    const timer = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      autoCheckInKeyRef.current = null;
+      handleScanNext();
+    }, AUTO_ADVANCE_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [resultState, handleScanNext]);
 
   // ---------- lifecycle: mount tracking ----------
 
@@ -602,7 +658,7 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
             </p>
             <p className="crmQrHeaderSubtitle">
               {isValidTicket
-                ? "Review details before allowing entry"
+                ? "Confirming entry automatically..."
                 : resultState
                   ? "Here's what we found"
                   : "Align the QR code within the frame"}
@@ -714,6 +770,20 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
         {isValidTicket && (
           <div aria-live="polite">
             <div className="crmQrCard">
+              <div className="crmQrAvatarRow">
+                <span className="crmQrAvatar">
+                  {ticket?.attendee?.profileImage ? (
+                    <img
+                      src={ticket.attendee.profileImage}
+                      alt={ticket?.attendee?.name || "Attendee"}
+                      className="crmQrAvatarImage"
+                    />
+                  ) : (
+                    <AvatarPlaceholder className="crmQrAvatarIcon" />
+                  )}
+                </span>
+              </div>
+
               <div className="crmQrCardRow">
                 <span className="crmQrCardLabel">Name</span>
                 <span className="crmQrCardValue">{ticket?.attendee?.name || "N/A"}</span>
@@ -780,15 +850,6 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
                 disabled={checkInLoading}
               >
                 Scan Next
-              </button>
-
-              <button
-                type="button"
-                className="crmQrBtn crmQrBtnPrimary"
-                onClick={handleAllowEntry}
-                disabled={checkInLoading}
-              >
-                {checkInLoading ? "Allowing..." : "Allow Entry"}
               </button>
             </div>
           </div>

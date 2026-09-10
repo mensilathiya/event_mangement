@@ -591,6 +591,31 @@
     width:min(95vw,720px);
   }
 }
+
+/* Match the tiered scale used on Entry Report: title/card/table ease down
+   gradually instead of jumping straight from desktop to the mobile tier. */
+@media (max-width: 1200px) {
+  .bookingPageContent {
+    padding: 24px 24px 40px 24px;
+  }
+}
+
+@media (max-width: 992px) {
+  .bookingPage-title {
+    font-size: 22px;
+  }
+
+  .bookingPage-filterCard,
+  .bookingPage-card {
+    padding: 20px;
+  }
+
+  .bookingPage-table thead th,
+  .bookingPage-table tbody td {
+    padding: 12px 12px;
+  }
+}
+
 @media (max-width: 900px) {
   .bookingPage-filterGrid {
     grid-template-columns: repeat(2, 1fr);
@@ -631,6 +656,31 @@
   .bookingPageContent{
   padding: 22px 18px 40px 18px;
   }
+
+  .bookingPage-title {
+    font-size: 19px;
+  }
+
+  .bookingPage-breadcrumb {
+    font-size: 12px;
+  }
+
+  .bookingPage-filterCard,
+  .bookingPage-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .bookingPage-table thead th {
+    font-size: 11px;
+    padding: 10px 10px;
+  }
+
+  .bookingPage-table tbody td {
+    font-size: 11px;
+    padding: 11px 10px;
+  }
+
   .bookingPage-filterGrid {
     grid-template-columns: 1fr;
   }
@@ -672,5 +722,16 @@
   .bookingPage-siteFooter {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 380px) {
+  .bookingPageContent {
+    padding: 18px 14px 32px 14px;
+  }
+
+  .bookingPage-filterCard,
+  .bookingPage-card {
+    padding: 14px;
   }
 }
