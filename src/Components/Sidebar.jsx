@@ -18,6 +18,7 @@ import {
 import { FaFlag } from 'react-icons/fa6';
 
 import '../assets/CSS/Sidebar.css';
+import cityLifestyleLogo from '../assets/branding/city-lifestyle-logo.jpg';
 
 const menuItems = [
   {
@@ -155,7 +156,11 @@ export default function Sidebar() {
         {/* Header */}
         <div className='sidebarHeader'>
           <div className='logoWrap'>
-            <div className='logoIcon' />
+            <img
+              src={cityLifestyleLogo}
+              alt='City Lifestyle'
+              className='logoIcon'
+            />
             <div className='logoText'>
               <span className='logoShubh'>Shubh</span>
               <span className='logoHindi'>अवसर</span>

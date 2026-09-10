@@ -23,6 +23,37 @@ import "./QRScannerModal.css";
 
 const SCANNER_ELEMENT_ID = "qr-scanner-region";
 
+/* Plays a short, synthesized "success" chirp using the Web Audio API —
+   no external mp3/wav asset needed. Wrapped in try/catch since audio is
+   a nice-to-have here and must never break the check-in flow (some
+   browsers/contexts can restrict AudioContext creation). */
+const playSuccessBeep = () => {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    const ctx = new AudioContextClass();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.value = 880; // A5 — a clean, short "ding"
+
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.28);
+
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.3);
+    oscillator.onended = () => ctx.close();
+  } catch (err) {
+    // Non-critical — silently ignore if audio can't play.
+  }
+};
+
 /* =========================================================
    Inline line-icons (no external icon library dependency)
    Purely decorative — the visible title/message carries the
@@ -496,6 +527,22 @@ const QRScannerModal = ({ isOpen, onClose, onVerified, onCheckedIn }) => {
     autoCheckInKeyRef.current = ticketKey;
     handleAllowEntry();
   }, [isValidTicket, ticket, checkInLoading, checkInSuccess, handleAllowEntry]);
+
+  // Tracks whether the beep has already played for the current
+  // "checkedIn" state so it fires exactly once per successful scan, not
+  // on every re-render while the success screen is showing.
+  const hasPlayedSuccessSoundRef = useRef(false);
+
+  useEffect(() => {
+    if (resultState === "checkedIn") {
+      if (!hasPlayedSuccessSoundRef.current) {
+        hasPlayedSuccessSoundRef.current = true;
+        playSuccessBeep();
+      }
+    } else {
+      hasPlayedSuccessSoundRef.current = false;
+    }
+  }, [resultState]);
 
   // ---------- auto-advance: clear success state and scan again ----------
   useEffect(() => {

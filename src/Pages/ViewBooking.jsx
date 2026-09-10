@@ -8,6 +8,7 @@ import TicketDetailsModal from "../Components/TicketDetailsModal";
 import { Link, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getBookingById } from "../redux/booking/bookingThunk";
+import { showError } from "../utilits/toast";
 function AvatarPlaceholder() {
   return (
     <svg
@@ -44,13 +45,84 @@ const ViewBooking = () => {
   const { booking, detailsLoading, detailsError } = useSelector((state) => state.booking);
   const { registerUser } = useSelector((state)=>state.bookingTicket)
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [menuPos, setMenuPos] = useState(null);
   const [isBookingUserModalOpen, setIsBookingUserModalOpen] = useState(false);
   const [resendTarget, setResendTarget] = useState(null);
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [viewDetailsTicket, setViewDetailsTicket] = useState(null);
-  const toggleMenu = (rowId) => {
-    setOpenMenuId((prev) => (prev === rowId ? null : rowId));
+  // Was position:absolute inside the table cell, which the members card's
+  // overflow:hidden then clipped/mis-rendered for rows near the table's
+  // edges (see .bookingView-membersCard). Computing a fixed, viewport-
+  // relative position from the trigger button's own rect — the same
+  // approach already used for the Booking list's action menu — makes the
+  // menu render on top of everything, in the right place, for every row.
+  //
+  // The top/bottom values are also clamped to the viewport (not just
+  // flipped up/down) so the menu can never extend past the bottom of the
+  // screen and require scrolling the page to see the rest of it — it
+  // always renders fully on-screen no matter how close to the edge the
+  // trigger button is.
+  //
+  // `event.currentTarget` is read here, synchronously, before any state
+  // update — not inside the setOpenMenuId updater callback. React can
+  // (and in dev/StrictMode, does) invoke a functional updater more than
+  // once; by the second call the synthetic event has already been
+  // released and `event.currentTarget` is null, which crashed here.
+  const toggleMenu = (rowId, event) => {
+    if (openMenuId === rowId) {
+      setOpenMenuId(null);
+      setMenuPos(null);
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const estimatedMenuHeight = 160; // ~3 menu items + padding
+    const viewportMargin = 12;
+
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const openUpward =
+      spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
+
+    let top;
+    let bottom;
+
+    if (openUpward) {
+      bottom = Math.max(window.innerHeight - rect.top + 6, viewportMargin);
+    } else {
+      top = Math.min(
+        rect.bottom + 6,
+        window.innerHeight - estimatedMenuHeight - viewportMargin
+      );
+      top = Math.max(top, viewportMargin);
+    }
+
+    setMenuPos({
+      top,
+      bottom,
+      right: window.innerWidth - rect.right,
+    });
+    setOpenMenuId(rowId);
   };
+
+  // Stale coordinates on scroll/resize would leave the menu floating in
+  // the wrong spot, so just close it instead of trying to track it.
+  useEffect(() => {
+    if (openMenuId === null) return undefined;
+
+    const closeMenu = () => {
+      setOpenMenuId(null);
+      setMenuPos(null);
+    };
+
+    window.addEventListener("scroll", closeMenu, true);
+    window.addEventListener("resize", closeMenu);
+
+    return () => {
+      window.removeEventListener("scroll", closeMenu, true);
+      window.removeEventListener("resize", closeMenu);
+    };
+  }, [openMenuId]);
 
   useEffect(() => {
     if (id) {
@@ -234,7 +306,10 @@ const ViewBooking = () => {
             <div className="bookingView-membersCard">
               {openMenuId !== null && (
                 <div
-                  onClick={() => setOpenMenuId(null)}
+                  onClick={() => {
+                    setOpenMenuId(null);
+                    setMenuPos(null);
+                  }}
                   style={{ position: "fixed", inset: 0, zIndex: 15 }}
                 />
               )}
@@ -292,17 +367,18 @@ const ViewBooking = () => {
                               type="button"
                               className="bookingView-actionMenuBtn"
                               aria-label="Row actions"
-                              onClick={() => toggleMenu(ticket._id)}
+                              onClick={(event) => toggleMenu(ticket._id, event)}
                             >
                               &#8226;&#8226;&#8226;
                             </button>
 
-                            {openMenuId === ticket._id && (
+                            {openMenuId === ticket._id && menuPos && (
                               <div
                                 style={{
-                                  position: "absolute",
-                                  top: "calc(100% + 6px)",
-                                  right: 0,
+                                  position: "fixed",
+                                  top: menuPos.top,
+                                  bottom: menuPos.bottom,
+                                  right: menuPos.right,
                                   backgroundColor: "#ffffff",
                                   borderRadius: "10px",
                                   boxShadow: "0 10px 30px rgba(0, 0, 0, 0.15)",
@@ -311,6 +387,8 @@ const ViewBooking = () => {
                                   flexDirection: "column",
                                   gap: "2px",
                                   minWidth: "150px",
+                                  maxHeight: "calc(100vh - 24px)",
+                                  overflowY: "auto",
                                   zIndex: 20,
                                 }}
                               >
@@ -327,8 +405,24 @@ const ViewBooking = () => {
                                     border: "none",
                                   }}
                                   onClick={() => {
-                                    setViewDetailsTicket(ticket);
                                     setOpenMenuId(null);
+                                    setMenuPos(null);
+                                    // Opens THIS exact row's own generated
+                                    // ticket PDF (ticketPdfUrl) — the same
+                                    // PDF already delivered via the
+                                    // WhatsApp "Download Ticket" button —
+                                    // never any other ticket's PDF.
+                                    if (ticket.ticketPdfUrl) {
+                                      window.open(
+                                        ticket.ticketPdfUrl,
+                                        "_blank",
+                                        "noopener,noreferrer"
+                                      );
+                                    } else {
+                                      showError(
+                                        "Ticket PDF is not available yet for this registration."
+                                      );
+                                    }
                                   }}
                                 >
                                   View Details
@@ -349,6 +443,7 @@ const ViewBooking = () => {
                                     setSelectedTicketId(ticket._id);
                                     setIsBookingUserModalOpen(true);
                                     setOpenMenuId(null);
+                                    setMenuPos(null);
                                   }}
                                 >
                                   Add Details
@@ -371,6 +466,7 @@ const ViewBooking = () => {
                                       mobileNumber: booking.mobileNumber,
                                     });
                                     setOpenMenuId(null);
+                                    setMenuPos(null);
                                   }}
                                 >
                                   Resend Details
