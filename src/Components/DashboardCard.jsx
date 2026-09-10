@@ -56,7 +56,7 @@ function DashboardCard({
           <p className="cardNote">{noteText}</p>
         ) : (
           <>
-            <div className="rowHeader">
+            <div className={`rowHeader ${hasThirdColumn ? "rowHeader--3col" : ""}`}>
               <span className="rowHeaderLabel">{columns[0]}</span>
               <span className="rowHeaderLabel">{columns[1]}</span>
               {hasThirdColumn && (
@@ -69,7 +69,7 @@ function DashboardCard({
                 <p className="emptyState">{emptyText}</p>
               ) : (
                 rows.map((row, index) => (
-                  <div className="row" key={index}>
+                  <div className={`row ${hasThirdColumn ? "row--3col" : ""}`} key={index}>
                     <span className="rowLabel">{row.label}</span>
                     <span className="rowValue">{row.value}</span>
                     {hasThirdColumn && row.value2 !== undefined && (

@@ -125,10 +125,25 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Only 2 real columns (Name, Permissions) render here. A full-width,
+   min-width:860px table with just those two columns let the browser's
+   auto table-layout dump all the leftover space between the two
+   columns, which is what created the huge visual gap. Letting the
+   table size itself to its own content (instead of forcing
+   width:100% / a large min-width) keeps Name and Permissions close
+   together like a normal 2-column row, with a fixed, comfortable gap
+   between them instead of one stretched across the full card width. */
 .roleTable {
-  width: 100%;
   border-collapse: collapse;
-  min-width: 860px;
+  width: auto;
+  min-width: 320px;
+  max-width: 100%;
+}
+
+.roleTable th:first-child,
+.roleTable td:first-child {
+  min-width: 160px;
+  padding-right: 48px;
 }
 
 .roleTable thead th {
@@ -279,5 +294,25 @@
   .tableControls {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .tableCard {
+    padding: 18px;
+  }
+
+  .roleTable th:first-child,
+  .roleTable td:first-child {
+    min-width: 110px;
+    padding-right: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  .content {
+    padding: 18px 14px 32px 14px;
+  }
+
+  .tableCard {
+    padding: 14px;
   }
 }

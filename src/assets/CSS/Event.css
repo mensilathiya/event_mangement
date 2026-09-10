@@ -87,7 +87,7 @@ a{
   padding: 28px;
   /* min-width: 0; */
   min-height: 200px;
-  overflow-x: scroll;
+  overflow-x: auto;
 }
 
 .eventList__actionOverlay {
@@ -189,7 +189,7 @@ a{
   letter-spacing: 0.4px;
   padding: 10px 14px;
   border-bottom: 1px solid #eef0f2;
-  white-space: normal;
+  white-space: nowrap;
    vertical-align: middle;
        word-break: break-word;
 
@@ -212,22 +212,27 @@ a{
 }
 
 .eventList__table tbody td {
-  padding: 20px 16px;
+  padding: 16px 14px;
   font-size: 11px;
   color: #3a3d4d;
   border-bottom: 1px solid #f2f3f6;
   vertical-align: middle;
-  white-space: normal;
-      word-break: break-word;
-
-  /* text-wrap: wrap; */
+  /* Only the Title cell (below) wraps. Every other column keeps its
+     content on one line — with table-layout:fixed + a wide colgroup,
+     letting every cell wrap made short values (dates, the isActive
+     toggle, "#") sit centered inside a tall, mostly-empty row, which
+     read as a big gap around the content. Single-line cells keep row
+     height consistent and the layout tight, especially in the
+     responsive/mobile view. */
+  white-space: nowrap;
+  word-break: break-word;
 }
 
 .eventList__table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.eventList__titleCell {
+.eventList__table tbody td.eventList__titleCell {
   font-weight: 600;
   color: #1b2a4e;
   text-transform: uppercase;
@@ -426,8 +431,44 @@ a{
     /* overflow-y: visible; */
   }
 
+  .eventList__card {
+    padding: 16px;
+  }
+
+  /* Narrower columns + tighter padding for the responsive/mobile view —
+     the desktop widths (summing to 1250px) and 20px/16px cell padding
+     made every column look far apart once viewed on a small screen. */
+  .eventList__table {
+    min-width: 880px;
+  }
+
+  .eventList__table thead th,
+  .eventList__table tbody td {
+    padding: 10px 8px;
+  }
+
+  .eventList__colHash { width: 34px; }
+  .eventList__colTitle { width: 150px; }
+  .eventList__colStart { width: 130px; }
+  .eventList__colEnd { width: 130px; }
+  .eventList__colVenue { width: 110px; }
+  .eventList__colCreatedBy { width: 100px; }
+  .eventList__colActive { width: 70px; }
+  .eventList__colCreatedOn { width: 90px; }
+  .eventList__colAction { width: 110px; }
+
   .eventList__footer {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 380px) {
+  .eventList__wrapper {
+    padding: 18px 14px 0 14px;
+  }
+
+  .eventList__card {
+    padding: 14px;
   }
 }
