@@ -1,5 +1,5 @@
 import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 
@@ -25,6 +25,13 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Profile from "./Pages/Profile";
 import TopProgressLoader from "./Components/TopProgressLoader";
+
+// Public marketing site pages (converted from the old static HTML site).
+// Kept separate from the app's existing Pages/ used by the admin dashboard.
+import Home from "./Pages/Site/Home";
+import CitySparkle from "./Pages/Site/Sparkle";
+import Parv from "./Pages/Site/Parv";
+import Contact from "./Pages/Site/Contact";
 function App() {
   const dispatch = useDispatch();
 
@@ -52,8 +59,22 @@ function App() {
 
         <Routes>
 
+          {/* Public marketing site (converted from the old static HTML
+              site: index.html, sparkle.html, parv.html, contact.html).
+              Home now lives at "/" as required. The admin Login page has
+              moved to "/login" (see below) and is reached via the "Login"
+              button in the site header. */}
+          <Route path="/" element={<Home />} />
+          <Route path="/city-sparkle" element={<CitySparkle />} />
+          <Route path="/parv" element={<Parv />} />
+          <Route path="/contact" element={<Contact />} />
+
+          {/* Old "/home" URL from the previous conversion pass — redirect
+              anyone with that link/bookmark to the new Home location. */}
+          <Route path="/home" element={<Navigate to="/" replace />} />
+
           {/* Public Routes */}
-          <Route path="/" element={<Login />} />
+          <Route path="/login" element={<Login />} />
 
           {/* Public customer registration for a single BookingTicket,
               opened from a WhatsApp link with a registration token in the

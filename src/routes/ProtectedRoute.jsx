@@ -27,6 +27,9 @@ import { useSelector } from "react-redux";
 // see the matching comment in Sidebar.jsx/Header.jsx for why: an
 // all-or-nothing pick can silently lose a correct value from authUser
 // the moment profile populates, if /auth/profile ever omits that field.
+// NOTE: Login now lives at "/login" (Home moved to "/" for the public
+// marketing site), so the unauthenticated redirect below points there
+// instead of "/". This is the only change made here.
 const ProtectedRoute = ({ permission = null, adminOnly = false }) => {
   const token = localStorage.getItem("token");
 
@@ -34,7 +37,7 @@ const ProtectedRoute = ({ permission = null, adminOnly = false }) => {
   const authUser = useSelector((state) => state.auth.user);
 
   if (!token) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   const role = profile?.role ?? authUser?.role;
