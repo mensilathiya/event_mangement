@@ -13,7 +13,7 @@ import CommonPageHeader from "../Components/CommonPageHeader";
 import CommonListLayout from "../Components/CommonListLayout";
 import CommonLoader from "../Components/CommonLoader";
 import CommonEmptyState from "../Components/CommonEmptyState";
-import DeleteEventModal from "../Components/DeleteEventModal";
+import DeleteEventModal from "../Components/Deleteeventmodal";
 
 const columns = [
   { key: "title", label: "Title" },
