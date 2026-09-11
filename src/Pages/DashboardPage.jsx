@@ -1,30 +1,66 @@
-import React, { useEffect, useMemo, useCallback } from "react";
+import React, { useEffect, useMemo, useCallback, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import Sidebar from "../Components/Sidebar";
 import Header from "../Components/Header";
 import DashboardCard from "../Components/DashboardCard";
+import CommonSelect from "../Components/CommonSelect";
 import { getDashboardSummary } from "../redux/dashboard/dashboardThunk";
 import { clearDashboardState } from "../redux/dashboard/dashboardSlice";
+import { getAllEvents } from "../redux/event/eventThunk";
 import '../assets/CSS/DashboardPage.css';
 
 export default function DashboardPage() {
   const dispatch = useDispatch();
   const { dashboardData, loading, error } = useSelector((state) => state.dashboard);
+  // Every non-deleted event (active AND inactive/expired) — same source
+  // Booking.jsx already uses for its own Event filter — powers the
+  // dashboard's own Event selector below.
+  const { events } = useSelector((state) => state.event);
+
+  // "" = default (currently active event, or the most recently expired
+  // one if nothing is running — resolved server-side). Any other value
+  // is a specific event id, active or inactive/expired, chosen by the
+  // admin — its own data is shown on its own, never combined with any
+  // other event's numbers.
+  const [selectedEventId, setSelectedEventId] = useState("");
 
   useEffect(() => {
-    if (!dashboardData && !loading) {
-      dispatch(getDashboardSummary());
-    }
+    dispatch(getAllEvents({ page: 1, limit: 1000, search: "" }));
+  }, [dispatch]);
+
+  // Applies immediately on selection — no separate "Search"/"Apply"
+  // step needed to see the chosen event's dashboard data.
+  useEffect(() => {
+    dispatch(getDashboardSummary(selectedEventId || undefined));
+  }, [dispatch, selectedEventId]);
+
+  useEffect(() => {
     return () => {
       dispatch(clearDashboardState());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
 
   const handleRetry = useCallback(() => {
     dispatch(clearDashboardState());
-    dispatch(getDashboardSummary());
-  }, [dispatch]);
+    dispatch(getDashboardSummary(selectedEventId || undefined));
+  }, [dispatch, selectedEventId]);
+
+  // Only ever lists ACTIVE events (isActive === true) — same rule
+  // Booking.jsx's own Event filter already uses. An event manually
+  // marked Inactive by the Admin is intentionally left out of this
+  // dropdown entirely. This is independent of time-based expiry: an
+  // expired-but-still-isActive event (the normal case — expiry never
+  // flips isActive on its own) remains selectable here.
+  const eventOptions = useMemo(
+    () =>
+      (events || [])
+        .filter((event) => event.isActive === true)
+        .map((event) => ({
+          value: event._id,
+          label: event.title,
+        })),
+    [events]
+  );
 
   const activeEvent = dashboardData?.activeEvent;
   const activeEventEndDateTime = activeEvent?.endDateTime;
@@ -47,7 +83,7 @@ export default function DashboardPage() {
     const refetch = () => {
       if (hasFired) return;
       hasFired = true;
-      dispatch(getDashboardSummary());
+      dispatch(getDashboardSummary(selectedEventId || undefined));
     };
 
     const msRemaining = endTime - Date.now();
@@ -82,7 +118,7 @@ export default function DashboardPage() {
       window.clearTimeout(timerId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeEventEndDateTime, dispatch]);
+  }, [activeEventEndDateTime, dispatch, selectedEventId]);
 
   const eventDateRange = useMemo(() => {
     if (!activeEvent?.startDateTime || !activeEvent?.endDateTime) return "";
@@ -151,8 +187,29 @@ export default function DashboardPage() {
         <Header />
 
         <div className="content">
-          <h1 className="pageDashboardTitle">Dashboard</h1>
-          <p className="pageSubtitle">Dashboard</p>
+          <div className="dashboardPage-topRow">
+            <div>
+              <h1 className="pageDashboardTitle">Dashboard</h1>
+              <p className="pageSubtitle" style={{ margin: 0 }}>Dashboard</p>
+            </div>
+
+            {/* Event selector: defaults to the currently active event (or
+                the most recently expired one). Only ACTIVE events are
+                listed (an Admin-deactivated event is intentionally left
+                out) — but any active event, including an expired one,
+                can be picked to view its own data on its own. Never
+                combines two events' numbers together. */}
+            <div className="dashboardPage-eventSelectWrap">
+              <span className="dashboardPage-eventSelectLabel">Event</span>
+              <CommonSelect
+                className="dashboardPage-eventSelect"
+                value={selectedEventId}
+                onChange={(e) => setSelectedEventId(e.target.value)}
+                placeholder="Active Event (Default)"
+                options={eventOptions}
+              />
+            </div>
+          </div>
 
           <div className="banner">
             {activeEvent?.title || "No Active Event"}

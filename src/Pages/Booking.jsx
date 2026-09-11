@@ -130,6 +130,18 @@ const Booking = () => {
       [field]: e.target.value,
     }));
   };
+  // Select-type filters (Event, Status) apply immediately on selection —
+  // unlike the text inputs above, there's no "typing" concern here, so
+  // there's no reason to make the user click Search separately just to
+  // see the filtered data. Cancels any pending debounced toolbar search
+  // so a stale request can't fire moments later, same as handleSearch.
+  const handleImmediateFilterChange = (field) => (e) => {
+    const value = e.target.value;
+    if (searchDebounceTimerRef.current) clearTimeout(searchDebounceTimerRef.current);
+    setFilters((prev) => ({ ...prev, [field]: value }));
+    setAppliedFilters((prev) => ({ ...prev, [field]: value }));
+    setActivePage(1);
+  };
   // Skips the very first run of the toolbar-search debounce effect (mount)
   // and any run caused by handleReset clearing filters.search, since Reset
   // already applies its own fetch via appliedFilters.
@@ -465,7 +477,7 @@ const Booking = () => {
                 <CommonSelect
                   className="bookingPage-filterSelect"
                   value={filters.eventId}
-                  onChange={handleFilterChange("eventId")}
+                  onChange={handleImmediateFilterChange("eventId")}
                   placeholder="All Events"
                   options={events
                     ?.filter((event) => event.isActive === true)
@@ -556,7 +568,7 @@ const Booking = () => {
                 <CommonSelect
                   className="bookingPage-filterSelect bookingPage-statusSelect"
                   value={filters.status}
-                  onChange={handleFilterChange("status")}
+                  onChange={handleImmediateFilterChange("status")}
                   options={BOOKING_STATUS_OPTIONS}
                 />
 
