@@ -34,10 +34,15 @@ export const updateEventApi = (id, data) => {
 };
 
 // Delete Event
+// Secure Manual Event Delete (Step 3 backend): the currently authenticated
+// admin's own email + password must be sent in the request body for the
+// backend to verify before it deletes anything.
 // Same response shape as changeEventStatusApi (already-unwrapped .data)
 // since there's no form data to re-populate from the result.
-export const deleteEventApi = async (id) => {
-  const response = await api.delete(`/events/${id}/delete`);
+export const deleteEventApi = async (id, credentials) => {
+  const response = await api.delete(`/events/${id}/delete`, {
+    data: credentials, // { email, password }
+  });
   return response.data;
 };
 

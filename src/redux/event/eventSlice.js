@@ -134,15 +134,19 @@ const eventSlice = createSlice({
       .addCase(deleteEvent.fulfilled, (state, action) => {
         state.loading = false;
 
-        // action.meta.arg is the id passed into dispatch(deleteEvent(id)).
+        // action.meta.arg is now { id, email, password } (Step 4) rather
+        // than a bare id — read .id specifically. password/email are
+        // never read back out of the store anywhere.
+        const deletedId = action.meta.arg.id;
+
         state.events = state.events.filter(
-          (event) => event._id !== action.meta.arg
+          (event) => event._id !== deletedId
         );
         state.total = Math.max(0, state.total - 1);
 
         // Broadcast the deletion to any other page watching this slice
         // (see initialState comment above).
-        state.deletedEventId = action.meta.arg;
+        state.deletedEventId = deletedId;
         state.deletedEventVersion += 1;
       })
       .addCase(deleteEvent.rejected, (state, action) => {

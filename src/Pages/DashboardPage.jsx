@@ -7,20 +7,6 @@ import { getDashboardSummary } from "../redux/dashboard/dashboardThunk";
 import { clearDashboardState } from "../redux/dashboard/dashboardSlice";
 import '../assets/CSS/DashboardPage.css';
 
-// No existing currency formatter was found in the uploaded files — this
-// uses Intl's built-in en-IN grouping (lakhs/crore) rather than hardcoding
-// commas, matching the "Rs. 19,00,500" format from the spec.
-// If the project already has a shared formatter elsewhere, swap this out.
-const formatCurrency = (value) => `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
-
-// DD-MM-YYYY, used only for Today Booking's date line.
-const formatDateDDMMYYYY = (date) => {
-  const d = String(date.getDate()).padStart(2, "0");
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const y = date.getFullYear();
-  return `${d}-${m}-${y}`;
-};
-
 export default function DashboardPage() {
   const dispatch = useDispatch();
   const { dashboardData, loading, error } = useSelector((state) => state.dashboard);
@@ -118,114 +104,43 @@ export default function DashboardPage() {
     ];
   }, [activeEvent, eventDateRange]);
 
-  const bookingCountRows = useMemo(
-    () =>
-      dashboardData?.bookingCounts?.map((item) => ({
-        label: item.date,
-        value: String(item.count),
-      })),
-    [dashboardData?.bookingCounts]
-  );
-
-  const totalBookingRows = useMemo(
-    () =>
-      dashboardData?.totalBookingDetails?.map((item) => ({
-        label: item.date,
-        value: String(item.count),
-      })),
-    [dashboardData?.totalBookingDetails]
-  );
-
-  // Total Booking's top-left number must be the SUM of the date-wise
-  // rows below it (matches the reference: 69+258+258+258+258 = 1101),
-  // not the separate totalBooking document-count field. Computed here,
-  // frontend-only — getTotalBooking/getTotalBookingDetails on the
-  // backend are completely untouched.
-  const totalBookingQty = useMemo(
-    () =>
-      dashboardData?.totalBookingDetails?.reduce(
-        (sum, item) => sum + (item.count || 0),
-        0
-      ) ?? 0,
-    [dashboardData?.totalBookingDetails]
-  );
-
-  // Ticket-Type-wise breakdown for the Total Pass Booking card
-  const passBookingRows = useMemo(
-    () =>
-      dashboardData?.passBookingCounts?.map((item) => ({
-        label: item.ticketName,
-        value: String(item.qty),
-        value2: formatCurrency(item.amount),
-      })),
-    [dashboardData?.passBookingCounts]
-  );
-
-  // Ticket-Type-wise breakdown for the Today Pass Booking card
-  const todayPassBookingRows = useMemo(
-    () =>
-      dashboardData?.todayPassBookingCounts?.map((item) => ({
-        label: item.ticketName,
-        value: String(item.qty),
-        value2: formatCurrency(item.amount),
-      })),
-    [dashboardData?.todayPassBookingCounts]
-  );
-
+  // The 4 overall, all-events counts from dashboard.service.js's
+  // getDashboardCounts() (Step 2). Each is a single number — the backend
+  // doesn't return a date-wise or ticket-wise breakdown for these, so
+  // every card here renders as amount-only (hideBody: true), same as
+  // the Active Event card's siblings used to before any rows existed.
   const statCards = useMemo(
     () => [
       {
-        key: "todayBooking",
-        title: "Today Booking",
-        amountValue: String(dashboardData?.todayBooking ?? 0),
-        amountLabel: "Today Booking",
-        // Simplified per spec: no table, just the quantity + today's date.
-        noteText: formatDateDDMMYYYY(new Date()),
+        key: "totalBookings",
+        title: "Total Bookings",
+        amountValue: String(dashboardData?.totalBookings ?? 0),
+        amountLabel: "Total Bookings",
+        hideBody: true,
       },
       {
-        key: "todayPassBooking",
-        title: "Today Pass Booking",
-        amountValue: String(dashboardData?.todayPassBooking ?? 0),
-        amountLabel: "Today Pass Booking",
-        secondaryAmountValue: formatCurrency(dashboardData?.todayPassAmount ?? 0),
-        secondaryAmountLabel: "Total Amount",
-        columns: ["Date", "QTY", "Amount"],
-        rows: todayPassBookingRows,
-        // No table/empty-state text at all when there's no data today —
-        // only render the breakdown when it actually has rows.
-        hideBody: !todayPassBookingRows?.length,
+        key: "registeredTickets",
+        title: "Registered Tickets",
+        amountValue: String(dashboardData?.registeredTickets ?? 0),
+        amountLabel: "Registered Tickets",
+        hideBody: true,
       },
       {
-        key: "totalBooking",
-        title: "Total Booking",
-        amountValue: String(totalBookingQty),
-        amountLabel: "Total Booking",
-        columns: ["Date", "QTY"],
-        rows: totalBookingRows,
-        emptyText: !totalBookingRows?.length ? "No Bookings Available" : undefined,
+        key: "pendingRegistrations",
+        title: "Pending Registrations",
+        amountValue: String(dashboardData?.pendingRegistrations ?? 0),
+        amountLabel: "Pending Registrations",
+        hideBody: true,
       },
       {
-        key: "totalPassBooking",
-        title: "Total Pass Booking",
-        amountValue: String(dashboardData?.totalPassBooking ?? 0),
-        amountLabel: "Total Pass Booking",
-        secondaryAmountValue: formatCurrency(dashboardData?.totalPassAmount ?? 0),
-        secondaryAmountLabel: "Total Amount",
-        columns: ["Date", "QTY", "Amount"],
-        rows: passBookingRows,
-        emptyText: !passBookingRows?.length ? "No Bookings Available" : undefined,
+        key: "scannedEntries",
+        title: "Scanned Entries",
+        amountValue: String(dashboardData?.scannedEntries ?? 0),
+        amountLabel: "Scanned Entries",
+        hideBody: true,
       },
-      // {
-      //   key: "bookingCounts",
-      //   title: "Booking Counts",
-      //   amountValue: undefined,
-      //   amountLabel: undefined,
-      //   columns: ["Date", "Counts"],
-      //   rows: bookingCountRows,
-      //   emptyText: !bookingCountRows?.length ? "No Data Available" : undefined,
-      // },
     ],
-    [dashboardData, bookingCountRows, totalBookingRows, totalBookingQty, passBookingRows, todayPassBookingRows]
+    [dashboardData]
   );
 
   return (
@@ -258,7 +173,6 @@ export default function DashboardPage() {
                 <div className="fullWidth">
                   <DashboardCardSkeleton />
                 </div>
-                <DashboardCardSkeleton />
                 <DashboardCardSkeleton />
                 <DashboardCardSkeleton />
                 <DashboardCardSkeleton />

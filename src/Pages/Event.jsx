@@ -4,7 +4,7 @@ import "../assets/CSS/Event.css";
 import { Link, useNavigate } from "react-router-dom";
 import { FaSearch, FaSort } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
-import { getAllEvents, changeEventStatus, deleteEvent } from "../redux/event/eventThunk";
+import { getAllEvents, changeEventStatus } from "../redux/event/eventThunk";
 import Swal from "sweetalert2";
 import CommonSearch from "../Components/CommonSearch";
 import CommonSelect from "../Components/CommonSelect";
@@ -13,6 +13,7 @@ import CommonPageHeader from "../Components/CommonPageHeader";
 import CommonListLayout from "../Components/CommonListLayout";
 import CommonLoader from "../Components/CommonLoader";
 import CommonEmptyState from "../Components/CommonEmptyState";
+import DeleteEventModal from "../Components/DeleteEventModal";
 
 const columns = [
   { key: "title", label: "Title" },
@@ -80,6 +81,9 @@ const Event = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [openActionId, setOpenActionId] = useState(null);
   const [actionMenuPos, setActionMenuPos] = useState(null);
+  // Holds { id, title } of the event awaiting admin-credential
+  // confirmation (Step 4's secure delete). Null = modal closed.
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -225,6 +229,11 @@ const Event = () => {
   };
 
   // delete event
+  // Step 4 flow: existing "Are you sure?" confirmation (unchanged) runs
+  // first; only on confirm does this open DeleteEventModal, which
+  // collects the admin's own email + password and calls the secure
+  // DELETE /events/:id/delete API itself. Cancelling the confirmation
+  // here takes no action at all, same as before.
   const handleDeleteEvent = async (event) => {
     closeActionMenu();
 
@@ -240,23 +249,7 @@ const Event = () => {
 
     if (!result.isConfirmed) return;
 
-    try {
-      await dispatch(deleteEvent(event._id)).unwrap();
-
-      Swal.fire({
-        icon: "success",
-        title: "Deleted",
-        text: "Event deleted successfully.",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-    } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error || "Failed to delete event.",
-      });
-    }
+    setDeleteTarget({ id: event._id, title: event.title });
   };
 
   return (
@@ -502,6 +495,25 @@ const Event = () => {
               <span>Purchase</span>
             </div>
           </div> */}
+
+          {deleteTarget && (
+            <div
+              tabIndex={-1}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setDeleteTarget(null);
+                }
+              }}
+            >
+              <DeleteEventModal
+                eventId={deleteTarget.id}
+                eventTitle={deleteTarget.title}
+                onClose={() => setDeleteTarget(null)}
+                onSuccess={() => setDeleteTarget(null)}
+              />
+            </div>
+          )}
     </CommonListLayout>
   );
 };

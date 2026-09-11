@@ -85,7 +85,21 @@ api.interceptors.response.use(
     // Let authSlice handle the login error and show it on the Login page.
     const isLoginRequest = error.config?.url?.includes("/auth/login");
 
-    if (error.response?.status === 401 && !isLoginRequest) {
+    // Same reasoning for the secure Manual Event Delete flow (Step 4): a
+    // wrong admin email/password submitted to DELETE /events/:id/delete
+    // also responds 401, but that is a normal "credentials didn't match"
+    // form-validation outcome, not an expired/invalid session — it must
+    // keep the admin logged in and let DeleteEventModal show the error
+    // inline instead of force-logging-out and redirecting to "/".
+    const isEventDeleteRequest =
+      error.config?.method === "delete" &&
+      /\/events\/[^/]+\/delete$/.test(error.config?.url || "");
+
+    if (
+      error.response?.status === 401 &&
+      !isLoginRequest &&
+      !isEventDeleteRequest
+    ) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/";

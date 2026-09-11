@@ -66,11 +66,14 @@ export const updateEvent = createAsyncThunk(
 );
 
 // ================= DELETE EVENT =================
+// Secure Manual Event Delete (Step 4): now requires the currently
+// authenticated admin's own { email, password } alongside the event id,
+// forwarded as the DELETE request body to the Step 3 backend endpoint.
 export const deleteEvent = createAsyncThunk(
   "event/deleteEvent",
-  async (id, thunkAPI) => {
+  async ({ id, email, password }, thunkAPI) => {
     try {
-      return await deleteEventApi(id);
+      return await deleteEventApi(id, { email, password });
     } catch (error) {
       return thunkAPI.rejectWithValue(
         error.response?.data?.message || "Failed to delete event"
