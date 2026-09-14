@@ -4,6 +4,11 @@ export default function DeleteUserModal({
   userName,
   onClose,
   onDelete,
+  // Optional — lets this same confirmation modal be reused for other
+  // entity types (e.g. "admin" from Pages/Admin.jsx) without changing
+  // its existing behavior for User Management, which never passes this
+  // prop and keeps getting "user" exactly as before.
+  entityLabel = "user",
 }) {
   return (
     <div className="userDelete__overlay" onClick={onClose}>
@@ -32,7 +37,7 @@ export default function DeleteUserModal({
         <p className="userDelete__message" style={{ color: "#1b2a4e" }}>
           you want to delete  <span className="userDelete__highlight" style={{ color: "#e0331e" }}>
             {userName}
-          </span>{" "} user?
+          </span>{" "} {entityLabel}?
         </p>
          
         <button type="button" className="userDelete__okayBtn" onClick={onDelete}>

@@ -2,9 +2,10 @@
   Color notes:
   - #1b2a4e (dark text) and #eef0f2 (border) are pulled directly from
     Header.css, so headings/borders on this page match the header exactly.
-  - #3699FF (primary blue) is the default Keenthemes/Metronic accent color,
-    which matches the "2026 © Keenthemes" footer credit in your screenshot
-    and the blue buttons/links shown there.
+  - Buttons/links/focus states use var(--admin-accent) (the same
+    navy-blue used on the Login page and logo) instead of the old
+    default Keenthemes/Metronic blue, so this page matches the rest
+    of the admin panel.
 */
 
 /* ===== Breadcrumb ===== */
@@ -32,7 +33,7 @@
 }
 
 .breadcrumbActive {
-  color: #3699ff;
+  color: var(--admin-accent);
   font-weight: 600;
 }
 
@@ -101,7 +102,7 @@
   padding: 0 18px;
   border: none;
   border-radius: 8px;
-  background: #3699ff;
+  background: var(--admin-accent);
   color: #ffffff;
   font-size: 13.5px;
   font-weight: 600;
@@ -110,7 +111,7 @@
 }
 
 .primaryButton:hover {
-  background: #2b86e0;
+  background: var(--admin-accent-strong);
 }
 
 .textButton {
@@ -216,7 +217,7 @@
 
 .passwordInputWrap input:focus {
   outline: none;
-  border-color: #3699ff;
+  border-color: var(--admin-accent);
   background: #ffffff;
 }
 
@@ -267,7 +268,7 @@
 }
 
 .profileFooterLinks a:hover {
-  color: #3699ff;
+  color: var(--admin-accent);
 }
 
 /* ===== Edit Profile modal ===== */
@@ -353,7 +354,7 @@
 }
 
 .roleValue {
-  color: #3699ff;
+  color: var(--admin-accent);
   font-weight: 600;
   font-size: 14px;
   padding-top: 10px;
@@ -372,7 +373,7 @@
 
 .modalInput:focus {
   outline: none;
-  border-color: #3699ff;
+  border-color: var(--admin-accent);
   background: #ffffff;
 }
 

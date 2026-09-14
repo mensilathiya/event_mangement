@@ -694,7 +694,7 @@ export default function EntryReport() {
         titleClassName="erPage__title"
         breadcrumb={
           <div className="erPage__breadcrumb">
-            <Link to="/dashboard">Dashboard</Link>
+            <Link to="/dashboard"><span style={{color:"#9a9ca8"}}>Dashboard</span></Link>
             <span className="erPage__breadcrumbSep">-</span>
             <span className="erPage__breadcrumbItem erPage__breadcrumbItem--active">
               Entry Report

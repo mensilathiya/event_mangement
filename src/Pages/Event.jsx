@@ -267,7 +267,7 @@ const Event = () => {
         titleClassName="eventList__title"
         breadcrumb={
           <div className="eventList__breadcrumb">
-            <Link to="/dashboard">Dashboard</Link>
+            <Link to="/dashboard"> <span style={{color:"#9a9ca8"}}>Dashboard</span> </Link>
             <span className="eventList__breadcrumbSep">-</span>
             <span className="eventList__breadcrumbActive">Event</span>
           </div>

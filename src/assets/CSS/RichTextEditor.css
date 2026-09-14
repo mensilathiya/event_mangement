@@ -12,8 +12,8 @@
 }
 
 .richTextEditor:focus-within {
-  border-color: #6c63ff;
-  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.12);
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px var(--admin-focus-ring);
 }
 
 /* ================= Toolbar ================= */
@@ -61,13 +61,13 @@
 }
 
 .richTextEditor__toolbarBtn--active {
-  background: #ece9ff;
-  color: #6c63ff;
+  background: rgba(74, 144, 194, 0.14);
+  color: var(--admin-accent);
 }
 
 .richTextEditor__toolbarBtn--active:hover {
-  background: #e1ddff;
-  color: #5a51f0;
+  background: rgba(74, 144, 194, 0.20);
+  color: var(--admin-accent-strong);
 }
 
 .richTextEditor__toolbarBtn:disabled {
@@ -128,7 +128,7 @@
 .richTextEditor__content .ProseMirror blockquote {
   margin: 8px 0;
   padding: 4px 14px;
-  border-left: 3px solid #6c63ff;
+  border-left: 3px solid var(--admin-accent);
   color: #565b64;
   background: #f8f8ff;
 }

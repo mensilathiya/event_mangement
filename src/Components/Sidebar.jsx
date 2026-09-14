@@ -33,6 +33,7 @@ const menuItems = [
       { label: 'Users', path: '/user' },
       { label: 'Roles', path: '/role' },
       // { label: 'Permissions', path: '/permission' },
+      { label: 'Admins', path: '/admin' },
     ],
   },
   {

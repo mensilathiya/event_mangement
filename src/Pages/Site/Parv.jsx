@@ -4,6 +4,7 @@ import "../../assets/CSS/site/citytoppers.css";
 import SiteHeader from "../../Components/Site/SiteHeader";
 import SiteFooter from "../../Components/Site/SiteFooter";
 import EventGalleryModal from "../../Components/Site/EventGalleryModal";
+import InviteRequestModal from "../../Components/Site/InviteRequestModal";
 import useSiteAOS from "../../hooks/useSiteAOS";
 import useCardCarousel from "../../hooks/useCardCarousel";
 
@@ -85,6 +86,7 @@ const rememberEvents = [
 export default function Parv() {
   useSiteAOS();
   const [activeEvent, setActiveEvent] = useState(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const carousel = useCardCarousel(rememberEvents.length);
 
   return (
@@ -111,7 +113,9 @@ export default function Parv() {
             CELEBRATE SUCCESS, FORGE ALLIANCES, AND IGNITE THE NEXT CHAPTER OF INNOVATION.
           </p>
           <div className="hero-buttons">
-            <Link className="btn btn-parv" to="/contact">Request Invitation</Link>
+            <button type="button" className="btn btn-parv" onClick={() => setInviteOpen(true)}>
+              Request Invitation
+            </button>
             <Link className="btn btn-story" to="/contact">View Past Events</Link>
           </div>
         </div>
@@ -209,7 +213,7 @@ export default function Parv() {
           <h2 className="gallery-title">EVENINGS TO<br />REMEMBER</h2>
         </div>
 
-        <div className="meets-viewport">
+        <div className="meets-viewport" {...carousel.hoverProps}>
           <div className="meets-cards" style={carousel.trackStyle}>
             {rememberEvents.map((meet) => (
               <div className="comm-card meet-card" key={meet.key}>
@@ -268,9 +272,13 @@ export default function Parv() {
             SEATS ARE LIMITED AND EXCLUSIVE. IF YOU'VE BUILT SOMETHING WORTH CELEBRATING, WE'D LOVE TO
             CELEBRATE IT WITH YOU.
           </p>
-          <Link className="btn-join cta-btn cta-btn--pink" to="/contact">Request Your Invitation →</Link>
+          <button type="button" className="btn-join cta-btn cta-btn--pink" onClick={() => setInviteOpen(true)}>
+            Request Your Invitation &rarr;
+          </button>
         </div>
       </section>
+
+      <InviteRequestModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
 
       <SiteFooter />
     </div>

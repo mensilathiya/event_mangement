@@ -44,14 +44,14 @@
 }
 
 .userPage__breadcrumbActive {
-  color: #1976d2;
+  color: var(--admin-accent);
 }
 
 .userPage__createButton {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #e0331e;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -64,7 +64,7 @@
 }
 
 .userPage__createButton:hover {
-  background-color: #c22a17;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 
@@ -397,7 +397,7 @@
 }
 
 .userAction__itemIconEdit {
-  color: #1976d2;
+  color: var(--admin-accent);
 }
 
 .userAction__itemIconDelete {

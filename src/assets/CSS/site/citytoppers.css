@@ -1,7 +1,10 @@
 /* ─── Reset & Base ─────────────────────────────────── */.ct-site *, .ct-site *::before, .ct-site *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --accent-gradient: linear-gradient(98.31deg, #C2977C 0%, #FFFFFF 66.28%, #C2977C 132.57%);
+  /* accent-gradient now comes from the single shared token in index.css
+     (--brand-gradient) so the Home page and Login page never drift out
+     of sync — change the color once in index.css, it updates both. */
+  --accent-gradient: var(--brand-gradient);
   --font: 'Montserrat', sans-serif;
   --page-px: 14%;
 }
@@ -12,11 +15,38 @@
   background-size: auto;
   color: #fff;
   min-height: 100vh;
+  /* Safety net: several sections use fixed pixel widths at their base
+     (desktop) size before the responsive rules below kick in — this
+     guarantees no accidental horizontal scrollbar on any viewport. */
+  overflow-x: hidden;
+  /* Header is `position: fixed` (see .site-header below) and so no
+     longer takes up space in normal flow — this padding reserves that
+     same space at the top of every page so the fixed header never
+     overlaps the hero/content under it. 160px ≈ desktop header's own
+     height (16px×2 nav padding + 120px logo) plus a small buffer;
+     overridden at each breakpoint below to match that breakpoint's
+     smaller nav padding/logo size. */
+  padding-top: 160px;
 }
 
 /* ─── NAVBAR ────────────────────────────────────────── */.ct-site .site-header {
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
   z-index: 100;
+  /* `sticky` was tried first but didn't stay put reliably, so this is
+     now a true `fixed` header — always pinned to the viewport, never
+     scrolls with the page. Because `fixed` takes the header out of
+     normal document flow entirely, `.ct-site` below gets matching
+     `padding-top` (one value per existing header breakpoint, mirroring
+     the .nav/.logo sizes already set for each) so the header never
+     overlaps/covers the hero or any section under it. Background/blur
+     kept so page content doesn't show through while scrolling under
+     it. */
+  background: rgba(10, 10, 10, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .ct-site .nav {
@@ -1576,7 +1606,108 @@
   text-align: center;
 }
 
+/* small helper caption under an input (e.g. WhatsApp number's "+91 optional" note) */
+.ct-site .join-hint {
+  margin-top: 6px;
+  padding: 0 24px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: rgba(255,255,255,0.5);
+}
+
+/* dropdown (e.g. Profession / Role) styled to match .join-form's text inputs */
+.ct-site .join-form select {
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #fff;
+  background: #242424;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 32px;
+  padding: 18px 24px;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%23F4DD4E' stroke-width='2' fill='none' fill-rule='evenodd'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 24px center;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.ct-site .join-form select:focus {
+  outline: none;
+  border-color: #F4DD4E;
+  background-color: #2a2a2a;
+}
+
+/* Select's own option list uses the browser's native rendering (can't be
+   themed cross-browser), but a dark background at least keeps it from
+   flashing white against this dark UI in browsers that respect it. */
+.ct-site .join-form select option {
+  background: #242424;
+  color: #fff;
+}
+
+/* ─── INVITE REQUEST MODAL (Parv page CTA buttons) ─────
+   Same "Join Community" card (.join-card and everything inside it,
+   above) shown as an overlay on top of the current page instead of a
+   separate /contact route — reuses the same .event-modal fixed-overlay
+   pattern already used for the event image lightbox above, just under
+   its own class names so neither is affected by changes to the other. */
+.ct-site .invite-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 40px var(--page-px);
+}
+
+.ct-site .invite-modal.active { display: flex; }
+
+.ct-site .invite-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.ct-site .invite-modal-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 620px;
+  margin: auto;
+}
+
 /* ─── RESPONSIVE ────────────────────────────────────── */
+
+/* ═══════════ HEADER — TABLET & MOBILE (≤1200px) ═══════════
+   The full desktop nav (logo + 3 links + Login + Join Community, all at
+   their desktop sizes) needs roughly 1050-1100px of horizontal room to
+   avoid wrapping/overflowing. Below 1200px there isn't reliably enough
+   space for that everywhere (varies with actual rendered text width),
+   so the header switches to the hamburger + slide-in mobile menu here
+   instead of only at ≤900px. This is the ONLY thing gated at 1200px —
+   every other section keeps its existing 1024px/900px/480px content
+   breakpoints below, so this purely fixes the "no horizontal overflow /
+   correct tablet & desktop behavior" requirement for the navbar without
+   touching how the rest of each page stacks. */
+@media (max-width: 1280px) {
+  .ct-site { padding-top: 118px; } /* matches this breakpoint's smaller nav padding/logo below */
+  .ct-site .nav { padding: 14px 24px; gap: 12px; }
+  .ct-site .nav-links { display: none; }
+  .ct-site .nav .btn-join:not(.mobile-join) { display: none; }
+  .ct-site .nav .btn-login:not(.mobile-login) { display: none; }
+  .ct-site .hamburger { display: flex; }
+  .ct-site .logo img { height: 84px; width: 84px; }
+}
+
 /* ═══════════ TABLET (≤1024px) ═══════════ */
 @media (max-width: 1024px) {
   :root { --page-px: 6%; }
@@ -1597,15 +1728,20 @@
 
 /* ═══════════ MOBILE (≤900px) ═══════════ */
 @media (max-width: 900px) {
+  /* nav-links/btn-join/btn-login/hamburger display is already set by the
+     ≤1200px header block above; this just tightens spacing further for
+     phone-sized screens. */
   .ct-site .nav { padding: 12px 20px; }
-  .ct-site .nav-links { display: none; }
-  .ct-site .nav .btn-join:not(.mobile-join) { display: none; }
-  .ct-site .nav .btn-login:not(.mobile-login) { display: none; }
-  .ct-site .hamburger { display: flex; }
-
   .ct-site .logo img { height: 80px; width: 80px; }
+  .ct-site { padding-top: 110px; } /* matches this breakpoint's smaller nav padding/logo above */
 
-  .ct-site .hero { height: auto; min-height: 0; padding: 60px 0; }
+  /* min-height kept (not 0) — the Home page's rotating hero slides are
+     position:absolute, so they contribute no height of their own. With
+     min-height:0 the box collapsed to ~padding-only, squashing the
+     background image and pushing the PARV text out of place. Standalone
+     hero pages (Parv/Sparkle) are unaffected since their content is
+     in-flow and will still grow past this via height:auto if needed. */
+  .ct-site .hero { height: auto; min-height: 560px; padding: 60px 0; }
   .ct-site .hero-content { margin: 0 auto; text-align: center; padding: 0 20px; max-width: 100%; }
   .ct-site .hero-tagline { font-size: 12px; }
   .ct-site .hero-title { font-size: 44px; }

@@ -4,6 +4,11 @@ import { getProfileApi } from "../../services/authService";
 import { updateProfileApi } from "../../services/authService";
 import { resetPasswordApi } from "../../services/authService";
 import { logoutApi } from "../../services/authService";
+import {
+  forgotPasswordApi,
+  verifyResetOtpApi,
+  resetPasswordWithOtpApi,
+} from "../../services/authService";
 
 // post api login
 export const login = createAsyncThunk(
@@ -84,6 +89,56 @@ export const resetPassword = createAsyncThunk(
   }
 );
 
+// ===== Forgot Password (OTP, via email) — public, used from the Login
+// page for someone who is NOT logged in and doesn't remember their
+// password. Three-step flow: request OTP -> verify OTP -> set new
+// password. Kept entirely separate from the authenticated
+// `resetPassword` thunk above (that one requires currentPassword and a
+// valid session token; this one requires neither).
+
+// post api forgot password — accepts ONLY { email }
+export const forgotPassword = createAsyncThunk(
+  "auth/forgotPassword",
+  async (data, thunkAPI) => {
+    try {
+      return await forgotPasswordApi(data);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Failed to send reset OTP"
+      );
+    }
+  }
+);
+
+// post api verify reset otp — accepts ONLY { email, otp }
+export const verifyResetOtp = createAsyncThunk(
+  "auth/verifyResetOtp",
+  async (data, thunkAPI) => {
+    try {
+      return await verifyResetOtpApi(data);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Invalid or expired OTP"
+      );
+    }
+  }
+);
+
+// post api reset password with otp — accepts ONLY
+// { email, otp, newPassword, confirmPassword }
+export const resetPasswordWithOtp = createAsyncThunk(
+  "auth/resetPasswordWithOtp",
+  async (data, thunkAPI) => {
+    try {
+      return await resetPasswordWithOtpApi(data);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Failed to reset password"
+      );
+    }
+  }
+);
+
 // post api logout — best-effort backend notification only. The backend
 // uses stateless JWT (confirmed: it does nothing except return
 // { success: true }), so the UI never waits on this. Local logout
@@ -123,6 +178,18 @@ const clearAuthState = (state) => {
   state.resetPasswordLoading = false;
   state.resetPasswordError = null;
   state.resetPasswordSuccess = null;
+
+  state.forgotPasswordLoading = false;
+  state.forgotPasswordError = null;
+  state.forgotPasswordSuccess = null;
+
+  state.verifyResetOtpLoading = false;
+  state.verifyResetOtpError = null;
+  state.verifyResetOtpSuccess = null;
+
+  state.resetPasswordWithOtpLoading = false;
+  state.resetPasswordWithOtpError = null;
+  state.resetPasswordWithOtpSuccess = null;
 
   state.logoutLoading = false;
 
@@ -176,6 +243,22 @@ const authSlice = createSlice({
     resetPasswordError: null,
     resetPasswordSuccess: null,
 
+    // Forgot Password (OTP, via email) state — the public, not-logged-in
+    // flow used from the Login page. Kept separate from resetPassword*
+    // above and from each other so each step's loading/error/success can
+    // be shown independently as the user moves through the flow.
+    forgotPasswordLoading: false,
+    forgotPasswordError: null,
+    forgotPasswordSuccess: null,
+
+    verifyResetOtpLoading: false,
+    verifyResetOtpError: null,
+    verifyResetOtpSuccess: null,
+
+    resetPasswordWithOtpLoading: false,
+    resetPasswordWithOtpError: null,
+    resetPasswordWithOtpSuccess: null,
+
     // Logout state
     logoutLoading: false,
   },
@@ -194,6 +277,24 @@ const authSlice = createSlice({
       state.resetPasswordLoading = false;
       state.resetPasswordError = null;
       state.resetPasswordSuccess = null;
+    },
+
+    // Called when the Login page's Forgot Password flow opens/closes
+    // (or moves back to the "Sign In" view), so stale
+    // loading/error/success from a previous attempt doesn't linger
+    // across the email -> OTP -> new-password steps.
+    resetForgotPasswordState: (state) => {
+      state.forgotPasswordLoading = false;
+      state.forgotPasswordError = null;
+      state.forgotPasswordSuccess = null;
+
+      state.verifyResetOtpLoading = false;
+      state.verifyResetOtpError = null;
+      state.verifyResetOtpSuccess = null;
+
+      state.resetPasswordWithOtpLoading = false;
+      state.resetPasswordWithOtpError = null;
+      state.resetPasswordWithOtpSuccess = null;
     },
 
     // Instant, synchronous local logout. This is what the UI dispatches
@@ -291,6 +392,57 @@ const authSlice = createSlice({
         state.resetPasswordError = action.payload;
       })
 
+      .addCase(forgotPassword.pending, (state) => {
+        state.forgotPasswordLoading = true;
+        state.forgotPasswordError = null;
+        state.forgotPasswordSuccess = null;
+      })
+
+      .addCase(forgotPassword.fulfilled, (state, action) => {
+        state.forgotPasswordLoading = false;
+        state.forgotPasswordSuccess =
+          action.payload?.message || "If an account exists with this email, a password reset OTP has been sent.";
+      })
+
+      .addCase(forgotPassword.rejected, (state, action) => {
+        state.forgotPasswordLoading = false;
+        state.forgotPasswordError = action.payload;
+      })
+
+      .addCase(verifyResetOtp.pending, (state) => {
+        state.verifyResetOtpLoading = true;
+        state.verifyResetOtpError = null;
+        state.verifyResetOtpSuccess = null;
+      })
+
+      .addCase(verifyResetOtp.fulfilled, (state, action) => {
+        state.verifyResetOtpLoading = false;
+        state.verifyResetOtpSuccess =
+          action.payload?.message || "OTP verified. You can now set a new password.";
+      })
+
+      .addCase(verifyResetOtp.rejected, (state, action) => {
+        state.verifyResetOtpLoading = false;
+        state.verifyResetOtpError = action.payload;
+      })
+
+      .addCase(resetPasswordWithOtp.pending, (state) => {
+        state.resetPasswordWithOtpLoading = true;
+        state.resetPasswordWithOtpError = null;
+        state.resetPasswordWithOtpSuccess = null;
+      })
+
+      .addCase(resetPasswordWithOtp.fulfilled, (state, action) => {
+        state.resetPasswordWithOtpLoading = false;
+        state.resetPasswordWithOtpSuccess =
+          action.payload?.message || "Password reset successfully";
+      })
+
+      .addCase(resetPasswordWithOtp.rejected, (state, action) => {
+        state.resetPasswordWithOtpLoading = false;
+        state.resetPasswordWithOtpError = action.payload;
+      })
+
       .addCase(logout.pending, (state) => {
         state.logoutLoading = true;
       })
@@ -308,7 +460,11 @@ const authSlice = createSlice({
 
 });
 
-export const { resetProfileUpdateState, resetPasswordState, clearAuth } =
-  authSlice.actions;
+export const {
+  resetProfileUpdateState,
+  resetPasswordState,
+  resetForgotPasswordState,
+  clearAuth,
+} = authSlice.actions;
 
 export default authSlice.reducer;

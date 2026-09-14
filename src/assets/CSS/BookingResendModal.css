@@ -76,7 +76,7 @@
 }
 
 .bookingResendOkayBtn {
-  background-color: #6f6bf0;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -88,7 +88,7 @@
 }
 
 .bookingResendOkayBtn:hover {
-  background-color: #5b57e0;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 

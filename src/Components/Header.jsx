@@ -71,9 +71,14 @@ export default function Header({ title = "Dashboard" }) {
   };
 
   // Profile image — same field/fallback pattern already used in User.jsx's
-  // list view (user.profileImage || LOGO_AVATAR).
-  const LOGO_AVATAR =
-    "https://ui-avatars.com/api/?name=cl&background=17a2b8&color=fff&bold=true";
+  // list view (user.profileImage || LOGO_AVATAR), except the generated
+  // avatar's initials are now based on the CURRENT user's own name
+  // (falls back to "U" only if no name is available yet) instead of a
+  // hardcoded "cl", so the header always shows initials that actually
+  // match whoever is logged in.
+  const LOGO_AVATAR = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    currentUser?.name || "U"
+  )}&background=17a2b8&color=fff&bold=true`;
 
   const PROFILE_IMAGE_URL = currentUser?.profileImage || LOGO_AVATAR;
 

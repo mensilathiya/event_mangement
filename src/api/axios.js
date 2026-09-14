@@ -9,21 +9,22 @@ import axios from "axios";
 // instance/request. A hardcoded application/json default here overrides
 // that auto-detection, so FormData requests get sent with the wrong
 // Content-Type and the server can never parse req.file.
-const API_BASE_URL = import.meta.env.VITE_API_URL ;
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 // The localhost fallback above is intentionally kept as-is (existing local
 // dev workflows may rely on it working with no .env file present at all).
-// This warning only makes a missing VITE_API_URL visible during local
+// This warning only makes a missing VITE_API_BASE_URL visible during local
 // development, so a production build that was deployed without setting it
 // doesn't silently and confusingly point at localhost. It never runs in a
 // production build (import.meta.env.DEV is false there), so it changes
 // nothing about production behavior — only dev-time observability.
-if (import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
+if (import.meta.env.DEV && !import.meta.env.VITE_API_BASE_URL) {
   // eslint-disable-next-line no-console
   console.warn(
-    "[api/axios] VITE_API_URL is not set — falling back to " +
+    "[api/axios] VITE_API_BASE_URL is not set — falling back to " +
       API_BASE_URL +
-      ". Set VITE_API_URL in your .env file before building for production."
+      ". Set VITE_API_BASE_URL in your .env file before building for production."
   );
 }
 

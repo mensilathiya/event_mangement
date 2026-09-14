@@ -41,7 +41,7 @@
 }
 
 .bookingPage-breadcrumbActive {
-  color: #1976d2;
+  color: var(--admin-accent);
 }
 /* css date */
 .bookingPage-dateWrap{
@@ -98,7 +98,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #e0331e;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -111,7 +111,7 @@
 }
 
 .bookingPage-createBtn:hover {
-  background-color: #c22a17;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 
@@ -158,8 +158,8 @@
 
 .bookingPage-filterInput:focus,
 .bookingPage-filterSelect:focus {
-  border-color: #ff5b1f;
-  box-shadow: 0 0 0 4px rgba(255, 91, 31, 0.12);
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 4px var(--admin-focus-ring);
 }
 
 .bookingPage-statusSelect {
@@ -174,7 +174,7 @@
 }
 
 .bookingPage-searchBtn {
-  background-color: #e0331e;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -186,7 +186,7 @@
 }
 
 .bookingPage-searchBtn:hover {
-  background-color: #c22a17;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 
@@ -274,7 +274,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #1e88e5;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -287,7 +287,7 @@
 }
 
 .bookingPage-exportBtn:hover {
-  background-color: #1769b8;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 
@@ -557,7 +557,7 @@
 }
 
 .bookingPage-pageNumberActive {
-  background-color: #1976d2;
+  background-color: var(--admin-accent);
   color: #ffffff;
 }
 

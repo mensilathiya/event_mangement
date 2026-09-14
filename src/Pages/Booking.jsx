@@ -427,7 +427,7 @@ const Booking = () => {
         titleClassName="bookingPage-title"
         breadcrumb={
           <div className="bookingPage-breadcrumb">
-            <Link to="/dashboard">Dashboard</Link>
+            <Link to="/dashboard"><span style={{color:"#9a9ca8"}}>Dashboard</span></Link>
             <span className="bookingPage-breadcrumbSep">-</span>
             <span className="bookingPage-breadcrumbActive">Booking</span>
           </div>

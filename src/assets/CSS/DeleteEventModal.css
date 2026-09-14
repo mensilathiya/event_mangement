@@ -93,12 +93,44 @@
 }
 
 .eventDeleteInput:focus {
-  box-shadow: 0 0 0 4px rgba(255, 91, 31, 0.12);
+  box-shadow: 0 0 0 4px var(--admin-focus-ring);
 }
 
 .eventDeleteInput:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+/* Password visibility toggle — minimal addition on top of the existing
+   .eventDeleteInput styling above; only adds right-padding for the icon
+   and positions the button, nothing else about the input changes. */
+.eventDeleteInputWrap {
+  position: relative;
+  display: flex;
+}
+
+.eventDeleteInputWrap .eventDeleteInput {
+  padding-right: 40px;
+}
+
+.eventDeletePasswordToggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #9a9ca8;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.eventDeletePasswordToggle:hover {
+  color: #1b2a4e;
 }
 
 .eventDeleteError {

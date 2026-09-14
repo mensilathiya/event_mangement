@@ -40,14 +40,14 @@
 }
 
 .permissionPageBreadcrumbActive {
-  color: #1976d2;
+  color: var(--admin-accent);
 }
 
 .permissionPageCreateButton {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #e0331e;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -60,7 +60,7 @@
 }
 
 .permissionPageCreateButton:hover {
-  background-color: #c22a17;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 
@@ -178,7 +178,7 @@
   height: 16px;
   border-radius: 4px;
   cursor: pointer;
-  accent-color: #e0331e;
+  accent-color: var(--admin-accent);
 }
 
 .permissionPageName {
@@ -210,8 +210,8 @@
 }
 
 .permissionPageActionButtonOpen {
-  background-color: #dbe9ff;
-  color: #1976d2;
+  background-color: rgba(74, 144, 194, 0.14);
+  color: var(--admin-accent);
 }
 
 .permissionPageActionMenu {
@@ -320,7 +320,7 @@
 
 .permissionPagePaginationActive,
 .permissionPagePaginationActive:hover {
-  background-color: #1976d2;
+  background-color: var(--admin-accent);
   color: #ffffff;
 } */
 

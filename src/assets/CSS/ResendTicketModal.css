@@ -91,12 +91,12 @@
 }
 
 .bookingResendSelect:focus {
-  border-color: #6f6bf0;
-  box-shadow: 0 0 0 4px rgba(111, 107, 240, 0.12);
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 4px var(--admin-focus-ring);
 }
 
 .bookingResendOkayBtn {
-  background-color: #6f6bf0;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -108,7 +108,7 @@
 }
 
 .bookingResendOkayBtn:hover {
-  background-color: #5b57e0;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 

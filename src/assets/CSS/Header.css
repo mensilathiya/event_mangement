@@ -24,7 +24,7 @@
   padding: 0 18px;
   border: none;
   border-radius: 10px;
-  background: #17a2b8;
+  background: var(--admin-accent);
   color: #fff;
   display: flex;
   align-items: center;
@@ -33,7 +33,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all .25s ease;
-  box-shadow: 0 6px 18px rgba(108,99,255,.18);
+  box-shadow: 0 6px 18px rgba(74,144,194,.25);
 }
 
 .scanQrButton svg {
@@ -42,7 +42,7 @@
 
 .scanQrButton:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(108,99,255,.25);
+  box-shadow: 0 12px 24px rgba(74,144,194,.35);
 }
 
 .scanQrButton:active {

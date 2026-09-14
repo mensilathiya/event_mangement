@@ -21,7 +21,7 @@
 }
 
 .multipleDatePicker-input input:focus {
-  border-color: #0d6efd;
+  border-color: var(--admin-accent);
 }
 
 .calendarIcon {
@@ -47,7 +47,7 @@
 }
 .rdp {
   --rdp-cell-size: 40px;
-  --rdp-accent-color: #0d6efd;
+  --rdp-accent-color: var(--admin-accent);
   margin: 0;
 }
 
@@ -57,12 +57,12 @@
 
 .rdp-day_selected,
 .rdp-day_selected:hover {
-  background: #0d6efd !important;
+  background: var(--admin-accent) !important;
   color: #fff !important;
 }
 
 .rdp-day:hover {
-  background: #eef4ff;
+  background: rgba(74, 144, 194, 0.14);
 }
 
 .rdp-caption {
@@ -95,7 +95,7 @@
 
 .multipleDatePicker-apply {
   border: none;
-  background: #0d6efd;
+  background: var(--admin-accent);
   color: #fff;
   padding: 8px 18px;
   border-radius: 6px;
@@ -105,5 +105,5 @@
 }
 
 .multipleDatePicker-apply:hover {
-  background: #0b5ed7;
+  background: var(--admin-accent-strong);
 }

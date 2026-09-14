@@ -42,7 +42,7 @@
 }
 
 .erPage__breadcrumbItem--active {
-  color: #4f7bff;
+  color: var(--admin-accent);
   font-weight: 500;
 }
 
@@ -105,7 +105,7 @@
 }
 
 .erPage__input:focus {
-  border-color: #4f7bff;
+  border-color: var(--admin-accent);
 }
 
 /* Event dropdown — deliberately just .erPage__input plus this. Removing
@@ -140,7 +140,7 @@
 }
 
 .erPage__btn--search {
-  background: #e02b3c;
+  background: var(--admin-accent);
   color: #ffffff;
 }
 
@@ -226,7 +226,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #4f7bff;
+  background: var(--admin-accent);
   color: #ffffff;
 }
 
@@ -285,9 +285,9 @@
 }
 
 .erPage__btn--active {
-  background: #4f7bff;
+  background: var(--admin-accent);
   color: #ffffff;
-  border-color: #4f7bff;
+  border-color: var(--admin-accent);
 }
 
 /* Table */
@@ -344,8 +344,8 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #eef1ff;
-  color: #4f7bff;
+  background: rgba(74, 144, 194, 0.14);
+  color: var(--admin-accent);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.3px;
@@ -354,7 +354,7 @@
 
 .erPage__profileAvatar--img {
   padding: 0;
-  background: #eef1ff;
+  background: rgba(74, 144, 194, 0.14);
 }
 
 .erPage__profileAvatarImg {
@@ -366,7 +366,7 @@
 }
 
 .erPage__profileAvatarIcon {
-  color: #4f7bff;
+  color: var(--admin-accent);
 }
 
 /* Empty state */

@@ -222,6 +222,16 @@ export default function User() {
       render: (user) => user.role,
     },
     {
+      key: "createdBy",
+      label: "Created By",
+      // `createdBy` is populated by the backend (User.service.js getUsers
+      // -> .populate("createdBy", "name")) with the Admin who created the
+      // user. Falls back to "-" for users created before this field
+      // existed, or if population ever comes back empty for any reason,
+      // so the table never shows "undefined"/blank.
+      render: (user) => user.createdBy?.name || "-",
+    },
+    {
       key: "created",
       label: "Created",
       render: (user) =>

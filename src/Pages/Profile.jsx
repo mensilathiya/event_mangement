@@ -111,11 +111,12 @@ export default function Profile() {
   };
 
   // Profile image — same field/fallback pattern already used in User.jsx's
-  // list view and Header.jsx (user.profileImage || LOGO_AVATAR). `profile`
-  // already comes from the existing getProfile() dispatch above; no
-  // additional API call needed.
-  const LOGO_AVATAR =
-    "https://ui-avatars.com/api/?name=CL&background=17a2b8&color=fff&bold=true";
+  // list view and Header.jsx (user.profileImage || LOGO_AVATAR), except
+  // the generated avatar's initials are now based on this admin's own
+  // name instead of a hardcoded "CL", matching Header.jsx.
+  const LOGO_AVATAR = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    profile?.name || "U"
+  )}&background=17a2b8&color=fff&bold=true`;
 
   const avatarUrl = profile?.profileImage || LOGO_AVATAR;
 

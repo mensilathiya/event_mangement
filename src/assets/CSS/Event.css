@@ -40,7 +40,7 @@
   align-items: center;
   gap: 8px;
   font-size: 13.5px;
-  color: #9a9ca8;
+  color: #9a9ca8 !important;
 }
 
 .eventList__breadcrumbSep {
@@ -48,14 +48,14 @@
 }
 
 .eventList__breadcrumbActive {
-  color: #1976d2;
+  color: var(--admin-accent);
 }
 
 .eventList__createBtn {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #e0331e;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -70,7 +70,7 @@ a{
   text-decoration: none;
 }
 .eventList__createBtn:hover {
-  background-color: #c22a17;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 
@@ -253,7 +253,7 @@ a{
 }
 
 .eventList__toggleOn {
-  background-color: #1e88e5;
+  background-color: var(--admin-accent);
   justify-content: flex-end;
 }
 

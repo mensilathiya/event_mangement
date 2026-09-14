@@ -18,7 +18,7 @@ import Sidebar from '../Components/Sidebar';
 import Header from "../Components/Header";
 
 // Module-level constants — created once, not on every render.
-const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg"];
+const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 
 // The app is used by Admins in India, and `datetime-local` inputs produce an
 // offset-less string like "2026-08-15T20:00" (the browser's own wall-clock
@@ -494,7 +494,7 @@ export default function CreateEvent() {
     if (!file) return;
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
       e.target.value = "";
-      showError("Please upload a valid image file (PNG, JPG, or JPEG)");
+      showError("Please upload a valid image file (PNG, JPG, JPEG, or WEBP)");
       return;
     }
     setUploadedImage(file);
@@ -823,7 +823,7 @@ export default function CreateEvent() {
                       id="createEvent-uploadImage"
                       ref={uploadImageInputRef}
                       type="file"
-                      accept="image/png,image/jpeg,image/jpg"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
                       className="createEvent__uploadInput"
                       onChange={handleImageChange}
                     />

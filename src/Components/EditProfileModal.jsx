@@ -27,6 +27,11 @@ export default function EditProfileModal({ user, onClose }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [avatar, setAvatar] = useState(user.avatar);
 
+  // The actual selected File (if any) — `avatar` above is only ever a
+  // preview URL (either the existing photo's URL, or a local blob URL
+  // for a newly picked file) and is never itself sent to the backend.
+  const [imageFile, setImageFile] = useState(null);
+
   // Fresh open → clear any error left over from a previous attempt.
   useEffect(() => {
     dispatch(resetProfileUpdateState());
@@ -39,12 +44,14 @@ export default function EditProfileModal({ user, onClose }) {
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      setImageFile(file);
       setAvatar(URL.createObjectURL(file));
     }
   };
 
   const handleRemoveAvatar = () => {
     setAvatar("");
+    setImageFile(null);
   };
 
   const validate = () => {
@@ -64,13 +71,22 @@ export default function EditProfileModal({ user, onClose }) {
     if (updateLoading) return; // guards against double-submit
     if (!validate()) return;
 
-    const result = await dispatch(
-      updateProfile({
-        name: formData.name.trim(),
-        // email: formData.email.trim(),
-        mobile: formData.mobile.trim(),
-      })
-    );
+    // multipart/form-data — required so a newly picked profileImage
+    // file can go up alongside the text fields in the same request
+    // (matches the backend's PUT /api/auth/profile, which parses it via
+    // `upload.single("profileImage")` before this data ever reaches the
+    // controller). axios auto-detects FormData and sets the correct
+    // Content-Type/boundary itself (see api/axios.js) — nothing else
+    // about the request needs to change for this to work.
+    const payload = new FormData();
+    payload.append("name", formData.name.trim());
+    payload.append("mobile", formData.mobile.trim());
+
+    if (imageFile) {
+      payload.append("profileImage", imageFile);
+    }
+
+    const result = await dispatch(updateProfile(payload));
 
     if (updateProfile.fulfilled.match(result)) {
       onClose();
@@ -112,7 +128,7 @@ export default function EditProfileModal({ user, onClose }) {
                   <input
                     id="avatarUpload"
                     type="file"
-                    accept="image/png,image/jpeg,image/jpg"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
                     onChange={handleAvatarChange}
                     hidden
                   />
@@ -127,7 +143,7 @@ export default function EditProfileModal({ user, onClose }) {
                     </button>
                   )}
                 </div>
-                <p className="avatarHint">Allowed file types: png, jpg, jpeg.</p>
+                <p className="avatarHint">Allowed file types: png, jpg, jpeg, webp.</p>
               </div>
             </div>
 

@@ -211,8 +211,40 @@
 
 .fieldInput:focus,
 .fieldSelect:focus {
-  border-color: #ff5b1f;
-  box-shadow: 0 0 0 4px rgba(255, 91, 31, 0.12);
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 4px var(--admin-focus-ring);
+}
+
+/* Password visibility toggle — minimal addition on top of the existing
+   .fieldInput styling above; only adds right-padding for the icon and
+   positions the button, nothing else about the input changes. */
+.fieldInputWrap {
+  position: relative;
+  display: flex;
+}
+
+.fieldInputWrap .fieldInput {
+  padding-right: 40px;
+}
+
+.fieldPasswordToggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #9a9ca8;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.fieldPasswordToggle:hover {
+  color: #1b2a4e;
 }
 
 .modalFooter {
@@ -240,7 +272,7 @@
 } */
 
 .modalCreateButton {
-  background-color: #e0331e;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 10px;
@@ -252,7 +284,7 @@
 }
 
 .modalCreateButton:hover {
-  background-color: #c22a17;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 .fieldError{

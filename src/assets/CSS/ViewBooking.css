@@ -27,14 +27,14 @@
 }
 
 .bookingView-breadcrumbActive {
-  color: #1976d2;
+  color: var(--admin-accent);
 }
 
 .bookingView-backLink {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #e0331e;
+  color: var(--admin-accent);
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
@@ -143,7 +143,7 @@
 }
 
 .bookingView-totalPaySub {
-  color: #1976d2;
+  color: var(--admin-accent);
   font-size: 13px;
   font-weight: 600;
 }

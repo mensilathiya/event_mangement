@@ -40,14 +40,14 @@
 }
 
 .breadcrumb .active {
-  color: #1976d2;
+  color: var(--admin-accent);
 }
 
 .createButton {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #e0331e;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -60,7 +60,7 @@
 }
 
 .createButton:hover {
-  background-color: #c22a17;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 
@@ -190,7 +190,7 @@
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: #e0331e;
+  accent-color: var(--admin-accent);
   color-scheme: light;
 }
 .roleTable input[type="checkbox" i] {
@@ -203,7 +203,7 @@
 }
 
 .permissionLink {
-  color: #1976d2;
+  color: var(--admin-accent);
   font-weight: 600;
   text-decoration: underline;
   cursor: pointer;
@@ -233,8 +233,8 @@
 }
 
 .actionButton.open {
-  background-color: #dbe9ff;
-  color: #1976d2;
+  background-color: rgba(74, 144, 194, 0.14);
+  color: var(--admin-accent);
 }
 
 .actionMenu {

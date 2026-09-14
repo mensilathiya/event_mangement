@@ -179,7 +179,7 @@ export default function Sparkle() {
           </div>
         </div>
 
-        <div className="meets-viewport">
+        <div className="meets-viewport" {...carousel.hoverProps}>
           <div className="meets-cards" style={carousel.trackStyle}>
             {recentMeets.map((meet) => (
               <div className="comm-card meet-card" key={meet.key}>

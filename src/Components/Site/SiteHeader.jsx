@@ -34,8 +34,9 @@ export default function SiteHeader() {
           <li><Link to="/city-sparkle">CITY SPARKLE</Link></li>
           <li><Link to="/parv">PARV</Link></li>
         </ul>
-        <Link className="btn-login" to="/login">Login</Link>
+      
         <Link className="btn-join" to="/contact">Join Community</Link>
+          <Link className="btn-login" to="/login">Login</Link>
         <button
           className={`hamburger${menuOpen ? " open" : ""}`}
           id="hamburger"

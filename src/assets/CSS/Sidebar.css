@@ -103,8 +103,9 @@
 }
 
 .navItem.active {
-  background-color: #2a2a2a;
-  color: #ffffff;
+  background-color: rgba(74, 144, 194, 0.16);
+  color: var(--admin-accent);
+  box-shadow: inset 3px 0 0 var(--admin-accent);
 }
 
 .icon {
@@ -174,8 +175,8 @@
 }
 
 .submenuItem.active {
-  background-color: #2a2a2a;
-  color: #ffffff;
+  background-color: rgba(74, 144, 194, 0.16);
+  color: var(--admin-accent);
 }
 
 .submenuDash {

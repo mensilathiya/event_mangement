@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { FaTimes, FaPencilAlt, FaUser } from "react-icons/fa";
+import { HiOutlineEye, HiOutlineEyeOff } from "react-icons/hi";
 import { createUser, updateUser, getUsers } from "../redux/user/userThunk";
 import { clearUserState } from "../redux/user/userSlice";
 import "../assets/CSS/CreateUserModal.css";
@@ -38,6 +39,11 @@ export default function CreateUserModal({
   const [imageFile, setImageFile] = useState(null);
 
   const [formErrors, setFormErrors] = useState({});
+
+  // Independent show/hide state for each password field — toggling one
+  // never affects the other.
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -92,10 +98,11 @@ export default function CreateUserModal({
       "image/png",
       "image/jpeg",
       "image/jpg",
+      "image/webp",
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      showError("Only PNG, JPG and JPEG files are allowed.");
+      showError("Only PNG, JPG, JPEG and WEBP files are allowed.");
       return;
     }
 
@@ -269,7 +276,7 @@ export default function CreateUserModal({
           {/* Hidden File Input */}
           <input
             type="file"
-            accept="image/png,image/jpeg,image/jpg"
+            accept="image/png,image/jpeg,image/jpg,image/webp"
             ref={fileInputRef}
             onChange={handleImageUpload}
             hidden
@@ -305,7 +312,7 @@ export default function CreateUserModal({
           </div>
 
           <p className="photoHint">
-            Allowed file types: png, jpg, jpeg.
+            Allowed file types: png, jpg, jpeg, webp.
           </p>
         </div>
 
@@ -376,15 +383,25 @@ export default function CreateUserModal({
             <label className="fieldLabel">
               Password {!isEditMode && <span className="required">*</span>}
             </label>
-            <input
-              type="password"
-              className="fieldInput"
-              name="password"
-              autoComplete="new-password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={handleChange}
-            />
+            <div className="fieldInputWrap">
+              <input
+                type={showPassword ? "text" : "password"}
+                className="fieldInput"
+                name="password"
+                autoComplete="new-password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+              />
+              <button
+                type="button"
+                className="fieldPasswordToggle"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <HiOutlineEyeOff /> : <HiOutlineEye />}
+              </button>
+            </div>
             {formErrors.password && <p className="fieldError">{formErrors.password}</p>}
           </div>
 
@@ -392,15 +409,25 @@ export default function CreateUserModal({
             <label className="fieldLabel">
               Confirm Password {!isEditMode && <span className="required">*</span>}
             </label>
-            <input
-              type="password"
-              className="fieldInput"
-              name="confirmPassword"
-              placeholder="Confirm Password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              autoComplete="new-password"
-            />
+            <div className="fieldInputWrap">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                className="fieldInput"
+                name="confirmPassword"
+                placeholder="Confirm Password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                className="fieldPasswordToggle"
+                onClick={() => setShowConfirmPassword((v) => !v)}
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <HiOutlineEyeOff /> : <HiOutlineEye />}
+              </button>
+            </div>
             {formErrors.confirmPassword && (
               <p className="fieldError">{formErrors.confirmPassword}</p>
             )}

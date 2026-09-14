@@ -78,7 +78,7 @@
 }
 
 .permissionDeleteHighlight {
-  color: #e0331e;
+  color: #e0335e;
   font-weight: 700;
 }
 
@@ -106,7 +106,7 @@
 }
 
 .permissionDeleteConfirmButton {
-  background-color: #e0331e;
+  background-color: #e0335e;
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -118,7 +118,7 @@
 }
 
 .permissionDeleteConfirmButton:hover {
-  background-color: #c22a17;
+  background-color: #c22a4e;
   transform: translateY(-1px);
 }
 

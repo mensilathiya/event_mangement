@@ -48,7 +48,7 @@
 }
 
 .createEvent__breadcrumbLink {
-  color: #1976d2;
+  color: var(--admin-accent);
 }
 
 .createEvent__backLink {
@@ -57,7 +57,7 @@
   gap: 8px;
   background: transparent;
   border: none;
-  color: #e0331e;
+  color: var(--admin-accent);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -66,7 +66,7 @@
 }
 
 .createEvent__backLink:hover {
-  color: #c22a17;
+  color: var(--admin-accent-strong);
 }
 
 .createEvent__body {
@@ -134,8 +134,8 @@
 
 .createEvent__input:focus {
   background-color: #ffffff;
-  border-color: #1976d2;
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px var(--admin-focus-ring);
 }
 
 .createEvent__addressTextarea {
@@ -198,21 +198,21 @@ input.createEvent__input[type="datetime-local"]::-webkit-datetime-edit {
   justify-content: center;
   width: 90px;
   height: 90px;
-  border: 1.5px dashed #f3b7ae;
+  border: 1.5px dashed rgba(74, 144, 194, 0.45);
   border-radius: 10px;
-  background-color: #fdf1ef;
+  background-color: rgba(74, 144, 194, 0.06);
   cursor: pointer;
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .createEvent__uploadBox:hover {
-  border-color: #e0331e;
-  background-color: #fbe4e1;
+  border-color: var(--admin-accent);
+  background-color: rgba(74, 144, 194, 0.14);
 }
 
 .createEvent__uploadBox:focus-within {
-  border-color: #1976d2;
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px var(--admin-focus-ring);
 }
 
 .createEvent__uploadInput {
@@ -220,7 +220,7 @@ input.createEvent__input[type="datetime-local"]::-webkit-datetime-edit {
 }
 
 .createEvent__uploadIcon {
-  color: #e0331e;
+  color: var(--admin-accent);
   font-size: 22px;
 }
 
@@ -276,11 +276,11 @@ input.createEvent__input[type="datetime-local"]::-webkit-datetime-edit {
 }
 
 .createEvent__uploadActionBtn--change {
-  color: #1976d2;
+  color: var(--admin-accent);
 }
 
 .createEvent__uploadActionBtn--change:hover {
-  color: #125a9c;
+  color: var(--admin-accent-strong);
   text-decoration: underline;
 }
 
@@ -302,8 +302,8 @@ input.createEvent__input[type="datetime-local"]::-webkit-datetime-edit {
 }
 
 .createEvent__editor:focus-within {
-  border-color: #1976d2;
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px var(--admin-focus-ring);
 }
 
 .createEvent__editorToolbar {
@@ -335,12 +335,12 @@ input.createEvent__input[type="datetime-local"]::-webkit-datetime-edit {
 
 .createEvent__editorIconBtn:hover {
   background-color: #f2f3f6;
-  color: #1976d2;
+  color: var(--admin-accent);
 }
 
 .createEvent__editorIconBtn.ql-active {
-  background-color: #eaf2fb;
-  color: #1976d2;
+  background-color: rgba(74, 144, 194, 0.14);
+  color: var(--admin-accent);
 }
 
 .createEvent__editorIconBtnWithCaret {
@@ -474,7 +474,7 @@ select.createEvent__editorFormatSelect {
 }
 
 .createEvent__quill .ql-editor div.createEvent__quillTable td:focus {
-  outline: 2px solid rgba(25, 118, 210, 0.35);
+  outline: 2px solid rgba(74, 144, 194, 0.45);
   outline-offset: -2px;
 }
 
@@ -492,7 +492,7 @@ select.createEvent__editorFormatSelect {
 
 .createEvent__quill .ql-tooltip a.ql-action::after,
 .createEvent__quill .ql-tooltip a.ql-remove::before {
-  color: #1976d2;
+  color: var(--admin-accent);
 }
 
 .createEvent__editorMoreWrap {
@@ -528,7 +528,7 @@ select.createEvent__editorFormatSelect {
 
 .createEvent__editorMoreMenu button:hover {
   background-color: #f2f3f6;
-  color: #1976d2;
+  color: var(--admin-accent);
 }
 
 .createEvent__inlineField {
@@ -549,7 +549,7 @@ select.createEvent__editorFormatSelect {
   width: 44px;
   height: 44px;
   flex-shrink: 0;
-  background-color: #e0331e;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -559,7 +559,7 @@ select.createEvent__editorFormatSelect {
 }
 
 .createEvent__addVideoButton:hover {
-  background-color: #c22a17;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 
@@ -635,7 +635,7 @@ select.createEvent__editorFormatSelect {
 }
 
 .createEvent__createButton {
-  background-color: #e0331e;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -647,7 +647,7 @@ select.createEvent__editorFormatSelect {
 }
 
 .createEvent__createButton:hover {
-  background-color: #c22a17;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 

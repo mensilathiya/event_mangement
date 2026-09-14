@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
+import { HiOutlineEye, HiOutlineEyeOff } from "react-icons/hi";
 import "../assets/CSS/DeleteEventModal.css";
 import { deleteEvent } from "../redux/event/eventThunk";
 import { showSuccess } from "../utilits/toast";
@@ -35,6 +36,9 @@ export default function DeleteEventModal({
   // are only ever populated by what the admin actually types.
   const [emailLocked, setEmailLocked] = useState(true);
   const [passwordLocked, setPasswordLocked] = useState(true);
+
+  // Independent show/hide state for this field only.
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleDelete = async () => {
     const trimmedEmail = email.trim();
@@ -132,18 +136,29 @@ export default function DeleteEventModal({
           <label className="eventDeleteLabel">
             Password <span className="eventDeleteRequired">*</span>
           </label>
-          <input
-            type="password"
-            className="eventDeleteInput"
-            placeholder="Enter admin password"
-            value={password}
-            onChange={handlePasswordChange}
-            onFocus={() => setPasswordLocked(false)}
-            disabled={isSubmitting}
-            readOnly={passwordLocked}
-            name="admin-delete-password-field"
-            autoComplete="new-password"
-          />
+          <div className="eventDeleteInputWrap">
+            <input
+              type={showPassword ? "text" : "password"}
+              className="eventDeleteInput"
+              placeholder="Enter admin password"
+              value={password}
+              onChange={handlePasswordChange}
+              onFocus={() => setPasswordLocked(false)}
+              disabled={isSubmitting}
+              readOnly={passwordLocked}
+              name="admin-delete-password-field"
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              className="eventDeletePasswordToggle"
+              onClick={() => setShowPassword((v) => !v)}
+              disabled={isSubmitting}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <HiOutlineEyeOff /> : <HiOutlineEye />}
+            </button>
+          </div>
         </div>
 
         {formError && (

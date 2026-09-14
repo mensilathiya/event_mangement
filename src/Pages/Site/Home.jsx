@@ -37,7 +37,7 @@ export default function Home() {
           <img src={`${IMG}/hero.png`} alt="City Topper's community gathering" className="hero-bg-img" />
           <div className="hero-overlay"></div>
 
-          <div className="hero-content" data-aos="fade-up">
+          <div className="hero-content">
             <p className="hero-tagline">GUJARAT'S FIRST CAFE MEET SOCIAL COMMUNITY</p>
             <h1 className="hero-title">CITY<br />TOPPER'S</h1>
             <p className="hero-subtitle">MEET, GREET &amp; REPEAT</p>
@@ -45,7 +45,7 @@ export default function Home() {
         </div>
 
         {/* Slide 2 */}
-        <div className={`hero-slide${activeSlide === 1 ? " active" : ""}`} data-aos="fade-up">
+        <div className={`hero-slide${activeSlide === 1 ? " active" : ""}`}>
           <img src={`${IMG}/hero2.png`} alt="Cafe meet event" className="hero-bg-img" />
           <div className="hero-overlay"></div>
 
@@ -57,7 +57,7 @@ export default function Home() {
         </div>
 
         {/* Slide 3 */}
-        <div className={`hero-slide${activeSlide === 2 ? " active" : ""}`} data-aos="fade-up">
+        <div className={`hero-slide${activeSlide === 2 ? " active" : ""}`}>
           <img src={`${IMG}/hero3.png`} alt="City Topper's event" className="hero-bg-img" />
           <div className="hero-overlay"></div>
 

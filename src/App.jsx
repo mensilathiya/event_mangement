@@ -1,9 +1,10 @@
 import "./App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 
 import { getProfile } from "./redux/auth/authSlice";
+import { updateSiteMeta } from "./utilits/updateSiteMeta";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
 
@@ -11,7 +12,6 @@ import Login from "./Pages/Login";
 import DashboardPage from "./Pages/DashboardPage";
 import User from "./Pages/User";
 import Role from "./Pages/Role";
-// import Permission from "./Pages/Permission";
 import Event from "./Pages/Event";
 import Booking from "./Pages/Booking";
 import ViewBooking from "./Pages/ViewBooking";
@@ -24,14 +24,45 @@ import TicketType from "./Components/TicketType";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Profile from "./Pages/Profile";
+import Admin from "./Pages/Admin";
 import TopProgressLoader from "./Components/TopProgressLoader";
 
-// Public marketing site pages (converted from the old static HTML site).
-// Kept separate from the app's existing Pages/ used by the admin dashboard.
+// Public marketing site pages
 import Home from "./Pages/Site/Home";
 import CitySparkle from "./Pages/Site/Sparkle";
 import Parv from "./Pages/Site/Parv";
 import Contact from "./Pages/Site/Contact";
+
+const privateRoutes = [
+  "/dashboard",
+  "/user",
+  "/role",
+  "/event",
+  "/create-event",
+  "/view-event",
+  "/ticket-type",
+  "/booking",
+  "/view-booking",
+  "/register-users",
+  "/profile",
+  "/entry-report",
+  "/admin",
+];
+
+function SiteMetaHandler() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const isPrivate = privateRoutes.some((route) =>
+      location.pathname.startsWith(route)
+    );
+
+    updateSiteMeta(isPrivate);
+  }, [location.pathname]);
+
+  return null;
+}
+
 function App() {
   const dispatch = useDispatch();
 
@@ -55,40 +86,25 @@ function App() {
       />
 
       <BrowserRouter>
+        <SiteMetaHandler />
+
         <TopProgressLoader />
 
         <Routes>
-
-          {/* Public marketing site (converted from the old static HTML
-              site: index.html, sparkle.html, parv.html, contact.html).
-              Home now lives at "/" as required. The admin Login page has
-              moved to "/login" (see below) and is reached via the "Login"
-              button in the site header. */}
           <Route path="/" element={<Home />} />
           <Route path="/city-sparkle" element={<CitySparkle />} />
           <Route path="/parv" element={<Parv />} />
           <Route path="/contact" element={<Contact />} />
 
-          {/* Old "/home" URL from the previous conversion pass — redirect
-              anyone with that link/bookmark to the new Home location. */}
           <Route path="/home" element={<Navigate to="/" replace />} />
 
-          {/* Public Routes */}
           <Route path="/login" element={<Login />} />
 
-          {/* Public customer registration for a single BookingTicket,
-              opened from a WhatsApp link with a registration token in the
-              URL. Intentionally NOT under <ProtectedRoute /> — customers
-              have no login. Kept separate from the authenticated
-              /register-users/:id route (RegisterUsers.jsx) above, which
-              stays protected and unchanged. */}
           <Route path="/r/:token" element={<PublicRegisterUser />} />
 
-          {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/user" element={<User />} />
             <Route path="/role" element={<Role />} />
-            {/* <Route path="/permission" element={<Permission />} /> */}
             <Route path="/event" element={<Event />} />
             <Route path="/create-event" element={<CreateEvent />} />
             <Route path="/view-event/:id" element={<ViewEvent />} />
@@ -99,21 +115,14 @@ function App() {
             <Route path="/profile" element={<Profile />} />
           </Route>
 
-          {/* Dashboard is Admin-only. A Checker hitting /dashboard directly
-              (typed URL, bookmark, back-button, etc.) is redirected —
-              the Sidebar already hides the link, but that alone doesn't
-              stop direct navigation, so the route itself needs the same
-              gate. */}
           <Route element={<ProtectedRoute adminOnly />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/admin" element={<Admin />} />
           </Route>
 
-          {/* Entry Report requires the "Entry Report" permission
-              (Admin always passes) in addition to being authenticated. */}
           <Route element={<ProtectedRoute permission="Entry Report" />}>
             <Route path="/entry-report" element={<EntryReport />} />
           </Route>
-
         </Routes>
       </BrowserRouter>
     </>

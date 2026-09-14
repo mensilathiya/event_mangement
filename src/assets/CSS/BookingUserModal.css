@@ -206,7 +206,7 @@
 }
 
 .bookingUserInput:focus {
-  box-shadow: 0 0 0 4px rgba(255, 91, 31, 0.12);
+  box-shadow: 0 0 0 4px var(--admin-focus-ring);
 }
 
 .bookingUserFooter {
@@ -234,7 +234,7 @@
 }
 
 .bookingUserCreateButton {
-  background-color: #e0331e;
+  background-color: var(--admin-accent);
   color: #ffffff;
   border: none;
   border-radius: 10px;
@@ -246,7 +246,7 @@
 }
 
 .bookingUserCreateButton:hover {
-  background-color: #c22a17;
+  background-color: var(--admin-accent-strong);
   transform: translateY(-1px);
 }
 

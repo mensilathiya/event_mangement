@@ -20,8 +20,8 @@
   background: linear-gradient(
     90deg,
     transparent,
-    #17a2b8,
-    #17a2b8,
+    var(--admin-accent),
+    var(--admin-accent),
     transparent
   );
   animation: topProgressLoader 1s ease-in-out infinite;
