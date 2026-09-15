@@ -1,32 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 
-// Same Google Apps Script Web App endpoint the "Join Community" form
-// already uses (Pages/Site/Contact.jsx) — kept as its own local
-// constant here (not imported from Contact.jsx) so this modal has no
-// dependency on that file and nothing there needs to change. Submitting
-// here sends data to the SAME Google Sheet, using the SAME field names
-// Contact.jsx already sends (firstName/lastName/email/phone/profession/
-// reason), so no change is needed on the Apps Script/sheet side either:
-//  - "phone" carries the normalized WhatsApp number (see
-//    normalizeWhatsapp below) — same column Contact.jsx's phone number
-//    already lands in.
-//  - "source" is one extra field ("parv-invite") so rows from this form
-//    can be told apart from Contact.jsx's; if the sheet script only
-//    reads specific known fields, this one is simply ignored — it can't
-//    break the existing submissions.
-const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzTLbM0mBsz26vMuowccj0_kiW2Erm5UzYR54T21dNIILibU6wiWQEbiHRaBVA_Tvsq/exec";
-
-// First-pass list — the user said they'll finalize these options
-// themselves, so this is a reasonable starting set, not final copy.
-const PROFESSION_OPTIONS = [
-  "Business Owner / Entrepreneur",
-  "Working Professional",
-  "Freelancer / Consultant",
-  "Student",
-  "Homemaker",
-  "Other",
-];
+// This is a SEPARATE Google Sheet from the "Join Community" form
+// (Pages/Site/Contact.jsx) — its own Google Apps Script Web App, its own
+// Sheet, and its own field set (see the Code.gs delivered alongside this
+// file: google-apps-script/ParvRegisterForm.gs). Nothing in Contact.jsx
+// or its Sheet/script is touched by this.
+//
+// SETUP (one-time): deploy google-apps-script/ParvRegisterForm.gs as its
+// own Web App (see the setup steps at the top of that file), then paste
+// the deployment's "Web app URL" below in place of the placeholder.
+const PARV_REGISTER_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycby2MX8lKZIjVwXd7zG7qibpeOIoRKaxJt6LoptykM1AOQnONk8vF8MIpUGG98hjj9M/exec";
 
 // Accepts a WhatsApp number with or without a country code and always
 // sends it to the sheet as +91XXXXXXXXXX — so the person filling the
@@ -47,16 +31,23 @@ const normalizeWhatsapp = (value) => {
 
 /**
  * "Request Invitation" / "Request Your Invitation" modal for the Parv
- * page. Visually the same "Join Community" card as Pages/Site/
- * Contact.jsx (reuses its .join-section/.join-card/... CSS as-is —
- * nothing there was touched) but opens as an overlay on the current
- * page instead of navigating to a separate route, wrapped in its own
- * .invite-modal overlay (styled after the existing .event-modal
- * lightbox pattern).
+ * page — the Parv Register Form. Visually the same "Join Community"
+ * card as Pages/Site/Contact.jsx (reuses its .join-section/.join-card/
+ * ... CSS as-is — nothing there was touched) but opens as an overlay on
+ * the current page instead of navigating to a separate route, wrapped
+ * in its own .invite-modal overlay (styled after the existing
+ * .event-modal lightbox pattern).
  *
- * Field differences from the Join Community form, per what was asked:
- *  - WhatsApp Number instead of Phone Number (accepts with/without +91)
- *  - Profession / Role is a dropdown instead of free text
+ * Fields, per what was asked:
+ *  - Name
+ *  - WhatsApp Number (accepts with/without +91)
+ *  - Email Address
+ *  - Location
+ *  - How many people are you bringing to Parv?
+ *  - Reference (optional — how they heard about it / who referred them)
+ *
+ * Submits to its OWN Google Sheet (PARV_REGISTER_SCRIPT_URL above) —
+ * separate from the Join Community form's sheet.
  *
  * Props:
  *  - open: boolean — modal shown when true
@@ -105,20 +96,27 @@ export default function InviteRequestModal({ open, onClose }) {
       return;
     }
 
+    if (PARV_REGISTER_SCRIPT_URL.startsWith("PASTE_YOUR_")) {
+      setStatus({
+        visible: true,
+        color: "#ff6b6b",
+        message:
+          "Form isn't connected to a Google Sheet yet — deploy google-apps-script/ParvRegisterForm.gs and paste its URL into InviteRequestModal.jsx.",
+      });
+      return;
+    }
+
     setSubmitting(true);
-    setStatus({ visible: true, color: "#F4DD4E", message: "Sending your request..." });
+    setStatus({ visible: true, color: "#F4DD4E", message: "Sending your registration..." });
 
     const formData = new FormData(form);
-    formData.set("phone", normalizeWhatsapp(formData.get("whatsapp")));
-    formData.delete("whatsapp");
-    formData.set("source", "parv-invite");
+    formData.set("whatsapp", normalizeWhatsapp(formData.get("whatsapp")));
 
     try {
-      // no-cors: request Google tak pahunch jaata hai aur sheet me save
-      // ho jaata hai. Response opaque hota hai (read nahi kar sakte),
-      // isliye reach = success maante hain — same assumption
-      // Contact.jsx already makes for the same endpoint.
-      await fetch(SCRIPT_URL, {
+      // no-cors: request reaches Google and the sheet gets the row.
+      // Response is opaque (can't be read), so reach = success — same
+      // assumption Contact.jsx already makes for its own endpoint.
+      await fetch(PARV_REGISTER_SCRIPT_URL, {
         method: "POST",
         mode: "no-cors",
         body: formData,
@@ -126,7 +124,7 @@ export default function InviteRequestModal({ open, onClose }) {
       setStatus({
         visible: true,
         color: "#F4DD4E",
-        message: "Thanks! Your invitation request has been submitted.",
+        message: "Thanks! Your Parv registration has been submitted.",
       });
       form.reset();
     } catch (err) {
@@ -152,22 +150,13 @@ export default function InviteRequestModal({ open, onClose }) {
 
           <div className="join-badge">&#9733;</div>
 
-          <h1 className="join-title">
-            REQUEST YOUR
-            <br />
-            INVITATION
-          </h1>
+          <h1 className="join-title">PARV RIGISTRATION FORM</h1>
           <p className="join-tagline">
-            RESERVE YOUR SPOT AT GUJARAT'S MOST ANTICIPATED EVENING GATHERINGS
+            IF YOU'D LIKE TO ATTEND PARV, PLEASE TAKE A MOMENT TO FILL OUT THIS FORM.
           </p>
 
           <form className="join-form" ref={formRef} onSubmit={handleSubmit} noValidate>
-            <div className="join-row">
-              <input type="text" name="firstName" placeholder="FIRST NAME *" aria-label="First name" required />
-              <input type="text" name="lastName" placeholder="LAST NAME *" aria-label="Last name" required />
-            </div>
-
-            <input type="email" name="email" placeholder="EMAIL ADDRESS *" aria-label="Email address" required />
+            <input type="text" name="name" placeholder="NAME *" aria-label="Name" required />
 
             <div>
               <input
@@ -180,28 +169,30 @@ export default function InviteRequestModal({ open, onClose }) {
               <p className="join-hint">You can enter it with or without +91 — either way works.</p>
             </div>
 
-            <select name="profession" aria-label="Profession / Role" required defaultValue="">
-              <option value="" disabled>
-                SELECT PROFESSION / ROLE *
-              </option>
-              {PROFESSION_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+            <input type="email" name="email" placeholder="EMAIL ADDRESS *" aria-label="Email address" required />
 
-            <textarea
-              name="reason"
-              rows={4}
-              placeholder="WHY DO YOU WANT TO JOIN PARV? *"
-              aria-label="Why do you want to join Parv?"
+            <input type="text" name="location" placeholder="LOCATION (CITY) *" aria-label="Location" required />
+
+            <input
+              type="number"
+              name="peopleCount"
+              min="1"
+              step="1"
+              placeholder="HOW MANY PEOPLE ARE YOU BRINGING TO PARV? *"
+              aria-label="Number of people attending"
               required
-            ></textarea>
+            />
+
+            <input
+              type="text"
+              name="reference"
+              placeholder="REFERENCE (HOW DID YOU HEAR ABOUT US?)"
+              aria-label="Reference"
+            />
 
             <div className="join-actions">
               <button type="submit" className="join-submit" disabled={submitting}>
-                {submitting ? "Submitting..." : <>Submit Request &rarr;</>}
+                {submitting ? "Submitting..." : <>Submit Registration &rarr;</>}
               </button>
             </div>
             {status.visible && (

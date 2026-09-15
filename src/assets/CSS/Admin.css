@@ -87,7 +87,7 @@
 .adminPage__tableWrapper {
   width: 100%;
   position: relative;
-  overflow-x: auto;
+  /* overflow-x: auto; */
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   min-height: fit-content;

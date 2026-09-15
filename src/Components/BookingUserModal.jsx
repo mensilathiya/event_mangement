@@ -24,23 +24,29 @@ export default function BookingUserModal({ onClose, ticketId, onSuccess }) {
   });
   const [previewImage, setPreviewImage] = useState("");
   // Modal open thay tyare API call
-  // useEffect(() => {
-  //   if (ticketId) {
-  //     dispatch(getRegisterUser(ticketId));
-  //   }
-  // }, [dispatch, ticketId]);
+  useEffect(() => {
+    if (ticketId) {
+      dispatch(getRegisterUser(ticketId));
+    }
+  }, [dispatch, ticketId]);
   // API Response thi Form Fill
+  // Backend returns the raw BookingTicket document, so the attendee's
+  // details live under `registerUser.attendee` (name/mobileNumber/email/
+  // profileImage) — same nested shape used everywhere else in the app
+  // (e.g. RegisterUsers.jsx's `ticket.attendee`), not top-level fields.
   useEffect(() => {
     if (!registerUser) return;
 
+    const attendee = registerUser.attendee || {};
+
     setFormData({
-      name: registerUser.name || "",
-      mobileNumber: registerUser.mobileNumber || "",
-      email: registerUser.email || "",
+      name: attendee.name || "",
+      mobileNumber: attendee.mobileNumber || "",
+      email: attendee.email || "",
       profileImage: null,
     });
     setPreviewImage(
-      registerUser.profileImage || ""
+      attendee.profileImage || ""
     );
   }, [registerUser]);
   // image 

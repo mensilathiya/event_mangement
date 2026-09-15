@@ -6,9 +6,10 @@ import {
   MdDashboard,
   MdClose,
   MdKeyboardArrowDown,
+  MdCategory,
 } from 'react-icons/md';
 
-import { FaUsers } from 'react-icons/fa';
+import { FaUsers, FaAddressBook } from 'react-icons/fa';
 
 import {
   BsCalendarEventFill,
@@ -45,6 +46,18 @@ const menuItems = [
     label: 'Booking',
     icon: <BsFillTicketFill />,
     path: '/booking',
+  },
+  {
+    label: 'Contact List',
+    icon: <FaAddressBook />,
+    // Admin Contact List lives at /contact-list — '/contact' is the
+    // PUBLIC marketing contact page (see App.jsx) and must stay that way.
+    path: '/contact-list',
+  },
+  {
+    label: 'Company Category',
+    icon: <MdCategory />,
+    path: '/company-categories',
   },
   {
     label: 'Entry Report',

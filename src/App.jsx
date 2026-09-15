@@ -25,6 +25,8 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Profile from "./Pages/Profile";
 import Admin from "./Pages/Admin";
+import ContactList from "./Pages/ContactList";
+import CompanyCategory from "./Pages/CompanyCategory";
 import TopProgressLoader from "./Components/TopProgressLoader";
 
 // Public marketing site pages
@@ -47,6 +49,8 @@ const privateRoutes = [
   "/profile",
   "/entry-report",
   "/admin",
+  "/contact-list",
+  "/company-categories",
 ];
 
 function SiteMetaHandler() {
@@ -113,6 +117,8 @@ function App() {
             <Route path="/view-booking/:id" element={<ViewBooking />} />
             <Route path="/register-users/:id" element={<RegisterUsers />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/contact-list" element={<ContactList />} />
+            <Route path="/company-categories" element={<CompanyCategory />} />
           </Route>
 
           <Route element={<ProtectedRoute adminOnly />}>

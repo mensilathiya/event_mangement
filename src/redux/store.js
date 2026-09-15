@@ -9,6 +9,8 @@ import qrReducer from "../redux/qr/qrSlice";
 import entryReportReducer from "../redux/entryReport/entryReportSlice";
 import dashboardReducer from "./dashboard/dashboardSlice";
 import adminReducer from "./admin/adminSlice";
+import contactReducer from "./contact/contactSlice";
+import companyCategoryReducer from "./companyCategory/companyCategorySlice";
 export const store = configureStore({
     reducer: {
         auth: authReducer,
@@ -21,6 +23,8 @@ export const store = configureStore({
         entryReport: entryReportReducer,
          dashboard: dashboardReducer, 
         admin: adminReducer,
+        contact: contactReducer,
+        companyCategory: companyCategoryReducer,
     }
 
 })

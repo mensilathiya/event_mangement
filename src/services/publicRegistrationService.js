@@ -14,15 +14,20 @@ export const getPublicRegistrationDetailsApi = async (token) => {
 // PUT /api/public/registration/:token
 // `formData` must only ever contain name / mobileNumber / email /
 // profileImage — never a ticketId. The token is the sole ticket identity.
+//
+// IMPORTANT: do NOT set a "Content-Type" header here. `formData` is a
+// FormData instance, so the browser must compute its own
+// "multipart/form-data; boundary=..." value and attach it automatically.
+// Explicitly setting "Content-Type": "multipart/form-data" (without a
+// boundary) overrides that and gets sent as-is, so the request reaches
+// the backend with no boundary marker at all — multer/busboy then can't
+// parse the body, req.body.name/mobileNumber/email all come through
+// empty, and the submission silently fails validation. This is the same
+// pitfall already called out at the top of api/axios.js.
 export const submitPublicRegistrationApi = async (token, formData) => {
   const response = await publicApi.put(
     `/public/registration/${token}`,
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
+    formData
   );
 
   return response.data;
