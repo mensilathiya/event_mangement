@@ -6,7 +6,6 @@ import {
   MdDashboard,
   MdClose,
   MdKeyboardArrowDown,
-  MdCategory,
 } from 'react-icons/md';
 
 import { FaUsers, FaAddressBook } from 'react-icons/fa';
@@ -50,14 +49,13 @@ const menuItems = [
   {
     label: 'Contact List',
     icon: <FaAddressBook />,
-    // Admin Contact List lives at /contact-list — '/contact' is the
-    // PUBLIC marketing contact page (see App.jsx) and must stay that way.
-    path: '/contact-list',
-  },
-  {
-    label: 'Company Category',
-    icon: <MdCategory />,
-    path: '/company-categories',
+    submenu: [
+      // Admin Contact List lives at /contact-list — '/contact' is the
+      // PUBLIC marketing contact page (see App.jsx) and must stay that
+      // way.
+      { label: 'Contact List', path: '/contact-list' },
+      { label: 'Company Category', path: '/company-categories' },
+    ],
   },
   {
     label: 'Entry Report',

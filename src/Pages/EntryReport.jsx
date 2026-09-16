@@ -207,6 +207,24 @@ export default function EntryReport() {
         ? new Date(selectedEventOption.endDateTime)
         : null;
 
+  // Snapshot of the filters actually sent with the most recently
+  // *dispatched* entry-report list request — i.e. exactly what the rows
+  // currently on screen were fetched with. Export reads from this (see
+  // handleExport) instead of the raw filter state below, because the raw
+  // state updates on every keystroke (Booking Id/Ticket Id/Name/Mobile
+  // Number inputs, and the debounced toolbar Search box) and can therefore
+  // hold edits the user hasn't actually applied yet via Search/Reset/etc.
+  const appliedFiltersRef = useRef({
+    eventId: "",
+    bookingId: "",
+    ticketId: "",
+    name: "",
+    mobileNumber: "",
+    search: "",
+    startDate: "",
+    endDate: "",
+  });
+
   // Builds the API params from the current filter values, matching the
   // entry-report backend's query contract exactly.
   const buildEntryReportParams = (
@@ -231,6 +249,20 @@ export default function EntryReport() {
     if (apiStartDate) params.startDate = apiStartDate;
     if (apiEndDate) params.endDate = apiEndDate;
     if (searchTerm) params.search = searchTerm;
+
+    // Every call site of buildEntryReportParams dispatches a list request
+    // with exactly these params right after calling it, so this is the
+    // single place to record the "last applied" snapshot Export relies on.
+    appliedFiltersRef.current = {
+      eventId: eventId || "",
+      bookingId: bookingId || "",
+      ticketId: ticketId || "",
+      name: name || "",
+      mobileNumber: mobileNumber || "",
+      search: searchTerm || "",
+      startDate: apiStartDate || "",
+      endDate: apiEndDate || "",
+    };
 
     return params;
   };
@@ -574,22 +606,32 @@ export default function EntryReport() {
         ...(eventId ? { eventId } : {}),
       })
     );
+
+    // Reset bypasses buildEntryReportParams (see comment above), so the
+    // "last applied filters" snapshot Export relies on has to be cleared
+    // here explicitly too — otherwise Export would keep using whatever
+    // filters were applied before Reset was clicked.
+    appliedFiltersRef.current = {
+      eventId: eventId || "",
+      bookingId: "",
+      ticketId: "",
+      name: "",
+      mobileNumber: "",
+      search: "",
+      startDate: "",
+      endDate: "",
+    };
   };
   // export
   const handleExport = async () => {
     if (exportLoading) return;
 
+    // Export must reflect exactly the filters currently applied to the
+    // table (the last ones actually sent to the list API) — never the raw
+    // filter-input state directly, since that updates on every keystroke
+    // and can be ahead of what's been applied via Search/Reset/etc.
     const resultAction = await dispatch(
-      exportEntryReport({
-        eventId,
-        bookingId,
-        ticketId,
-        name,
-        mobileNumber,
-        search: searchTerm,
-        startDate: apiStartDate,
-        endDate: apiEndDate,
-      })
+      exportEntryReport({ ...appliedFiltersRef.current })
     );
 
     if (exportEntryReport.fulfilled.match(resultAction)) {

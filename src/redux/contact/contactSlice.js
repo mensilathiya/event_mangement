@@ -3,6 +3,7 @@ import {
   createContact,
   getContactById,
   getAllContacts,
+  exportContacts,
   updateContact,
   deleteContact,
   getUniqueReferences,
@@ -33,6 +34,12 @@ const initialState = {
   referenceSummary: [],
   referenceSummaryLoading: false,
   referenceSummaryError: null,
+
+  // Isolated from the main loading/error pair, same reasoning as
+  // uniqueReferences/referenceSummary above — an in-flight or failed
+  // export must never be picked up by the table's own loading/error UI.
+  exportLoading: false,
+  exportError: null,
 
   loading: false,
   error: null,
@@ -105,6 +112,20 @@ const contactSlice = createSlice({
       .addCase(getAllContacts.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      });
+
+    // ================= EXPORT CONTACTS =================
+    builder
+      .addCase(exportContacts.pending, (state) => {
+        state.exportLoading = true;
+        state.exportError = null;
+      })
+      .addCase(exportContacts.fulfilled, (state) => {
+        state.exportLoading = false;
+      })
+      .addCase(exportContacts.rejected, (state, action) => {
+        state.exportLoading = false;
+        state.exportError = action.payload;
       });
 
     // ================= UPDATE CONTACT =================

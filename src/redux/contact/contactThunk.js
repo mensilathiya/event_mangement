@@ -2,6 +2,7 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import {
   createContactApi,
   getAllContactsApi,
+  exportContactsApi,
   getContactByIdApi,
   updateContactApi,
   deleteContactApi,
@@ -32,6 +33,42 @@ export const getAllContacts = createAsyncThunk(
     } catch (error) {
       return thunkAPI.rejectWithValue(
         error.response?.data?.message || "Failed to fetch contacts"
+      );
+    }
+  }
+);
+
+// ================= EXPORT CONTACTS =================
+// params passed in are the page's CURRENT search/sortBy/sortOrder/
+// companyCategory/reference filters (same params getAllContacts
+// already uses), so the exported file always matches exactly what the
+// Contact List table is showing at the moment Export is clicked.
+export const exportContacts = createAsyncThunk(
+  "contact/exportContacts",
+  async (params, thunkAPI) => {
+    try {
+      const response = await exportContactsApi(params);
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `ContactList_${Date.now()}.xlsx`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+
+      return true;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || "Failed to export contacts"
       );
     }
   }

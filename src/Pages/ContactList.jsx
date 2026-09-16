@@ -14,16 +14,19 @@ import CommonPageHeader from "../Components/CommonPageHeader";
 import CommonSearch from "../Components/CommonSearch";
 import CommonSelect from "../Components/CommonSelect";
 import CommonTable from "../Components/CommonTable";
+import CommonEmptyState from "../Components/CommonEmptyState";
 import CommonPagination from "../Components/CommonPagination";
 import DeleteUserModal from "../Components/DeleteUserModal";
 import CreateContactModal from "../Components/CreateContactModal";
 import ContactDetailsModal from "../Components/ContactDetailsModal";
+import CommonExportButton from "../Components/CommonExportButton";
 
 import {
   getAllContacts,
   getUniqueReferences,
   getReferenceSummary,
   deleteContact,
+  exportContacts,
 } from "../redux/contact/contactThunk";
 import { clearContactState } from "../redux/contact/contactSlice";
 import { getAllCompanyCategories } from "../redux/companyCategory/companyCategoryThunk";
@@ -65,6 +68,7 @@ export default function ContactList() {
     uniqueReferences,
     uniqueReferencesLoading,
     referenceSummary,
+    exportLoading,
   } = useSelector((state) => state.contact);
 
   const { companyCategories } = useSelector((state) => state.companyCategory);
@@ -216,6 +220,24 @@ export default function ContactList() {
 
   const goToNextPage = () => {
     if (currentPage < resolvedTotalPages) setCurrentPage(currentPage + 1);
+  };
+
+  // Export uses the CURRENT search/sort/filters — same values already
+  // sent to getAllContacts above — so the downloaded file always
+  // matches exactly what the table is showing (not just every contact
+  // unfiltered). Page/limit are intentionally omitted: every matching
+  // contact is exported, not just the current page.
+  const handleExport = () => {
+    const params = {
+      search,
+      sortBy,
+      sortOrder,
+    };
+
+    if (categoryFilter) params.companyCategory = categoryFilter;
+    if (referenceFilter) params.reference = referenceFilter;
+
+    dispatch(exportContacts(params));
   };
 
   const handleCreateClick = () => {
@@ -467,17 +489,12 @@ const sortedReferenceFilterOptions = useMemo(
           return (
             <span className="contactPage__referenceCell">
               {references.map((reference) => {
-                // Same reference shared by another contact (e.g. Karan
-                // and Ramesh both having "a") is shown combined, right
-                // in this existing chip — "a (Karan, Ramesh)" — instead
-                // of a separate Reference Summary section/table.
-                const sharedWith =
-                  referenceContactsByKey.get(reference.trim().toLowerCase()) ||
-                  [];
-                const label =
-                  sharedWith.length > 1
-                    ? `${reference} (${sharedWith.join(", ")})`
-                    : reference;
+                // Chip only ever shows the reference name itself now —
+                // the "(Name, Name)" suffix that used to list every
+                // contact sharing this reference has been dropped per
+                // request. referenceContactsByKey / getReferenceSummary
+                // are left untouched in case they're needed elsewhere.
+                const label = reference;
 
                 return (
                   <span key={reference} className="contactPage__referenceChip">
@@ -637,14 +654,26 @@ const sortedReferenceFilterOptions = useMemo(
           </div>
         }
         actions={
-          <button
-            type="button"
-            className="contactPage__createButton"
-            onClick={handleCreateClick}
-          >
-            <FaPlus />
-            Create Contact
-          </button>
+          <div className="contactPage__headerActions">
+            <CommonExportButton
+              onClick={handleExport}
+              loading={exportLoading}
+              disabled={exportLoading || total === 0}
+              label="Export Contact List"
+              className="contactPage__exportButton"
+              iconClassName="contactPage__exportIcon"
+              iconLoadingClassName="contactPage__exportIcon contactPage__exportIcon--spinning"
+            />
+
+            <button
+              type="button"
+              className="contactPage__createButton"
+              onClick={handleCreateClick}
+            >
+              <FaPlus />
+              Create Contact
+            </button>
+          </div>
         }
       />
 
@@ -710,7 +739,15 @@ const sortedReferenceFilterOptions = useMemo(
             loadingMessage="Loading contacts..."
             error={error}
             errorMessage="Failed to load contacts."
-            emptyMessage="No contacts found."
+            emptyMessage={
+              <CommonEmptyState
+                wrapperClassName="contactPage__stateWrap"
+                textClassName="contactPage__stateText"
+                message="No contacts found."
+              />
+            }
+            stateCellClassName="contactPage__stateCell"
+            stateCellStyle={{}}
             tableClassName="contactPage__table"
             thContentClassName="contactPage__thContent"
             sortIconClassName="contactPage__sortIcon"

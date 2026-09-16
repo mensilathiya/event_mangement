@@ -626,6 +626,12 @@ const Login = () => {
                   </Alert>
                 )}
 
+                {forgotPasswordSuccess && (
+                  <Alert severity="success" sx={{ mb: 2 }}>
+                    {forgotPasswordSuccess}
+                  </Alert>
+                )}
+
                 <div className="emsLogin__mobileField">
                   <label
                     htmlFor="otp"

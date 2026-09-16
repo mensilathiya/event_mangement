@@ -140,6 +140,33 @@ export default function CreateContactModal({
     setReferences((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // If the admin typed a reference but forgot to press "Add" before
+  // submitting, don't silently lose it — but only when it's a single,
+  // unambiguous value. A comma-separated group of names typed into the
+  // same box and left un-added (e.g. "dev, karan") is NOT auto-split
+  // and added, since that's guessing at intent; the admin must press
+  // "Add" for each one individually, same as any other reference.
+  const resolvePendingReferences = () => {
+    const trimmed = referenceInput.trim();
+    if (!trimmed) return references;
+
+    const tokens = trimmed
+      .split(",")
+      .map((token) => token.trim())
+      .filter(Boolean);
+
+    if (tokens.length !== 1) return references;
+
+    const singleValue = tokens[0];
+    const isDuplicate = references.some(
+      (reference) => reference.toLowerCase() === singleValue.toLowerCase()
+    );
+
+    if (isDuplicate) return references;
+
+    return [...references, singleValue];
+  };
+
   const validate = () => {
     const errors = {};
 
@@ -173,21 +200,21 @@ export default function CreateContactModal({
       whatsappNumber: formData.whatsappNumber.trim(),
       companyName: formData.companyName.trim(),
       address: formData.address.trim(),
-      references,
+      references: resolvePendingReferences(),
       companyCategory: formData.companyCategory || null,
     };
 
     try {
       if (isEditMode) {
-        await dispatch(
+        const res = await dispatch(
           updateContact({ id: editContactData._id, data: payload })
         ).unwrap();
 
-        showSuccess("Contact updated successfully");
+        showSuccess(res?.message || "Contact updated successfully");
       } else {
-        await dispatch(createContact(payload)).unwrap();
+        const res = await dispatch(createContact(payload)).unwrap();
 
-        showSuccess("Contact created successfully");
+        showSuccess(res?.message || "Contact created successfully");
       }
 
       // Refetch using the list's actual current page/limit/search/sort/

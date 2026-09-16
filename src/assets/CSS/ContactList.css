@@ -52,6 +52,59 @@
   color: var(--admin-accent);
 }
 
+.contactPage__headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Secondary (outline) treatment so it doesn't visually compete with the
+   solid, primary "Create Contact" button next to it. */
+.contactPage__exportButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #ffffff;
+  color: var(--admin-accent);
+  border: 1px solid var(--admin-accent);
+  border-radius: 8px;
+  padding: 12px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.contactPage__exportButton:hover:not(:disabled) {
+  background-color: #f2f6ff;
+  transform: translateY(-1px);
+}
+
+.contactPage__exportButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.contactPage__exportIcon {
+  flex-shrink: 0;
+}
+
+.contactPage__exportIcon--spinning {
+  animation: contactPage__spin 0.8s linear infinite;
+}
+
+@keyframes contactPage__spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .contactPage__createButton {
   display: flex;
   align-items: center;
@@ -147,17 +200,23 @@
   color: #a7abbd;
 }
 
-/* Only this element scrolls horizontally on mobile */
+/* Only this element scrolls horizontally on mobile. `overflow-x: auto`
+   (not `scroll`) so the horizontal scrollbar only appears when the
+   table actually overflows, instead of a permanent, mostly-empty
+   scrollbar track always being shown. `overflow-y: hidden` keeps a
+   phantom vertical scrollbar from appearing too — browsers compute a
+   non-"visible" overflow-y as "auto" whenever overflow-x isn't
+   "visible", so leaving overflow-y unset here silently turns on
+   vertical scrolling; `padding-bottom` still reserves room for the
+   last row's Action dropdown (position: absolute) so it stays fully
+   visible instead of being clipped. */
 .contactPage__tableWrapper {
   width: 100%;
   position: relative;
-  overflow-x: scroll;
-  /* overflow-y: visible; */
-  /* -webkit-overflow-scrolling: touch; */
-  /* min-height: fit-content; */
-  /* height: auto; */
-  height:fit-content;
-  padding-bottom: 72px; /* dropdown mate space */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 160px; /* dropdown mate space — must fit the full 3-item Action menu (View/Edit/Delete), not just part of it */
   box-sizing: border-box;
 }
 
@@ -234,6 +293,31 @@
 
 .contactPage__table tbody tr:last-child td {
   border-bottom: none;
+}
+
+/* "No contacts found" state — same icon + message shape as
+   CommonEmptyState already used on Event/Booking/Entry Report, so an
+   empty Contact List looks consistent with every other list page
+   instead of showing a bare line of text. */
+.contactPage__stateCell {
+  text-align: center;
+  padding: 48px 16px;
+  border-bottom: none;
+}
+
+.contactPage__stateWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.contactPage__stateText {
+  font-size: 14px;
+  font-weight: 500;
+  color: #8b91a3;
+  margin: 0;
 }
 
 .contactPage__contactName {
@@ -376,7 +460,14 @@
     align-items: stretch;
   }
 
-  .contactPage__createButton {
+  .contactPage__headerActions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .contactPage__createButton,
+  .contactPage__exportButton {
     width: 100%;
     justify-content: center;
   }

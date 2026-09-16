@@ -398,10 +398,14 @@ const authSlice = createSlice({
         state.forgotPasswordSuccess = null;
       })
 
-      .addCase(forgotPassword.fulfilled, (state, action) => {
+      .addCase(forgotPassword.fulfilled, (state) => {
         state.forgotPasswordLoading = false;
+        // Fixed wording per requirement — intentionally not using
+        // action.payload?.message here (that's the backend's generic
+        // account-exists-or-not message; the actual API/OTP logic behind
+        // it is unchanged, this only controls what text this alert shows).
         state.forgotPasswordSuccess =
-          action.payload?.message || "If an account exists with this email, a password reset OTP has been sent.";
+          "OTP has been sent to your registered email address. Please check your Inbox. If you don't see the email, please check your Spam/Junk folder as well.";
       })
 
       .addCase(forgotPassword.rejected, (state, action) => {

@@ -18,6 +18,20 @@ export const getAllContactsApi = async (params) => {
   return response.data;
 };
 
+// ================= EXPORT CONTACTS =================
+// params supports: search, sortBy, sortOrder, companyCategory,
+// reference — same filter/sort params as getAllContactsApi (minus
+// page/limit, since every matching contact is exported). Must stay in
+// sync with the backend's GET /contacts/export route.
+export const exportContactsApi = async (params) => {
+  const response = await api.get("/contacts/export", {
+    params,
+    responseType: "blob",
+  });
+
+  return response;
+};
+
 // ================= GET CONTACT BY ID =================
 export const getContactByIdApi = async (id) => {
   const response = await api.get(`/contacts/${id}`);
