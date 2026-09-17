@@ -229,7 +229,7 @@ export default function EditAdminModal({ admin, onClose, isEditingSelf = true })
           </p>
         )}
 
-        <div className="formGrid">
+        <div className="adminFormGrid">
           <div className="fieldGroup">
             <label className="fieldLabel">
               Name <span className="required">*</span>
@@ -291,7 +291,7 @@ export default function EditAdminModal({ admin, onClose, isEditingSelf = true })
                 Change Password
               </button>
             ) : (
-              <div className="formGrid">
+              <div className="adminFormGrid">
                 {resetPasswordError && (
                   <p
                     className="fieldError"

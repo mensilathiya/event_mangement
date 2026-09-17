@@ -77,7 +77,7 @@
   color: #1b2a4e;
 }
 
-.formGrid {
+.adminFormGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px 24px;
@@ -205,7 +205,7 @@
     padding: 26px 22px 22px 22px;
   }
 
-  .formGrid {
+  .adminFormGrid {
     grid-template-columns: 1fr;
   }
 

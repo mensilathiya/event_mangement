@@ -143,7 +143,7 @@ export default function CreateAdminModal({ onClose }) {
           </p>
         )}
 
-        <div className="formGrid">
+        <div className="adminFormGrid">
           <div className="fieldGroup">
             <label className="fieldLabel">
               Name <span className="required">*</span>

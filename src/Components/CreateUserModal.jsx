@@ -316,7 +316,7 @@ export default function CreateUserModal({
           </p>
         </div>
 
-        <div className="formGrid">
+        <div className="userFormGrid">
           <div className="fieldGroup">
             <label className="fieldLabel">
               Name <span className="required">*</span>
